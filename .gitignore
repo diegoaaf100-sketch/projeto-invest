@@ -1,0 +1,6 @@
+# Ignorar credenciais locais
+.streamlit/secrets.toml
+
+# Ignorar arquivos temporários do Python
+__pycache__/
+*.pyc

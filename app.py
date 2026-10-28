@@ -1,64 +1,82 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import yfinance as yf
+import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="Análise de Investimentos", page_icon="📈", layout="wide")
+st.set_page_config(page_title="Comparativo Fundamentalista", page_icon="📊", layout="wide")
 
-st.title("📊 Terminal de Análise de Investimentos")
-st.sidebar.header("Parâmetros da Análise")
+st.title("📊 Comparativo Visual de Múltiplos")
+st.write("Análise gráfica interativa de P/L e Dividend Yield utilizando Plotly.")
 
-# 1. Seleção de Ativos (ex: Ações brasileiras ou criptomoedas)
-# Nota: No Brasil, ativos da B3 levam o sufixo .SA (ex: PETR4.SA, VALE3.SA, ITUB4.SA)
-default_tickers = ["PETR4.SA", "VALE3.SA", "ITUB4.SA", "WEGE3.SA"]
-tickers_input = st.sidebar.text_area("Digite os Tickers (separados por vírgula)", value=", ".join(default_tickers))
+# Entrada de tickers
+tickers_input = st.text_input(
+    "Digite os Tickers separados por vírgula:", 
+    value="PETR4.SA, VALE3.SA, ITUB4.SA, WEGE3.SA, BBAS3.SA"
+)
+
 tickers = [t.strip().upper() for t in tickers_input.split(",")]
 
-# 2. Período de Análise
-periodo = st.sidebar.selectbox("Período Histórico", ["1mo", "6mo", "1y", "2y", "5y"], index=2)
-
 if tickers:
-    st.subheader(f"📈 Desempenho Histórico ({periodo})")
-    
-    @st.cache_data(ttl=300)
-    def load_data(tiks, per):
-        # Baixa os preços de fechamento ajustados
-        data = yf.download(tiks, period=per, interval="1d")['Close']
-        return data
+    lista_dados = []
 
-    df_prices = load_data(tickers, periodo)
-    
-    if not df_prices.empty:
-        # Gráfico de linhas normalizado (base 100) para comparação justa
-        df_normalized = (df_prices / df_prices.iloc[0]) * 100
-        
-        fig = px.line(df_normalized, title="Evolução Comparativa (Base 100)", labels={"value": "Preço Normalizado", "Date": "Data"})
-        st.plotly_chart(fig, use_container_width=True)
-        
-        # Métricas de Retorno e Volatilidade
-        st.subheader("📊 Indicadores de Risco e Retorno")
-        
-        retornos_diarios = df_prices.pct_change().dropna()
-        retorno_acumulado = (df_prices.iloc[-1] / df_prices.iloc[0]) - 1
-        volatilidade_anual = retornos_diarios.std() * np.sqrt(252) # 252 dias úteis no ano
-        
-        df_metricas = pd.DataFrame({
-            "Retorno Acumulado (%)": (retorno_acumulado * 100).round(2),
-            "Volatilidade Anual (%)": (volatilidade_anual * 100).round(2)
-        })
-        
-        st.dataframe(df_metricas, use_container_width=True)
-        
-        # Exibindo cotações mais recentes em tempo real
-        st.subheader("⚡ Cotações Atuais em Tempo Real")
-        dados_atuais = yf.download(tickers, period="1d", interval="1m")['Close']
-        latest_prices = dados_atuais.iloc[-1] if isinstance(dados_atuais, pd.DataFrame) else dados_atuais
-        
-        cols = st.columns(len(tickers))
-        for i, ticker in enumerate(tickers):
-            preco = latest_prices[ticker] if len(tickers) > 1 else latest_prices
-            cols[i].metric(label=ticker, value=f"R$ {preco:.2f}")
+    with st.spinner("Buscando indicadores e gerando gráficos..."):
+        for ticker in tickers:
+            try:
+                tk = yf.Ticker(ticker)
+                info = tk.info
+                
+                preco = info.get("currentPrice", info.get("regularMarketPrice", 0))
+                pl = info.get("trailingPE", None)
+                div_yield = info.get("dividendYield", None)
+                
+                # Tratamento de Dividend Yield para porcentagem
+                dy_pct = round(div_yield * 100, 2) if div_yield else 0.0
+                pl_val = round(pl, 2) if pl else 0.0
 
+                lista_dados.append({
+                    "Ticker": ticker,
+                    "P/L": pl_val,
+                    "Dividend Yield (%)": dy_pct
+                })
+            except Exception as e:
+                st.error(f"Erro ao processar {ticker}: {e}")
+
+    if lista_dados:
+        df_plot = pd.DataFrame(lista_dados)
+
+        # Dividindo a tela em duas colunas para exibir os gráficos lado a lado
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("📉 Comparativo de P/L (Preço / Lucro)")
+            # Gráfico de barras interativo para P/L
+            fig_pl = px.bar(
+                df_plot, 
+                x="Ticker", 
+                y="P/L", 
+                text="P/L",
+                color="Ticker",
+                title="Índice P/L por Ativo"
+            )
+            fig_pl.update_traces(texttemplate='%{text:.2f}', textposition='outside')
+            st.plotly_chart(fig_pl, use_container_width=True)
+
+        with col2:
+            st.subheader("💰 Comparativo de Dividend Yield (%)")
+            # Gráfico de barras interativo para Dividend Yield
+            fig_dy = px.bar(
+                df_plot, 
+                x="Ticker", 
+                y="Dividend Yield (%)", 
+                text="Dividend Yield (%)",
+                color="Ticker",
+                title="Dividend Yield por Ativo (%)"
+            )
+            fig_dy.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+            st.plotly_chart(fig_dy, use_container_width=True)
+
+        # Exibindo a tabela completa abaixo dos gráficos
+        with st.expander("Ver dados brutos em tabela"):
+            st.dataframe(df_plot, use_container_width=True)
 else:
-    st.warning("Insira pelo menos um ticker válido na barra lateral.")
+    st.warning("Insira ao menos um ticker válido.")

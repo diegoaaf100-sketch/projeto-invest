@@ -19,12 +19,10 @@ st.markdown("Painel unificado com cotações em tempo real, múltiplos fundament
 # ==========================================
 st.sidebar.header("⚙️ Configurações da Análise")
 
-# Tickers padrão para análise de ações/ativos
 default_tickers = "PETR4.SA, VALE3.SA, ITUB4.SA, WEGE3.SA, BBAS3.SA"
 tickers_input = st.sidebar.text_area("Digite os Tickers (separados por vírgula):", value=default_tickers)
 tickers = [t.strip().upper() for t in tickers_input.split(",")]
 
-# Período histórico para gráficos
 periodo = st.sidebar.selectbox("Período Histórico", ["1mo", "6mo", "1y", "2y", "5y"], index=2)
 
 st.sidebar.divider()
@@ -125,7 +123,6 @@ if tickers:
     df_prices = load_historical(tickers, periodo)
     
     if not df_prices.empty:
-        # Se for apenas 1 ativo retornado como Series, transforma em DataFrame
         if isinstance(df_prices, pd.Series):
             df_prices = df_prices.to_frame()
             
@@ -177,4 +174,12 @@ if tickers:
             with c1:
                 fig_pl = px.bar(df_fund, x="Ticker", y="P/L", text="P/L", color="Ticker", title="Índice P/L por Ativo")
                 fig_pl.update_traces(texttemplate='%{text:.2f}', textposition='outside')
-                st.plotly_chart(fig_
+                st.plotly_chart(fig_pl, use_container_width=True)
+                
+            with c2:
+                fig_dy = px.bar(df_fund, x="Ticker", y="Dividend Yield (%)", text="Dividend Yield (%)", color="Ticker", title="Dividend Yield por Ativo (%)")
+                fig_dy.update_traces(texttemplate='%{text:.2f}%', textposition='outside')
+                st.plotly_chart(fig_dy, use_container_width=True)
+
+else:
+    st.warning("Insira pelo menos um ticker válido na barra lateral.")

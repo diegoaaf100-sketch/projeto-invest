@@ -1,6 +1,39 @@
-# Ignorar credenciais locais
+# --- SUPABASE & STREAMLIT SECRETS ---
+# Impede que suas chaves de API e credenciais locais vão para o GitHub
 .streamlit/secrets.toml
 
-# Ignorar arquivos temporários do Python
+# --- PYTHON / AMBIENTE VIRTUAL ---
+# Ignora ambientes virtuais locais (.venv, venv, env)
+venv/
+env/
+.venv/
+ENV/
+
+# Arquivos de cache e compilação do Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# --- DISTRIBUIÇÃO E PACOTES ---
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# --- IDEs E EDITORES (VS Code, PyCharm, etc.) ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store

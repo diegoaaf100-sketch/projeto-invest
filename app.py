@@ -26,8 +26,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Insira suas credenciais do Supabase aqui (ou utilize st.secrets)
-SUPABASE_URL = "https://SEU-PROJETO.supabase.co"
-SUPABASE_KEY = "SUA-CHAVE-ANON-AQUI"
+SUPABASE_URL = "https://elharxmlbephzxqagbcl.supabase.co"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ"
 
 @st.cache_resource
 def init_supabase():

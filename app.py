@@ -147,6 +147,7 @@ with tab4:
 # --- ABA 5: GESTÃO DE CARTEIRA & PnL ---
 with tab5:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
+    
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)
         with c1: ticker_input = st.text_input("Ticker (ex: PETR4.SA)").upper().strip()
@@ -162,23 +163,37 @@ with tab5:
             except Exception:
                 pass
 
-        if st.form_submit_button("Salvar no Supabase"):
-            if ticker_input and supabase:
-                try:
-                    supabase.table("user_portfolio").upsert({
-                        "ticker": ticker_input, "asset_class": asset_class,
-                        "quantity": float(quantity), "average_price": float(avg_price)
-                    }, on_conflict="ticker").execute()
-                    st.success(f"Ativo {ticker_input} salvo!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao salvar: {e}")
+        submitted = st.form_submit_button("Salvar no Supabase")
+        
+        if submitted:
+            if ticker_input:
+                if supabase:
+                    try:
+                        # Tenta salvar no Supabase na nuvem
+                        supabase.table("user_portfolio").upsert({
+                            "ticker": ticker_input, 
+                            "asset_class": asset_class,
+                            "quantity": float(quantity), 
+                            "average_price": float(avg_price)
+                        }, on_conflict="ticker").execute()
+                        
+                        st.success(f"✅ Ativo {ticker_input} salvo com sucesso no Supabase!")
+                        st.rerun()
+                    except Exception as e:
+                        # Captura o erro de DNS/Rede e avisa de forma elegante
+                        st.error(f"❌ Falha de conexão com o Supabase ([Errno -2] DNS/Rede indisponível). Verifique sua internet ou credenciais.")
+                else:
+                    st.warning("⚠️ Cliente do Supabase não inicializado. Verifique suas chaves no código.")
+            else:
+                st.warning("⚠️ O campo Ticker é obrigatório.")
 
+    # Exibição segura da tabela da carteira
     if not df_portfolio.empty and "ticker" in df_portfolio.columns:
         df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
         df_portfolio["Lucro/Prejuízo (%)"] = (df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"]) * 100
         st.dataframe(df_portfolio, use_container_width=True, hide_index=True)
-
+    else:
+        st.info("ℹ️ Nenhum ativo carregado na carteira no momento (modo offline ou tabela vazia).")
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:
     st.subheader("⚖️ Alocação da Carteira")

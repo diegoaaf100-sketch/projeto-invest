@@ -50,21 +50,19 @@ def avaliar_fii(p_vp, dy):
     """Métrica de avaliação e scoring para FIIs"""
     score = 0
     
-    # Avaliação do P/VP
     if 0.85 <= p_vp <= 1.02:
-        score += 2  # Ótimo preço
+        score += 2  
     elif 1.03 <= p_vp <= 1.08 or 0.75 <= p_vp < 0.85:
-        score += 1  # Aceitável
+        score += 1  
     else:
-        score += 0  # Ágio excessivo ou alto risco
+        score += 0  
         
-    # Avaliação do DY
     if dy >= 10.5:
-        score += 2  # Ótimo retorno
+        score += 2  
     elif 8.0 <= dy < 10.5:
-        score += 1  # Retorno médio
+        score += 1  
     else:
-        score += 0  # Retorno baixo
+        score += 0  
 
     if score >= 3:
         return "🟢 INDICADO", "Excelente relação entre preço (P/VP) e dividendos esperados."
@@ -79,7 +77,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📊 Ações & FIIs", 
     "🏛️ Tesouro Direto", 
     "🕯️ Análise Técnica", 
-    "💼 Gestão de Carteira & Análise", 
+    "💼 Gestão de Carteira & PnL", 
     "⚖️ Alocação & Rebalanceamento",
     "🧮 Simulador"
 ])
@@ -133,36 +131,97 @@ with tab3:
     c2.metric("Tesouro IPCA+ 2035", "IPCA + 6.45% a.a.", "Inflação + Juros")
     c3.metric("Tesouro Prefixado 2031", "11.85% a.a.", "Taxa Fixa")
 
-# --- ABA 4: ANÁLISE TÉCNICA ---
+# --- ABA 4: ANÁLISE TÉCNICA & INTELIGÊNCIA PREDITIVA ---
 with tab4:
-    st.subheader("🕯️ Gráfico de Candlestick")
-    ticker_c = st.selectbox("Escolha o Ticker:", todos_tickers if todos_tickers else ["PETR4.SA"])
-    try:
-        df_c = yf.Ticker(ticker_c).history(period="6mo", interval="1d")
-        if not df_c.empty:
-            fig = go.Figure(data=[go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'])])
-            fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
-            st.plotly_chart(fig, width='stretch')
-    except Exception as e:
-        st.error(f"Erro ao carregar o gráfico: {e}")
+    st.subheader("🕯️ Gráfico de Linha & Análise Preditiva do Ativo")
+    ticker_c = st.selectbox("Escolha o Ticker para Análise:", todos_tickers if todos_tickers else ["PETR4.SA"])
+    
+    if ticker_c:
+        is_fii = ticker_c.endswith("11") or "11B" in ticker_c
+        
+        try:
+            tk = yf.Ticker(ticker_c)
+            info = tk.info
+            df_c = tk.history(period="6mo", interval="1d")
+            
+            # Gráfico de Linha (substituindo o Candlestick)
+            if not df_c.empty and 'Close' in df_c.columns:
+                fig = go.Figure(data=[go.Scatter(
+                    x=df_c.index, 
+                    y=df_c['Close'], 
+                    mode='lines', 
+                    name='Preço de Fechamento',
+                    line=dict(color='#00FFAA', width=2)
+                )])
+                fig.update_layout(
+                    title=f"Evolução de Preço (6 Meses) - {ticker_c}",
+                    template="plotly_dark",
+                    xaxis_title="Data",
+                    yaxis_title="Preço (R$)",
+                    xaxis_rangeslider_visible=False
+                )
+                st.plotly_chart(fig, width='stretch')
+            else:
+                st.warning("Dados de histórico indisponíveis para este ativo.")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & AVALIAÇÃO AUTOMÁTICA DE FIIs ---
+            # Seção de Inteligência e Projeções logo abaixo do gráfico
+            st.markdown("---")
+            if is_fii:
+                fii_data = BASE_FII.get(ticker_c, {"dy": 12.80, "p_vp": 1.01, "div_mensal": 0.09, "frequencia": "Mensal"})
+                dy_val = fii_data["dy"]
+                p_vp_val = fii_data["p_vp"]
+                div_m = fii_data["div_mensal"]
+                freq = fii_data["frequencia"]
+
+                status, justificativa = avaliar_fii(p_vp_val, dy_val)
+
+                st.markdown(f"### 🏢 Avaliação Quantitativa para o FII **{ticker_c}**")
+                
+                c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+                c_m1.metric("Status do Fundo", status)
+                c_m2.metric("P/VP", f"{p_vp_val:.2f}")
+                c_m3.metric("Dividend Yield (DY)", f"{dy_val:.2f}% a.a.")
+                c_m4.metric("Último Dividendo", f"R$ {div_m:.2f} / cota", f"Pagamento: {freq}")
+
+                if "INDICADO" in status and "NÃO" not in status:
+                    st.success(f"💡 **Diagnóstico:** {justificativa}")
+                elif "MÉDIO" in status:
+                    st.warning(f"💡 **Diagnóstico:** {justificativa}")
+                else:
+                    st.error(f"💡 **Diagnóstico:** {justificativa}")
+            else:
+                target_mean = float(info.get("targetMeanPrice", 0.0))
+                rec_key = str(info.get("recommendationKey", "neutro")).upper()
+                num_analysts = int(info.get("numberOfAnalystOpinions", 0))
+
+                st.markdown(f"### 📈 Projeções e Consenso de Analistas para **{ticker_c}**")
+                if target_mean > 0 or num_analysts > 0:
+                    cp1, cp2, cp3 = st.columns(3)
+                    cp1.metric("Preço-Alvo Médio (Consenso)", f"R$ {target_mean:.2f}")
+                    cp2.metric("Recomendação de Mercado", f"{rec_key}")
+                    cp3.metric("Analistas Avaliando", f"{num_analysts} instituições")
+                    st.caption("🔍 **Fonte Confiável:** Consenso de mercado e projeções compiladas de analistas financeiros via **Yahoo Finance API**.")
+                else:
+                    st.info(f"ℹ️ O ativo **{ticker_c}** é uma ação que não possui cobertura ativa de preço-alvo por analistas no momento.")
+            st.markdown("---")
+        except Exception as e:
+            st.error(f"Erro ao carregar análises técnicas: {e}")
+
+# --- ABA 5: GESTÃO DE CARTEIRA & PnL ---
 with tab5:
-    st.subheader("💼 Gerenciamento de Carteira & Análise Quantitativa")
+    st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
     
     if "portfolio_local" not in st.session_state:
         st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
 
-    ticker_input = st.text_input("Digite o Ticker para analisar e cadastrar (ex: PETR4.SA, MXRF11.SA)").upper().strip()
+    ticker_input = st.text_input("Digite o Ticker para cadastrar (ex: PETR4.SA, MXRF11.SA)").upper().strip()
 
     suggested_price = 0.0
     suggested_class = "Ação (B3)"
-    is_fii = False
 
     if ticker_input:
         if ticker_input.endswith("11") or "11B" in ticker_input:
             suggested_class = "FII"
-            is_fii = True
         elif "USD" in ticker_input or "BTC" in ticker_input:
             suggested_class = "Exterior/Cripto"
         else:
@@ -183,36 +242,6 @@ with tab5:
             suggested_price = PRECOS_FALLBACK.get(ticker_input, 25.00)
 
         st.success(f"🔍 **Ativo localizado!** Preço atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
-
-        # --- SEÇÃO DE AVALIAÇÃO DE FIIS ---
-        st.markdown("---")
-        if is_fii:
-            fii_data = BASE_FII.get(ticker_input, {"dy": 11.50, "p_vp": 1.00, "div_mensal": (suggested_price * 0.009), "frequencia": "Mensal"})
-            dy_val = fii_data["dy"]
-            p_vp_val = fii_data["p_vp"]
-            div_m = fii_data["div_mensal"]
-            freq = fii_data["frequencia"]
-
-            status, justificativa = avaliar_fii(p_vp_val, dy_val)
-
-            st.markdown(f"### 🏢 Avaliação Quantitativa para o FII **{ticker_input}**")
-            
-            c_m1, c_m2, c_m3, c_m4 = st.columns(4)
-            c_m1.metric("Status do Fundo", status)
-            c_m2.metric("P/VP", f"{p_vp_val:.2f}")
-            c_m3.metric("Dividend Yield (DY)", f"{dy_val:.2f}% a.a.")
-            c_m4.metric("Último Dividendo", f"R$ {div_m:.2f} / cota", f"Pagamento: {freq}")
-
-            if "INDICADO" in status and "NÃO" not in status:
-                st.success(f"💡 **Diagnóstico:** {justificativa}")
-            elif "MÉDIO" in status:
-                st.warning(f"💡 **Diagnóstico:** {justificativa}")
-            else:
-                st.error(f"💡 **Diagnóstico:** {justificativa}")
-        else:
-            st.markdown(f"### 📈 Projeção e Análise para Ações ({ticker_input})")
-            st.info(f"O ativo {ticker_input} é classificado como Ação. A análise quantitativa aciona o modelo de consenso de mercado.")
-        st.markdown("---")
 
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)

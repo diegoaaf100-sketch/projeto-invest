@@ -3,7 +3,12 @@ import pandas as pd
 import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
-from supabase import create_client
+import warnings
+
+# --- CONFIGURAÇÃO DE AVISOS ---
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", message=".*inplace keyword.*")
 
 # 1. Configuração da Página
 st.set_page_config(
@@ -12,22 +17,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# 2. Conexão com Supabase (com tratamento de fallback se offline)
-SUPABASE_URL = "https://elharxmlbephzxqagbcl.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ"
-
-@st.cache_resource
-def init_supabase():
-    try:
-        return create_client(SUPABASE_URL, SUPABASE_KEY)
-    except Exception:
-        return None
-
-supabase = init_supabase()
-
 st.title("📊 Terminal Quantitativo de Investimentos & Carteira")
 
-# 3. Sidebar de Configuração
+# 2. Sidebar de Configuração
 st.sidebar.header("⚙️ Painel de Controle")
 default_acoes = "PETR4.SA, VALE3.SA, ITUB4.SA, WEGE3.SA"
 default_fiis = "MXRF11.SA, HGLG11.SA"
@@ -39,45 +31,7 @@ tickers_acoes = [t.strip().upper() for t in acao_input.split(",")]
 tickers_fiis = [t.strip().upper() for t in fii_input.split(",")]
 todos_tickers = tickers_acoes + tickers_fiis
 
-# 4. Função Segura para Carregar a Carteira
-@st.cache_data(ttl=30)
-def carregar_carteira():
-    if not supabase:
-        return pd.DataFrame()
-    try:
-        response = supabase.table("user_portfolio").select("*").execute()
-        df = pd.DataFrame(response.data)
-        if df.empty or "ticker" not in df.columns:
-            return pd.DataFrame()
-            
-        tickers = df["ticker"].tolist()
-        
-        # Tratamento seguro para download do yfinance
-        try:
-            dados_mercado = yf.download(tickers, period="5d", progress=False)['Close']
-            if isinstance(dados_mercado, pd.Series):
-                dados_mercado = dados_mercado.to_frame()
-        except Exception:
-            dados_mercado = pd.DataFrame()
-            
-        precos_atuais = {}
-        for t in tickers:
-            if not dados_mercado.empty and t in dados_mercado.columns:
-                s = dados_mercado[t].dropna()
-                precos_atuais[t] = float(s.iloc[-1]) if not s.empty else 0.0
-            else:
-                precos_atuais[t] = 0.0
-                
-        df["Preço Atual (R$)"] = df["ticker"].map(precos_atuais)
-        df["Total Investido"] = df["quantity"] * df["average_price"]
-        df["Valor Atual"] = df["quantity"] * df["Preço Atual (R$)"]
-        return df
-    except Exception:
-        return pd.DataFrame()
-
-df_portfolio = carregar_carteira()
-
-# 5. CRIAÇÃO DAS 7 ABAS
+# 3. CRIAÇÃO DAS 7 ABAS
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🌐 Visão Global", 
     "📊 Ações & FIIs", 
@@ -94,7 +48,7 @@ with tab1:
     ativos_globais = {"Dólar (USD/BRL)": "USDBRL=X", "Bitcoin": "BTC-USD", "Ibovespa": "^BVSP", "S&P 500": "^GSPC"}
     
     try:
-        df_global = yf.download(list(ativos_globais.values()), period="5d", progress=False)['Close']
+        df_global = yf.download(list(ativos_globais.values()), period="5s", progress=False)['Close']
         if isinstance(df_global, pd.Series):
             df_global = df_global.to_frame()
             
@@ -155,9 +109,13 @@ with tab4:
     except Exception as e:
         st.error(f"Erro ao carregar o gráfico: {e}")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & PnL ---
+# --- ABA 5: GESTÃO DE CARTEIRA & PnL (LOCAL STORAGE) ---
 with tab5:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
+    
+    if "portfolio_local" not in st.session_state:
+        st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
+
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)
         with c1: ticker_input = st.text_input("Ticker (ex: PETR4.SA)").upper().strip()
@@ -173,51 +131,60 @@ with tab5:
             except Exception:
                 pass
 
-        if st.form_submit_button("Salvar no Supabase"):
-            if ticker_input and supabase:
-                try:
-                    supabase.table("user_portfolio").upsert({
-                        "ticker": ticker_input, "asset_class": asset_class,
-                        "quantity": float(quantity), "average_price": float(avg_price)
-                    }, on_conflict="ticker").execute()
-                    st.success(f"Ativo {ticker_input} salvo com sucesso!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao salvar: {e}")
+        submitted = st.form_submit_button("Salvar na Carteira")
+        
+        if submitted:
+            if ticker_input:
+                df_loc = st.session_state["portfolio_local"]
+                df_loc = df_loc[df_loc["ticker"] != ticker_input]
+                
+                novo_registro = pd.DataFrame([{
+                    "ticker": ticker_input,
+                    "asset_class": asset_class,
+                    "quantity": float(quantity),
+                    "average_price": float(avg_price)
+                }])
+                
+                st.session_state["portfolio_local"] = pd.concat([df_loc, novo_registro], ignore_index=True)
+                st.success(f"✅ Ativo {ticker_input} salvo com sucesso!")
+                st.rerun()
+            else:
+                st.warning("⚠️ O campo Ticker é obrigatório.")
 
-    if not df_portfolio.empty and "ticker" in df_portfolio.columns:
+    # Processamento da Carteira Local
+    df_portfolio = st.session_state["portfolio_local"]
+    
+    if not df_portfolio.empty:
+        tickers = df_portfolio["ticker"].tolist()
+        try:
+            dados_mercado = yf.download(tickers, period="5d", progress=False)['Close']
+            if isinstance(dados_mercado, pd.Series):
+                dados_mercado = dados_mercado.to_frame()
+        except Exception:
+            dados_mercado = pd.DataFrame()
+            
+        precos_atuais = {}
+        for t in tickers:
+            if not dados_mercado.empty and t in dados_mercado.columns:
+                s = dados_mercado[t].dropna()
+                precos_atuais[t] = float(s.iloc[-1]) if not s.empty else 0.0
+            else:
+                precos_atuais[t] = 0.0
+                
+        df_portfolio["Preço Atual (R$)"] = df_portfolio["ticker"].map(precos_atuais)
+        df_portfolio["Total Investido"] = df_portfolio["quantity"] * df_portfolio["average_price"]
+        df_portfolio["Valor Atual"] = df_portfolio["quantity"] * df_portfolio["Preço Atual (R$)"]
         df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
         df_portfolio["Lucro/Prejuízo (%)"] = (df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"]) * 100
+        
         st.dataframe(df_portfolio, width='stretch', hide_index=True)
+        
+        if st.button("🗑️ Limpar Toda a Carteira"):
+            st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
+            st.rerun()
+    else:
+        st.info("ℹ️ Sua carteira está vazia. Adicione ativos acima para começar.")
 
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:
-    st.subheader("⚖️ Alocação da Carteira")
-    if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns:
-        fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
-        fig_donut.update_layout(template="plotly_dark")
-        st.plotly_chart(fig_donut, width='stretch')
-    else:
-        st.info("Cadastre ativos na Aba 5 para visualizar a alocação.")
-
-# --- ABA 7: SIMULADOR ---
-with tab7:
-    st.subheader("🧮 Simulador de Crescimento Patrimonial")
-    c1, c2 = st.columns(2)
-    with c1:
-        pat = st.number_input("Patrimônio Inicial (R$)", value=20000.0)
-        aporte = st.number_input("Aporte Mensal (R$)", value=1000.0)
-    with c2:
-        taxa = st.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
-        anos = st.slider("Anos", 1, 30, 10)
-    
-    meses = list(range(1, (anos * 12) + 1))
-    taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
-    vals, atual = [], pat
-    for _ in meses:
-        atual = (atual * (1 + taxa_m)) + aporte
-        vals.append(atual)
-        
-    fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Anos", "y": "Patrimônio (R$)"}, title="Evolução do Patrimônio")
-    fig_s.update_layout(template="plotly_dark")
-    st.plotly_chart(fig_s, width='stretch')
+    st.subheader("⚖️ Alocação da Carteira

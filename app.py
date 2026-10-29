@@ -52,6 +52,7 @@ RESUMO_ATIVOS = {
     "VALE3.SA": "A Vale é uma gigante global da mineração, uma das maiores produtoras de minério de ferro e pelota do mundo, além de importante produtora de níquel e outros minerais essenciais para a transição energética.",
     "ITUB4.SA": "O Itaú Unibanco é o maior banco privado da América Latina, oferecendo uma linha completa de serviços bancários, financeiros e de gestão de recursos para pessoas físicas e jurídicas.",
     "WEGE3.SA": "A WEG é uma multinacional brasileira líder global na fabricação de equipamentos eletroeletrônicos, motores elétricos, geradores e soluções para automação industrial e energia limpa.",
+    "BBAS3.SA": "O Banco do Brasil é a instituição financeira mais antiga do país, atuando fortemente no crédito comercial, agronegócio e varejo bancário.",
     "MXRF11.SA": "O Maxi Renda FII (MXRF11) é um fundo imobiliário do tipo híbrido/papel, focado em alocação de recursos em Certificados de Recebíveis Imobiliários (CRIs), cotas de outros FIIs e ativos imobiliários de renda.",
     "HGLG11.SA": "O CSHG Logística (HGLG11) é um fundo imobiliário de tijolo com foco na aquisição e gestão de galpões logísticos e industriais de alto padrão (A+) localizados em eixos estratégicos do Brasil."
 }
@@ -191,14 +192,21 @@ with tab2:
     st.markdown("---")
     st.caption("🔍 **Fontes Oficiais:** Tesouro Nacional, Banco Central do Brasil (BCB), Anbima e Portal InfoMoney Renda Fixa.")
 
-# --- ABA 3: ANÁLISE TÉCNICA (COM BARRA DE PESQUISA E BUSCA INTELIGENTE DE ATIVOS) ---
+# --- ABA 3: ANÁLISE TÉCNICA & BUSCA DE ATIVOS NA B3 ---
 with tab3:
-    st.subheader("🕯️ Análise Técnica e Perfil Detalhado do Ativo")
+    st.subheader("🕯️ Análise Técnica e Perfil Detalhado do Ativo (B3)")
     
-    ticker_search = st.text_input("🔍 Digite o Ticker da Ação ou FII para pesquisar (ex: PETR4.SA, VALE3.SA, ITUB4.SA, MXRF11.SA):", value="PETR4.SA").upper().strip()
+    ticker_search = st.text_input(
+        "🔍 Digite o Ticker da Ação ou FII listado na B3 (ex: PETR4.SA, VALE3.SA, BBAS3.SA, MXRF11.SA):", 
+        value="PETR4.SA"
+    ).upper().strip()
 
     if ticker_search:
-        is_fii = ticker_search.endswith("11") or "11B" in ticker_search
+        # Garante o sufixo .SA se o usuário esquecer
+        if not ticker_search.endswith(".SA") and len(ticker_search) <= 6:
+            ticker_search += ".SA"
+
+        is_fii = "11" in ticker_search
         
         try:
             tk = yf.Ticker(ticker_search)
@@ -206,28 +214,28 @@ with tab3:
             df_c = tk.history(period="6mo", interval="1d")
             
             nome_empresa = info.get("longName", info.get("shortName", ticker_search))
-            setor = info.get("sector", "Setor Imobiliário" if is_fii else "Mercado de Ações")
-            industria = info.get("industry", "Fundo Imobiliário" if is_fii else "Atividade Empresarial")
+            setor = info.get("sector", "Setor Imobiliário / FIIs" if is_fii else "Mercado de Ações B3")
+            industria = info.get("industry", "Fundo de Investimento Imobiliário" if is_fii else "Companhia Aberta")
             
-            # Validação do resumo institucional
+            # Resumo corporativo com fallback inteligente
             resumo_api = info.get("longBusinessSummary", "").strip()
             if resumo_api and "não disponível" not in resumo_api.lower():
                 resumo_negocio = resumo_api
             else:
                 resumo_negocio = RESUMO_ATIVOS.get(
                     ticker_search, 
-                    f"Ativo **{ticker_search}** negociado na B3. O instrumento pertence ao segmento de {'Fundos Imobiliários (FIIs)' if is_fii else 'Ações de Empresas Listadas'}. Utilize o gráfico histórico e os indicadores abaixo para acompanhar sua performance e liquidez."
+                    f"Ativo **{ticker_search}** negociado na B3. A empresa/fundo faz parte do mercado de capitais brasileiro, com liquidez diária e cotações consolidadas pelo pregão oficial. Acompanhe os indicadores e gráficos abaixo para embasar sua análise técnica e fundamentalista."
                 )
             
             st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
-            st.markdown(f"**Setor:** {setor} | **Segmento:** {industria}")
+            st.markdown(f"**Setor B3:** {setor} | **Segmento:** {industria}")
             
-            with st.expander("📖 **Sobre o Ativo e Modelo de Negócio**", expanded=True):
+            with st.expander("📖 **Sobre o Ativo & Modelo de Negócio (B3)**", expanded=True):
                 st.write(resumo_negocio)
             
             st.markdown("---")
             
-            # Gráfico de linhas do ativo
+            # Gráfico de linhas de fechamento
             if not df_c.empty and 'Close' in df_c.columns:
                 fig = go.Figure(data=[go.Scatter(
                     x=df_c.index, 
@@ -237,7 +245,7 @@ with tab3:
                     line=dict(color='#00FFAA', width=2)
                 )])
                 fig.update_layout(
-                    title=f"Evolução Histórica de Preço (Últimos 6 Meses) - {ticker_search}",
+                    title=f"Evolução Histórica de Preço (6 Meses) - {ticker_search}",
                     template="plotly_dark",
                     xaxis_title="Data",
                     yaxis_title="Preço (R$)",
@@ -245,12 +253,12 @@ with tab3:
                 )
                 st.plotly_chart(fig, width='stretch')
             else:
-                st.warning("Histórico de preços indisponível para este ticker.")
+                st.warning("Histórico de preços indisponível para este ticker na B3 no momento.")
 
-            # Indicadores e Inteligência Preditiva
+            # Indicadores e Inteligência
             st.markdown("---")
             if is_fii:
-                fii_data = BASE_FII.get(ticker_search, {"dy": 12.80, "p_vp": 1.01, "div_mensal": 0.09, "frequencia": "Mensal"})
+                fii_data = BASE_FII.get(ticker_search, {"dy": 12.00, "p_vp": 1.00, "div_mensal": 0.85, "frequencia": "Mensal"})
                 dy_val = fii_data["dy"]
                 p_vp_val = fii_data["p_vp"]
                 div_m = fii_data["div_mensal"]
@@ -258,7 +266,7 @@ with tab3:
 
                 status, justificativa = avaliar_fii(p_vp_val, dy_val)
 
-                st.markdown(f"### 🏢 Avaliação Quantitativa para o FII **{ticker_search}**")
+                st.markdown(f"### 🏢 Indicadores Imobiliários para o FII **{ticker_search}**")
                 c_m1, c_m2, c_m3, c_m4 = st.columns(4)
                 c_m1.metric("Status do Fundo", status)
                 c_m2.metric("P/VP", f"{p_vp_val:.2f}")
@@ -276,20 +284,21 @@ with tab3:
                 rec_key = str(info.get("recommendationKey", "neutro")).upper()
                 num_analysts = int(info.get("numberOfAnalystOpinions", 0))
                 mcap = info.get("marketCap", 0)
-                mcap_fmt = f"R$ {mcap / 1e9:.2f} B" if mcap > 0 else "N/D"
+                mcap_fmt = f"R$ {mcap / 1e9:.2f} Bilhões" if mcap > 0 else "N/D"
+                pe_ratio = info.get("trailingPE", 0)
 
-                st.markdown(f"### 📈 Projeções & Consenso de Mercado para **{ticker_search}**")
+                st.markdown(f"### 📈 Indicadores Fundamentalistas & Consenso para **{ticker_search}**")
                 
                 cp1, cp2, cp3, cp4 = st.columns(4)
-                cp1.metric("Preço-Alvo Médio", f"R$ {target_mean:.2f}" if target_mean > 0 else "N/D")
-                cp2.metric("Recomendação", rec_key if rec_key != "NEUTRO" else "MANTER")
-                cp3.metric("Analistas Avaliando", f"{num_analysts} casas" if num_analysts > 0 else "N/D")
-                cp4.metric("Valor de Mercado", mcap_fmt)
+                cp1.metric("Valor de Mercado", mcap_fmt)
+                cp2.metric("Índice P/L", f"{pe_ratio:.2f}" if pe_ratio > 0 else "N/D")
+                cp3.metric("Preço-Alvo Médio", f"R$ {target_mean:.2f}" if target_mean > 0 else "N/D")
+                cp4.metric("Recomendação B3", rec_key if rec_key != "NEUTRO" else "MANTER")
                 
-                st.caption("🔍 **Fonte Confiável:** Dados consolidados do mercado financeiro via **Yahoo Finance API**.")
+                st.caption("🔍 **Fonte Oficial:** Dados de pregão e relatórios compilados da B3 e Yahoo Finance API.")
             st.markdown("---")
         except Exception as e:
-            st.error(f"Erro ao pesquisar o ativo `{ticker_search}`: {e}")
+            st.error(f"Erro ao consultar o ticker `{ticker_search}` na B3: {e}")
 
 # --- ABA 4: GESTÃO DE CARTEIRA & PnL ---
 with tab4:

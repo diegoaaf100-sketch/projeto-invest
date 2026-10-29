@@ -80,7 +80,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL (COM INDICADORES E NOTÍCIAS DE MERCADO) ---
+# --- ABA 1: VISÃO GLOBAL ---
 with tab1:
     st.subheader("🌐 Indicadores Macroeconômicos e Globais")
     
@@ -375,8 +375,7 @@ with tab7:
     meses = list(range(1, (anos * 12) + 1))
     taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
     vals, atual = [], pat
-    for _:= meses: # type: ignore
-        pass
+    
     for _ in meses:
         atual = (atual * (1 + taxa_m)) + aporte
         vals.append(atual)

@@ -10,8 +10,20 @@ from google import genai
 st.set_page_config(
     page_title="Terminal Quantitativo B3 & IA",
     page_icon="📈",
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
+
+# --- ESTILIZAÇÃO CSS CUSTOMIZADA (LAYOUT PROFISSIONAL) ---
+st.markdown("""
+    <style>
+        .main { background-color: #0e1117; }
+        .stMetric { background-color: #161b22; padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
+        .news-card { background-color: #161b22; padding: 15px; border-radius: 8px; border-left: 4px solid #58a6ff; margin-bottom: 10px; }
+        .news-title { font-weight: bold; color: #58a6ff; font-size: 1.05rem; }
+        .news-date { font-size: 0.8rem; color: #8b949e; }
+    </style>
+""", unsafe_allow_html=True)
 
 # --- CONEXÃO COM O SUPABASE ---
 @st.cache_resource
@@ -48,9 +60,25 @@ def init_gemini():
 
 client_gemini = init_gemini()
 
+# --- BARRA LATERAL (SIDEBAR) ---
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/bullish.png", width=64)
+    st.title("Terminal B3 Quant")
+    st.markdown("---")
+    st.subheader("⚙️ Configurações & Status")
+    
+    status_sup = "🟢 Conectado" if supabase and not df_fundos.empty else "🔴 Desconectado / Vazio"
+    st.markdown(f"**Supabase:** {status_sup}")
+    
+    status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
+    st.markdown(f"**Gemini IA:** {status_gem}")
+    
+    st.markdown("---")
+    st.markdown("Desenvolvido para análise quantitativa de ativos e fundos listados na B3.")
+
 # --- TÍTULO PRINCIPAL ---
-st.title("📊 Terminal Quantitativo & Análise de Mercado (B3)")
-st.markdown("Plataforma integrada para gestão de carteira, análise técnica, relatórios por IA e dados consolidados do Supabase.")
+st.title("📊 Terminal Quantitativo & Inteligência de Mercado")
+st.markdown("Plataforma institucional de gestão de carteiras, análises técnicas, relatórios generativos e base relacional.")
 
 # --- ESTRUTURA DE 6 ABAS NO STREAMLIT ---
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
@@ -63,37 +91,64 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL
+# ABA 1: VISÃO GLOBAL (COM MÉTRICAS E NOTÍCIAS)
 # ==========================================
 with aba1:
     st.header("🌐 Visão Global do Mercado & Fundos B3")
-    st.markdown("Panorama geral dos ativos cadastrados na base de dados relacional.")
+    st.markdown("Painel executivo com os principais indicadores macroeconômicos e estatísticas da base de dados.")
     
     if not df_fundos.empty:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("Total de Fundos Cadastrados", len(df_fundos))
-        with col2:
-            segmentos_unicos = df_fundos['segmento_estimado'].nunique() if 'segmento_estimado' in df_fundos.columns else 0
-            st.metric("Segmentos de Atuação", segmentos_unicos)
-        with col3:
-            gestoras_unicas = df_fundos['gestora_grupo'].nunique() if 'gestora_grupo' in df_fundos.columns else 0
-            st.metric("Gestoras Mapeadas", gestoras_unicas)
+        # 1. Métricas de Destaque Profissionais
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric(label="Total de Fundos Mapeados", value=f"{len(df_fundos):,}".replace(",", "."))
+        with m2:
+            seg_count = df_fundos['segmento_estimado'].nunique() if 'segmento_estimado' in df_fundos.columns else 0
+            st.metric(label="Segmentos de Atuação", value=seg_count)
+        with m3:
+            gest_count = df_fundos['gestora_grupo'].nunique() if 'gestora_grupo' in df_fundos.columns else 0
+            st.metric(label="Gestoras Cadastradas", value=gest_count)
+        with m4:
+            st.metric(label="Taxa Selic Referência", value="11.25% a.a.", delta="+0.25%")
         
         st.divider()
-        st.subheader("📋 Base de Dados Completa (Supabase)")
         
-        # Filtros interativos para a tabela global
-        if 'segmento_estimado' in df_fundos.columns:
-            segmentos_filtro = st.multiselect("Filtrar por Segmento:", options=df_fundos['segmento_estimado'].dropna().unique())
-            if segmentos_filtro:
-                df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)]
+        # 2. Layout dividido: Tabela Interativa & Notícias Recentes do Mercado
+        col_tabela, col_noticias = st.columns([2, 1])
+        
+        with col_tabela:
+            st.subheader("📋 Base de Dados Consolidada (Supabase)")
+            
+            # Filtros rápidos
+            if 'segmento_estimado' in df_fundos.columns:
+                segmentos_filtro = st.multiselect("Filtrar por Segmento:", options=df_fundos['segmento_estimado'].dropna().unique(), key="filtro_seg_global")
+                if segmentos_filtro:
+                    df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)]
+                else:
+                    df_filtrado = df_fundos
             else:
                 df_filtrado = df_fundos
-        else:
-            df_filtrado = df_fundos
+                
+            st.dataframe(df_filtrado, use_container_width=True, height=400)
             
-        st.dataframe(df_filtrado, use_container_width=True)
+        with col_noticias:
+            st.subheader("📰 Fatos Relevantes & Notícias")
+            st.markdown("Últimas atualizações do mercado de capitais e FIIs.")
+            
+            # Cards de notícias simuladas / feed profissional
+            noticias = [
+                {"titulo": "Boletim Focus: Projeção de inflação recua para o final do ano", "data": "Hoje, 09:30", "fonte": "Banco Central / B3"},
+                {"titulo": "Fundos imobiliários de papel mantêm patamar de dividend yield atrativo", "data": "Ontem, 16:45", "fonte": "Análise de Mercado"},
+                {"titulo": "Novo lote de relatórios gerenciais disponibilizado na CVM", "data": "28/10/2026", "fonte": "CVM / B3"}
+            ]
+            
+            for n in noticias:
+                st.markdown(f"""
+                    <div class="news-card">
+                        <div class="news-title">{n['titulo']}</div>
+                        <div class="news-date">📅 {n['data']} &nbsp;|&nbsp; 🏢 {n['fonte']}</div>
+                    </div>
+                """, unsafe_allow_html=True)
     else:
         st.warning("⚠️ Nenhum dado encontrado na tabela `fundos_b3` do Supabase. Verifique suas credenciais em `secrets.toml`.")
 
@@ -102,37 +157,41 @@ with aba1:
 # ==========================================
 with aba2:
     st.header("🏛️ Tesouro Direto & Renda Fixa")
-    st.info("Acompanhamento de títulos públicos federais, taxas de rentabilidade atreladas à inflação, Selic e prefixados.")
+    st.markdown("Acompanhamento de títulos públicos federais, taxas atreladas à inflação, Selic e prefixados.")
     
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.subheader("Taxas Atuais de Referência")
-        st.metric("Taxa Selic Meta", "11.25% a.a.", "+0.25% última reunião")
-        st.metric("IPCA (Acumulado 12m)", "4.45%", "Dentro da meta")
-    with col_t2:
-        st.subheader("Títulos Públicos em Destaque")
-        dados_tesouro = pd.DataFrame({
-            "Título": ["Tesouro IPCA+ 2035", "Tesouro Prefixado 2027", "Tesouro Selic 2029"],
-            "Taxa Anual": ["IPCA + 6.15%", "11.20% a.a.", "Selic + 0.05%"],
-            "Vencimento": ["15/05/2035", "01/01/2027", "01/03/2029"],
-            "Liquidez": ["Diária (D+1)", "Diária (D+1)", "Diária (D+1)"]
-        })
-        st.table(dados_tesouro)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("CDI Atual", "11.15% a.a.", "Meta Selic 11.25%")
+    with c2:
+        st.metric("IPCA (12 Meses)", "4.45%", "Dentro da banda")
+    with c3:
+        st.metric("IGP-M (Acumulado)", "3.80%", "Estável")
+        
+    st.divider()
+    st.subheader("Títulos Públicos Federais em Destaque")
+    
+    dados_tesouro = pd.DataFrame({
+        "Título": ["Tesouro IPCA+ 2035", "Tesouro Prefixado 2027", "Tesouro Selic 2029", "Tesouro IPCA+ 2045"],
+        "Rentabilidade Anual": ["IPCA + 6.15%", "11.20% a.a.", "Selic + 0.05%", "IPCA + 6.30%"],
+        "Vencimento": ["15/05/2035", "01/01/2027", "01/03/2029", "15/08/2045"],
+        "Liquidez": ["Diária (D+1)", "Diária (D+1)", "Diária (D+1)", "Diária (D+1)"]
+    })
+    st.table(dados_tesouro)
 
 # ==========================================
-# ABA 3: ANÁLISE TÉCNICA & IA (DADOS DO SUPABASE)
+# ABA 3: ANÁLISE TÉCNICA & IA (SUPABASE + GEMINI)
 # ==========================================
 with aba3:
-    st.header("🤖 Análise Técnica & Relatórios Inteligentes com Supabase + Gemini")
+    st.header("🤖 Análise Técnica & Relatórios Inteligentes com IA")
+    st.markdown("Pesquise ativos na base do Supabase, visualize o histórico de cotações e gere análises aprofundadas com o Gemini.")
     
     if not df_fundos.empty:
         col_s1, col_s2 = st.columns([1, 2])
         
         with col_s1:
             tickers_lista = df_fundos['ticker_b3'].dropna().unique().tolist()
-            ativo_escolhido = st.selectbox("Selecione o Ativo para Análise:", tickers_lista)
+            ativo_escolhido = st.selectbox("Selecione o Ativo para Análise:", tickers_lista, key="ativo_tec")
             
-            # Recupera dados do fundo selecionado no Supabase
             info_ativo = df_fundos[df_fundos['ticker_b3'] == ativo_escolhido].iloc[0]
             
             st.markdown(f"**Fundo:** {info_ativo.get('fundo', 'N/A')}")
@@ -148,7 +207,7 @@ with aba3:
         st.divider()
         st.subheader("📈 Histórico de Cotações (Yahoo Finance)")
         
-        periodo = st.selectbox("Período do Gráfico:", ["6mo", "1y", "2y", "5y"], index=1, key="periodo_yf")
+        periodo = st.selectbox("Período do Gráfico:", ["6mo", "1y", "2y", "5y"], index=1, key="periodo_yf_aba3")
         
         try:
             dados_yf = yf.download(ativo_escolhido, period=periodo, progress=False)
@@ -157,6 +216,7 @@ with aba3:
                     dados_yf.columns = dados_yf.columns.get_level_values(0)
                 
                 fig = px.line(dados_yf, x=dados_yf.index, y="Close", title=f"Evolução Histórica de Preços - {ativo_escolhido}")
+                fig.update_layout(template="plotly_dark", plot_bgcolor="#0e1117", paper_bgcolor="#0e1117")
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning(f"Não foram encontrados dados históricos para {ativo_escolhido} no período selecionado.")
@@ -166,7 +226,7 @@ with aba3:
         st.divider()
         st.subheader("🧠 Relatório Dinâmico com Gemini")
         
-        if st.button("Gerar Análise de Mercado com IA"):
+        if st.button("Gerar Análise de Mercado com IA", type="primary"):
             if client_gemini:
                 resumo_base = info_ativo.get('resumo_detalhado', '')
                 prompt = (
@@ -204,10 +264,10 @@ with aba4:
     st.markdown("Controle de posições ativas, preço médio, lucro/prejuízo (PnL) realizado e não realizado.")
     
     carteira_exemplo = pd.DataFrame({
-        "Ticker": ["HGLG11.SA", "KNCR11.SA", "VISC11.SA"],
-        "Quantidade": [100, 150, 80],
-        "Preço Médio (R$)": [162.50, 104.20, 118.00],
-        "Cotação Atual (R$)": [165.00, 105.10, 119.50]
+        "Ticker": ["HGLG11.SA", "KNCR11.SA", "VISC11.SA", "MXRF11.SA"],
+        "Quantidade": [100, 150, 80, 500],
+        "Preço Médio (R$)": [162.50, 104.20, 118.00, 10.20],
+        "Cotação Atual (R$)": [165.00, 105.10, 119.50, 10.35]
     })
     
     if not carteira_exemplo.empty:
@@ -239,6 +299,7 @@ with aba5:
     })
     
     fig_aloc = px.bar(alocacao_data, x="Segmento", y=["Alocação Atual (%)", "Alocação Alvo (%)"], barmode="group", title="Comparativo: Alocação Atual vs Alvo")
+    fig_aloc.update_layout(template="plotly_dark", plot_bgcolor="#0e1117", paper_bgcolor="#0e1117")
     st.plotly_chart(fig_aloc, use_container_width=True)
 
 # ==========================================
@@ -246,6 +307,7 @@ with aba5:
 # ==========================================
 with aba6:
     st.header("🧮 Simulador de Investimentos & Juros Compostos")
+    st.markdown("Projete a evolução do seu patrimônio com aportes mensais e rentabilidade anual composta.")
     
     col_sim1, col_sim2 = st.columns(2)
     with col_sim1:
@@ -255,7 +317,7 @@ with aba6:
         taxa_anual = st.number_input("Rentabilidade Anual Estimada (%):", value=10.0, step=0.5)
         anos = st.slider("Prazo (Anos):", 1, 30, 10)
         
-    if st.button("Calcular Simulação"):
+    if st.button("Calcular Simulação Patrimonial", type="primary"):
         meses = anos * 12
         taxa_mensal = (1 + taxa_anual / 100) ** (1/12) - 1
         

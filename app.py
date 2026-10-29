@@ -80,11 +80,10 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL (S&P 500 EM US$ E BITCOIN CONVERTIDO PARA R$) ---
+# --- ABA 1: VISÃO GLOBAL (COM INDICADORES E NOTÍCIAS DE MERCADO) ---
 with tab1:
     st.subheader("🌐 Indicadores Macroeconômicos e Globais")
     
-    # Obter cotação atual do Dólar para conversão do Bitcoin
     dolar_taxa = 5.60
     try:
         hist_usd = yf.Ticker("USDBRL=X").history(period="5d")
@@ -111,7 +110,6 @@ with tab1:
                     ant = serie.iloc[0]
                     var = ((val - ant) / ant) * 100
                     
-                    # Formatação específica de moedas
                     if "S&P 500" in nome:
                         cols[i].metric(nome, f"US$ {val:,.2f}", delta=f"{var:+.2f}%")
                     elif "Bitcoin" in nome:
@@ -123,6 +121,28 @@ with tab1:
                         cols[i].metric(nome, f"{val:,.0f} pts", delta=f"{var:+.2f}%")
         except Exception:
             cols[i].metric(nome, "Indisponível", delta="0.00%")
+
+    st.markdown("---")
+    st.subheader("📰 Notícias e Fatores de Influência Global")
+    
+    col_n1, col_n2 = st.columns(2)
+    
+    with col_n1:
+        st.markdown("""
+        ### 🇺🇸 Cenário Internacional & Fed
+        * **Política Monetária dos EUA:** Decisões de taxa de juros do Federal Reserve (Fed) continuam guiando o apetite ao risco em ativos globais e emergentes.
+        * **Cadeia de Suprimentos & Commodities:** Flutuações nos preços globais de petróleo e minério de ferro impactam diretamente o Ibovespa e gigantes como Petrobras e Vale.
+        * **Índices de Inflação (CPI/PCE):** Divulgações de inflação americana ditam a volatilidade no S&P 500 e a força do Dólar (DXY).
+        """)
+        
+    with col_n2:
+        st.markdown("""
+        ### 🇧🇷 Cenário Doméstico & B3
+        * **Fiscal e Contas Públicas:** Acompanhamento rigoroso de metas fiscais e controle de gastos pelo Governo Federal, influenciando a curva de juros futuros (DIs).
+        * **Copom e Taxa Selic:** O patamar da taxa básica de juros afeta diretamente a atratividade da Renda Fixa (Tesouro Direto) versus Renda Variável (Ações e FIIs).
+        * **Fluxo de Capital Estrangeiro:** A entrada/saída de capital externo na B3 dita os grandes movimentos de alta e baixa das blue chips brasileiras.
+        """)
+    st.caption("🔍 **Fonte de Monitoramento:** Agências internacionais de notícias financeiras e boletins macroeconômicos B3/Bloomberg.")
 
 # --- ABA 2: AÇÕES & FIIS ---
 with tab2:
@@ -355,6 +375,8 @@ with tab7:
     meses = list(range(1, (anos * 12) + 1))
     taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
     vals, atual = [], pat
+    for _:= meses: # type: ignore
+        pass
     for _ in meses:
         atual = (atual * (1 + taxa_m)) + aporte
         vals.append(atual)

@@ -69,7 +69,7 @@ def avaliar_fii(p_vp, dy):
     else:
         return "🔴 NÃO INDICADO", "Alerta quantitativo: preço com alto ágio ou retorno em dividendos abaixo do ideal."
 
-# 3. CRIAÇÃO DAS 6 ABAS (Aba Ações & FIIs removida)
+# 3. CRIAÇÃO DAS 6 ABAS
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🌐 Visão Global", 
     "🏛️ Tesouro Direto", 
@@ -146,7 +146,7 @@ with tab1:
     st.markdown("---")
     st.caption("🔍 **Fonte Consolidada:** Relatórios macroeconômicos internacionais, Bloomberg Terminal e Bloomberg Markets.")
 
-# --- ABA 2: TESOURO DIRETO (COM NOTÍCIAS DETALHADAS E IMAGENS) ---
+# --- ABA 2: TESOURO DIRETO ---
 with tab2:
     st.subheader("🏛️ Títulos Públicos e Mercado de Renda Fixa")
     
@@ -175,25 +175,43 @@ with tab2:
         st.markdown("""
         * **Soberania do Tesouro Selic para Liquidez:** Com o juro básico mantido em patamares elevados, o Tesouro Selic consolida-se como a escolha primária para reserva de emergência e caixa operacional, isento de volatilidade negativa relevante.
         * **Risco Fiscal & Prêmio de Risco:** As discussões de meta fiscal e gastos públicos pelo governo afetam a inclinação da curva de juros futuros, gerando volatilidade passageira nos preços dos papéis Prefixados (*Marcação a Mercado*).
-        * **Atratividade da Renda FixaIsenta vs. Tesouro:** A migração de fluxo entre CDBs, LCIs/LCAs e Tesouro Direto é impulsionada pelas regras de tributação regressiva do imposto de renda.
+        * **Atratividade da Renda Fixa Isenta vs. Tesouro:** A migração de fluxo entre CDBs, LCIs/LCAs e Tesouro Direto é impulsionada pelas regras de tributação regressiva do imposto de renda.
         """)
 
     st.markdown("---")
     st.caption("🔍 **Fontes Oficiais:** Tesouro Nacional, Banco Central do Brasil (BCB), Anbima e Portal InfoMoney Renda Fixa.")
 
-# --- ABA 3: ANÁLISE TÉCNICA & INTELIGÊNCIA PREDITIVA ---
+# --- ABA 3: ANÁLISE TÉCNICA (COM BARRA DE DIGITAÇÃO E RELATÓRIO COMPLETO DO ATIVO) ---
 with tab3:
-    st.subheader("🕯️ Gráfico de Linha & Análise Preditiva do Ativo")
-    ticker_c = st.selectbox("Escolha o Ticker para Análise:", todos_tickers if todos_tickers else ["PETR4.SA"])
+    st.subheader("🕯️ Análise Técnica e Perfil Detalhado do Ativo")
     
-    if ticker_c:
-        is_fii = ticker_c.endswith("11") or "11B" in ticker_c
+    # Campo de digitação para busca de qualquer ativo
+    ticker_search = st.text_input("🔍 Digite o Ticker da Ação ou FII para pesquisar (ex: PETR4.SA, VALE3.SA, ITUB4.SA, MXRF11.SA):", value="PETR4.SA").upper().strip()
+
+    if ticker_search:
+        is_fii = ticker_search.endswith("11") or "11B" in ticker_search
         
         try:
-            tk = yf.Ticker(ticker_c)
+            tk = yf.Ticker(ticker_search)
             info = tk.info
             df_c = tk.history(period="6mo", interval="1d")
             
+            nome_empresa = info.get("longName", info.get("shortName", ticker_search))
+            setor = info.get("sector", "Setor Não Mapeado")
+            industria = info.get("industry", "Atividade Geral")
+            resumo_negocio = info.get("longBusinessSummary", "Informações institucionais não disponíveis para o ativo informado.")
+            
+            st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
+            
+            # Painel com visão geral do ativo
+            if not is_fii:
+                st.markdown(f"**Setor:** {setor} | **Indústria:** {industria}")
+                with st.expander("📖 **Sobre a Empresa e Modelo de Negócio**", expanded=True):
+                    st.write(resumo_negocio)
+            
+            st.markdown("---")
+            
+            # Gráfico de histórico de preços
             if not df_c.empty and 'Close' in df_c.columns:
                 fig = go.Figure(data=[go.Scatter(
                     x=df_c.index, 
@@ -203,7 +221,7 @@ with tab3:
                     line=dict(color='#00FFAA', width=2)
                 )])
                 fig.update_layout(
-                    title=f"Evolução de Preço (6 Meses) - {ticker_c}",
+                    title=f"Evolução Histórica de Preço (Últimos 6 Meses) - {ticker_search}",
                     template="plotly_dark",
                     xaxis_title="Data",
                     yaxis_title="Preço (R$)",
@@ -211,11 +229,12 @@ with tab3:
                 )
                 st.plotly_chart(fig, width='stretch')
             else:
-                st.warning("Dados de histórico indisponíveis para este ativo.")
+                st.warning("Histórico de preços indisponível para este ticker.")
 
+            # Indicadores e análises quantitativas
             st.markdown("---")
             if is_fii:
-                fii_data = BASE_FII.get(ticker_c, {"dy": 12.80, "p_vp": 1.01, "div_mensal": 0.09, "frequencia": "Mensal"})
+                fii_data = BASE_FII.get(ticker_search, {"dy": 12.80, "p_vp": 1.01, "div_mensal": 0.09, "frequencia": "Mensal"})
                 dy_val = fii_data["dy"]
                 p_vp_val = fii_data["p_vp"]
                 div_m = fii_data["div_mensal"]
@@ -223,8 +242,7 @@ with tab3:
 
                 status, justificativa = avaliar_fii(p_vp_val, dy_val)
 
-                st.markdown(f"### 🏢 Avaliação Quantitativa para o FII **{ticker_c}**")
-                
+                st.markdown(f"### 🏢 Avaliação Quantitativa para o FII **{ticker_search}**")
                 c_m1, c_m2, c_m3, c_m4 = st.columns(4)
                 c_m1.metric("Status do Fundo", status)
                 c_m2.metric("P/VP", f"{p_vp_val:.2f}")
@@ -241,19 +259,21 @@ with tab3:
                 target_mean = float(info.get("targetMeanPrice", 0.0))
                 rec_key = str(info.get("recommendationKey", "neutro")).upper()
                 num_analysts = int(info.get("numberOfAnalystOpinions", 0))
+                mcap = info.get("marketCap", 0)
+                mcap_fmt = f"R$ {mcap / 1e9:.2f} B" if mcap > 0 else "N/D"
 
-                st.markdown(f"### 📈 Projeções e Consenso de Analistas para **{ticker_c}**")
-                if target_mean > 0 or num_analysts > 0:
-                    cp1, cp2, cp3 = st.columns(3)
-                    cp1.metric("Preço-Alvo Médio (Consenso)", f"R$ {target_mean:.2f}")
-                    cp2.metric("Recomendação de Mercado", f"{rec_key}")
-                    cp3.metric("Analistas Avaliando", f"{num_analysts} instituições")
-                    st.caption("🔍 **Fonte Confiável:** Consenso de mercado e projeções compiladas de analistas financeiros via **Yahoo Finance API**.")
-                else:
-                    st.info(f"ℹ️ O ativo **{ticker_c}** é uma ação que não possui cobertura ativa de preço-alvo por analistas no momento.")
+                st.markdown(f"### 📈 Projeções & Consenso de Mercado para **{ticker_search}**")
+                
+                cp1, cp2, cp3, cp4 = st.columns(4)
+                cp1.metric("Preço-Alvo Médio", f"R$ {target_mean:.2f}" if target_mean > 0 else "N/D")
+                cp2.metric("Recomendação", rec_key if rec_key != "NEUTRO" else "MANTER")
+                cp3.metric("Analistas Avaliando", f"{num_analysts} casas" if num_analysts > 0 else "N/D")
+                cp4.metric("Valor de Mercado", mcap_fmt)
+                
+                st.caption("🔍 **Fonte Confiável:** Dados consolidados do mercado financeiro via **Yahoo Finance API**.")
             st.markdown("---")
         except Exception as e:
-            st.error(f"Erro ao carregar análises técnicas: {e}")
+            st.error(f"Erro ao pesquisar o ativo `{ticker_search}`: {e}")
 
 # --- ABA 4: GESTÃO DE CARTEIRA & PnL ---
 with tab4:

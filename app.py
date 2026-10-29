@@ -27,8 +27,8 @@ default_fiis = "MXRF11.SA, HGLG11.SA"
 acao_input = st.sidebar.text_area("Ações (B3):", value=default_acoes)
 fii_input = st.sidebar.text_area("FIIs:", value=default_fiis)
 
-tickers_acoes = [t.strip().upper() for t in acao_input.split(",")]
-tickers_fiis = [t.strip().upper() for t in fii_input.split(",")]
+tickers_acoes = [t.strip().upper() for t in acao_input.split(",") if t.strip()]
+tickers_fiis = [t.strip().upper() for t in fii_input.split(",") if t.strip()]
 todos_tickers = tickers_acoes + tickers_fiis
 
 # Dicionário de Preços Fallback
@@ -69,10 +69,9 @@ def avaliar_fii(p_vp, dy):
     else:
         return "🔴 NÃO INDICADO", "Alerta quantitativo: preço com alto ágio ou retorno em dividendos abaixo do ideal."
 
-# 3. CRIAÇÃO DAS 7 ABAS
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+# 3. CRIAÇÃO DAS 6 ABAS (Aba Ações & FIIs removida)
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🌐 Visão Global", 
-    "📊 Ações & FIIs", 
     "🏛️ Tesouro Direto", 
     "🕯️ Análise Técnica", 
     "💼 Gestão de Carteira & PnL", 
@@ -80,7 +79,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL (FOCO EXCLUSIVO INTERNACIONAL E IMAGENS ILUSTRATIVAS) ---
+# --- ABA 1: VISÃO GLOBAL ---
 with tab1:
     st.subheader("🌐 Indicadores Macroeconômicos e Globais")
     
@@ -147,38 +146,43 @@ with tab1:
     st.markdown("---")
     st.caption("🔍 **Fonte Consolidada:** Relatórios macroeconômicos internacionais, Bloomberg Terminal e Bloomberg Markets.")
 
-# --- ABA 2: AÇÕES & FIIS ---
+# --- ABA 2: TESOURO DIRETO (COM NOTÍCIAS DETALHADAS E IMAGENS) ---
 with tab2:
-    st.subheader("📊 Análise Fundamentalista de Ações e FIIs")
-    tipo = st.radio("Selecione:", ["Ações", "FIIs"], horizontal=True)
-    lista = tickers_acoes if tipo == "Ações" else tickers_fiis
+    st.subheader("🏛️ Títulos Públicos e Mercado de Renda Fixa")
     
-    dados_fund = []
-    for t in lista:
-        try:
-            info = yf.Ticker(t).info
-            dados_fund.append({
-                "Ticker": t,
-                "Preço (R$)": info.get("currentPrice", info.get("regularMarketPrice", PRECOS_FALLBACK.get(t, 20.0))),
-                "P/L": info.get("trailingPE", 0),
-                "P/VP": info.get("priceToBook", 0),
-                "Dividend Yield (%)": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else 0.0
-            })
-        except Exception:
-            pass
-    if dados_fund:
-        st.dataframe(pd.DataFrame(dados_fund), width='stretch', hide_index=True)
-
-# --- ABA 3: TESOURO DIRETO ---
-with tab3:
-    st.subheader("🏛️ Títulos Públicos (Renda Fixa)")
     c1, c2, c3 = st.columns(3)
-    c1.metric("Tesouro Selic 2029", "10.75% a.a.", "Pós-fixado")
-    c2.metric("Tesouro IPCA+ 2035", "IPCA + 6.45% a.a.", "Inflação + Juros")
-    c3.metric("Tesouro Prefixado 2031", "11.85% a.a.", "Taxa Fixa")
+    c1.metric("Tesouro Selic 2029", "10.75% a.a.", "Pós-fixado / Reserva")
+    c2.metric("Tesouro IPCA+ 2035", "IPCA + 6.45% a.a.", "Proteção de Inflação")
+    c3.metric("Tesouro Prefixado 2031", "11.85% a.a.", "Taxa Travada")
 
-# --- ABA 4: ANÁLISE TÉCNICA & INTELIGÊNCIA PREDITIVA ---
-with tab4:
+    st.markdown("---")
+    st.subheader("📰 Notícias Detalhadas & Tendências da Renda Fixa Doméstica")
+
+    col_t1, col_t2 = st.columns(2)
+
+    with col_t1:
+        st.markdown("### 📈 Decisões do Copom & Oportunidades no Tesouro IPCA+")
+        st.image("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80", caption="Análise de Títulos Públicos e Inflação")
+        st.markdown("""
+        * **Curva de Juros e Marcação a Mercado:** Os títulos atrelados à inflação (*Tesouro IPCA+*) continuam apresentando taxas reais historicamente atrativas acima de 6,00% a.a. Investidores atentos aproveitam para travar rentabilidades reais elevadas de longo prazo.
+        * **Impacto das Expectativas do Boletim Focus:** O alinhamento das projeções de inflação oficial (IPCA) pelo Banco Central influencia diretamente a precificação dos títulos públicos pré e pós-fixados.
+        * **Estratégia de Alocação de Curto vs. Longo Prazo:** Títulos com vencimento intermediário oferecem bom equilíbrio entre liquidez e proteção contra variações bruscas na curva de juros.
+        """)
+
+    with col_t2:
+        st.markdown("### 🏛️ Riscos Fiscais, Tesouro Selic & Marcação a Mercado")
+        st.image("https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80", caption="Mercado Financeiro e Títulos Públicos")
+        st.markdown("""
+        * **Soberania do Tesouro Selic para Liquidez:** Com o juro básico mantido em patamares elevados, o Tesouro Selic consolida-se como a escolha primária para reserva de emergência e caixa operacional, isento de volatilidade negativa relevante.
+        * **Risco Fiscal & Prêmio de Risco:** As discussões de meta fiscal e gastos públicos pelo governo afetam a inclinação da curva de juros futuros, gerando volatilidade passageira nos preços dos papéis Prefixados (*Marcação a Mercado*).
+        * **Atratividade da Renda FixaIsenta vs. Tesouro:** A migração de fluxo entre CDBs, LCIs/LCAs e Tesouro Direto é impulsionada pelas regras de tributação regressiva do imposto de renda.
+        """)
+
+    st.markdown("---")
+    st.caption("🔍 **Fontes Oficiais:** Tesouro Nacional, Banco Central do Brasil (BCB), Anbima e Portal InfoMoney Renda Fixa.")
+
+# --- ABA 3: ANÁLISE TÉCNICA & INTELIGÊNCIA PREDITIVA ---
+with tab3:
     st.subheader("🕯️ Gráfico de Linha & Análise Preditiva do Ativo")
     ticker_c = st.selectbox("Escolha o Ticker para Análise:", todos_tickers if todos_tickers else ["PETR4.SA"])
     
@@ -251,8 +255,8 @@ with tab4:
         except Exception as e:
             st.error(f"Erro ao carregar análises técnicas: {e}")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & PnL ---
-with tab5:
+# --- ABA 4: GESTÃO DE CARTEIRA & PnL ---
+with tab4:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
     
     if "portfolio_local" not in st.session_state:
@@ -354,18 +358,18 @@ with tab5:
     else:
         st.info("ℹ️ Sua carteira está vazia. Digite um ticker acima para começar.")
 
-# --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
-with tab6:
+# --- ABA 5: ALOCAÇÃO & REBALANCEAMENTO ---
+with tab5:
     st.subheader("⚖️ Alocação da Carteira")
     if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns and df_portfolio["Valor Atual"].sum() > 0:
         fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
         fig_donut.update_layout(template="plotly_dark")
         st.plotly_chart(fig_donut, width='stretch')
     else:
-        st.info("Cadastre ativos na Aba 5 para visualizar a alocação.")
+        st.info("Cadastre ativos na Aba 4 para visualizar a alocação.")
 
-# --- ABA 7: SIMULADOR ---
-with tab7:
+# --- ABA 6: SIMULADOR ---
+with tab6:
     st.subheader("🧮 Simulador de Crescimento Patrimonial")
     c1, c2 = st.columns(2)
     with c1:

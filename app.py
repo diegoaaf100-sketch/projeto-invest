@@ -72,7 +72,7 @@ def carregar_carteira():
 
 df_portfolio = carregar_carteira()
 
-# 5. CRIAÇÃO DAS 7 ABAS (ESSENCIAL PARA EVITAR O NameError)
+# 5. CRIAÇÃO DAS 7 ABAS
 tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🌐 Visão Global", 
     "📊 Ações & FIIs", 
@@ -85,43 +85,78 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
 
 # --- ABA 1: VISÃO GLOBAL ---
 with tab1:
-    st.subheader("🌐 Indicadores Macroeconômicos")
-    st.markdown("Acompanhe o Dólar, Bitcoin e os principais índices globais em tempo real.")
+    st.subheader("🌐 Indicadores Macroeconômicos e Globais")
+    ativos_globais = {"Dólar (USD/BRL)": "USDBRL=X", "Bitcoin": "BTC-USD", "Ibovespa": "^BVSP", "S&P 500": "^GSPC"}
+    
+    try:
+        df_global = yf.download(list(ativos_globais.values()), period="2d", interval="1m", progress=False)['Close']
+        cols = st.columns(len(ativos_globais))
+        for i, (nome, tkr) in enumerate(ativos_globais.items()):
+            if tkr in df_global.columns:
+                serie = df_global[tkr].dropna()
+                if len(serie) >= 2:
+                    val = serie.iloc[-1]
+                    ant = serie.iloc[0]
+                    var = ((val - ant) / ant) * 100
+                    cols[i].metric(nome, f"{val:,.2f}" if "USD" in nome else f"{val:,.0f}", delta=f"{var:+.2f}%")
+    except Exception as e:
+        st.info("Aguardando carregamento dos dados globais...")
 
 # --- ABA 2: AÇÕES & FIIS ---
 with tab2:
-    st.subheader("📊 Análise Fundamentalista")
+    st.subheader("📊 Análise Fundamentalista de Ações e FIIs")
+    tipo = st.radio("Selecione:", ["Ações", "FIIs"], horizontal=True)
+    lista = tickers_acoes if tipo == "Ações" else tickers_fiis
+    
+    dados_fund = []
+    for t in lista:
+        try:
+            info = yf.Ticker(t).info
+            dados_fund.append({
+                "Ticker": t,
+                "Preço (R$)": info.get("currentPrice", info.get("regularMarketPrice", 0)),
+                "P/L": info.get("trailingPE", 0),
+                "P/VP": info.get("priceToBook", 0),
+                "Dividend Yield (%)": round(info.get("dividendYield", 0) * 100, 2)
+            })
+        except Exception:
+            pass
+    if dados_fund:
+        st.dataframe(pd.DataFrame(dados_fund), use_container_width=True, hide_index=True)
 
 # --- ABA 3: TESOURO DIRETO ---
 with tab3:
-    st.subheader("🏛️ Renda Fixa & Tesouro Direto")
+    st.subheader("🏛️ Títulos Públicos (Renda Fixa)")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Tesouro Selic 2029", "10.75% a.a.", "Pós-fixado")
+    c2.metric("Tesouro IPCA+ 2035", "IPCA + 6.45% a.a.", "Inflação + Juros")
+    c3.metric("Tesouro Prefixado 2031", "11.85% a.a.", "Taxa Fixa")
 
 # --- ABA 4: ANÁLISE TÉCNICA ---
 with tab4:
     st.subheader("🕯️ Gráfico de Candlestick")
+    ticker_c = st.selectbox("Escolha o Ticker:", todos_tickers if todos_tickers else ["PETR4.SA"])
+    df_c = yf.download(ticker_c, period="6mo", interval="1d", progress=False)
+    if isinstance(df_c.columns, pd.MultiIndex):
+        df_c.columns = df_c.columns.get_level_values(0)
+    if not df_c.empty:
+        fig = go.Figure(data=[go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'])])
+        fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
+        st.plotly_chart(fig, use_container_width=True)
 
 # --- ABA 5: GESTÃO DE CARTEIRA & PnL ---
 with tab5:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
-    
     with st.form("form_ativo", clear_on_submit=False):
-        st.markdown("#### ➕ Adicionar ou Atualizar Ativo")
         c1, c2, c3, c4 = st.columns(4)
-        with c1: 
-            ticker_input = st.text_input("Ticker (ex: PETR4.SA, MXRF11.SA)").upper().strip()
-        with c2: 
-            asset_class = st.selectbox("Classe", ["Ação (B3)", "FII", "Renda Fixa", "Exterior", "Cripto"])
-        with c3: 
-            quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
-        with c4: 
-            avg_price = st.number_input("Preço Médio (R$)", min_value=0.0, format="%.2f", value=0.00)
+        with c1: ticker_input = st.text_input("Ticker (ex: PETR4.SA)").upper().strip()
+        with c2: asset_class = st.selectbox("Classe", ["Ação (B3)", "FII", "Renda Fixa", "Exterior", "Cripto"])
+        with c3: quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
+        with c4: avg_price = st.number_input("Preço Médio (R$)", min_value=0.0, format="%.2f", value=0.00)
         
-        # Exibe o preço atual em tempo real ao digitar
         if ticker_input:
             try:
-                tk_temp = yf.Ticker(ticker_input)
-                info_temp = tk_temp.info
-                p_atual = info_temp.get("currentPrice", info_temp.get("regularMarketPrice", 0.0))
+                p_atual = yf.Ticker(ticker_input).info.get("currentPrice", 0.0)
                 if p_atual > 0:
                     st.info(f"💡 Preço de mercado atual para **{ticker_input}**: R$ {p_atual:.2f}")
             except Exception:
@@ -134,15 +169,44 @@ with tab5:
                         "ticker": ticker_input, "asset_class": asset_class,
                         "quantity": float(quantity), "average_price": float(avg_price)
                     }, on_conflict="ticker").execute()
-                    st.success(f"Ativo {ticker_input} salvo com sucesso!")
+                    st.success(f"Ativo {ticker_input} salvo!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Erro ao salvar: {e}")
 
+    if not df_portfolio.empty and "ticker" in df_portfolio.columns:
+        df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
+        df_portfolio["Lucro/Prejuízo (%)"] = (df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"]) * 100
+        st.dataframe(df_portfolio, use_container_width=True, hide_index=True)
+
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:
     st.subheader("⚖️ Alocação da Carteira")
+    if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns:
+        fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
+        fig_donut.update_layout(template="plotly_dark")
+        st.plotly_chart(fig_donut, use_container_width=True)
+    else:
+        st.info("Cadastre ativos na Aba 5 para visualizar a alocação.")
 
 # --- ABA 7: SIMULADOR ---
 with tab7:
     st.subheader("🧮 Simulador de Crescimento Patrimonial")
+    c1, c2 = st.columns(2)
+    with c1:
+        pat = st.number_input("Patrimônio Inicial (R$)", value=20000.0)
+        aporte = st.number_input("Aporte Mensal (R$)", value=1000.0)
+    with c2:
+        taxa = st.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
+        anos = st.slider("Anos", 1, 30, 10)
+    
+    meses = list(range(1, (anos * 12) + 1))
+    taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
+    vals, atual = [], pat
+    for _ in meses:
+        atual = (atual * (1 + taxa_m)) + aporte
+        vals.append(atual)
+        
+    fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Anos", "y": "Patrimônio (R$)"}, title="Evolução do Patrimônio")
+    fig_s.update_layout(template="plotly_dark")
+    st.plotly_chart(fig_s, use_container_width=True)

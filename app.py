@@ -51,13 +51,18 @@ def carregar_carteira():
             return pd.DataFrame()
             
         tickers = df["ticker"].tolist()
-        dados_mercado = yf.download(tickers, period="2d", interval="1m", progress=False)['Close']
-        if isinstance(dados_mercado, pd.Series):
-            dados_mercado = dados_mercado.to_frame()
+        
+        # Tratamento seguro para download do yfinance
+        try:
+            dados_mercado = yf.download(tickers, period="5d", progress=False)['Close']
+            if isinstance(dados_mercado, pd.Series):
+                dados_mercado = dados_mercado.to_frame()
+        except Exception:
+            dados_mercado = pd.DataFrame()
             
         precos_atuais = {}
         for t in tickers:
-            if t in dados_mercado.columns:
+            if not dados_mercado.empty and t in dados_mercado.columns:
                 s = dados_mercado[t].dropna()
                 precos_atuais[t] = float(s.iloc[-1]) if not s.empty else 0.0
             else:
@@ -89,18 +94,21 @@ with tab1:
     ativos_globais = {"Dólar (USD/BRL)": "USDBRL=X", "Bitcoin": "BTC-USD", "Ibovespa": "^BVSP", "S&P 500": "^GSPC"}
     
     try:
-        df_global = yf.download(list(ativos_globais.values()), period="2d", interval="1m", progress=False)['Close']
+        df_global = yf.download(list(ativos_globais.values()), period="5d", progress=False)['Close']
+        if isinstance(df_global, pd.Series):
+            df_global = df_global.to_frame()
+            
         cols = st.columns(len(ativos_globais))
         for i, (nome, tkr) in enumerate(ativos_globais.items()):
-            if tkr in df_global.columns:
+            if not df_global.empty and tkr in df_global.columns:
                 serie = df_global[tkr].dropna()
                 if len(serie) >= 2:
                     val = serie.iloc[-1]
                     ant = serie.iloc[0]
                     var = ((val - ant) / ant) * 100
-                    cols[i].metric(nome, f"{val:,.2f}" if "USD" in nome else f"{val:,.0f}", delta=f"{var:+.2f}%")
-    except Exception as e:
-        st.info("Aguardando carregamento dos dados globais...")
+                    cols[i].metric(nome, f"R$ {val:.2f}" if "USD" in nome else f"{val:,.2f}", delta=f"{var:+.2f}%")
+    except Exception:
+        st.info("Aguardando estabilização dos dados globais do yfinance...")
 
 # --- ABA 2: AÇÕES & FIIS ---
 with tab2:
@@ -117,12 +125,12 @@ with tab2:
                 "Preço (R$)": info.get("currentPrice", info.get("regularMarketPrice", 0)),
                 "P/L": info.get("trailingPE", 0),
                 "P/VP": info.get("priceToBook", 0),
-                "Dividend Yield (%)": round(info.get("dividendYield", 0) * 100, 2)
+                "Dividend Yield (%)": round(info.get("dividendYield", 0) * 100, 2) if info.get("dividendYield") else 0.0
             })
         except Exception:
             pass
     if dados_fund:
-        st.dataframe(pd.DataFrame(dados_fund), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(dados_fund), width='stretch', hide_index=True)
 
 # --- ABA 3: TESOURO DIRETO ---
 with tab3:
@@ -136,18 +144,20 @@ with tab3:
 with tab4:
     st.subheader("🕯️ Gráfico de Candlestick")
     ticker_c = st.selectbox("Escolha o Ticker:", todos_tickers if todos_tickers else ["PETR4.SA"])
-    df_c = yf.download(ticker_c, period="6mo", interval="1d", progress=False)
-    if isinstance(df_c.columns, pd.MultiIndex):
-        df_c.columns = df_c.columns.get_level_values(0)
-    if not df_c.empty:
-        fig = go.Figure(data=[go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'])])
-        fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
-        st.plotly_chart(fig, use_container_width=True)
+    try:
+        df_c = yf.download(ticker_c, period="6mo", interval="1d", progress=False)
+        if isinstance(df_c.columns, pd.MultiIndex):
+            df_c.columns = df_c.columns.get_level_values(0)
+        if not df_c.empty:
+            fig = go.Figure(data=[go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'])])
+            fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
+            st.plotly_chart(fig, width='stretch')
+    except Exception as e:
+        st.error(f"Erro ao carregar o gráfico: {e}")
 
 # --- ABA 5: GESTÃO DE CARTEIRA & PnL ---
 with tab5:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
-    
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)
         with c1: ticker_input = st.text_input("Ticker (ex: PETR4.SA)").upper().strip()
@@ -163,44 +173,30 @@ with tab5:
             except Exception:
                 pass
 
-        submitted = st.form_submit_button("Salvar no Supabase")
-        
-        if submitted:
-            if ticker_input:
-                if supabase:
-                    try:
-                        # Tenta salvar no Supabase na nuvem
-                        supabase.table("user_portfolio").upsert({
-                            "ticker": ticker_input, 
-                            "asset_class": asset_class,
-                            "quantity": float(quantity), 
-                            "average_price": float(avg_price)
-                        }, on_conflict="ticker").execute()
-                        
-                        st.success(f"✅ Ativo {ticker_input} salvo com sucesso no Supabase!")
-                        st.rerun()
-                    except Exception as e:
-                        # Captura o erro de DNS/Rede e avisa de forma elegante
-                        st.error(f"❌ Falha de conexão com o Supabase ([Errno -2] DNS/Rede indisponível). Verifique sua internet ou credenciais.")
-                else:
-                    st.warning("⚠️ Cliente do Supabase não inicializado. Verifique suas chaves no código.")
-            else:
-                st.warning("⚠️ O campo Ticker é obrigatório.")
+        if st.form_submit_button("Salvar no Supabase"):
+            if ticker_input and supabase:
+                try:
+                    supabase.table("user_portfolio").upsert({
+                        "ticker": ticker_input, "asset_class": asset_class,
+                        "quantity": float(quantity), "average_price": float(avg_price)
+                    }, on_conflict="ticker").execute()
+                    st.success(f"Ativo {ticker_input} salvo com sucesso!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao salvar: {e}")
 
-    # Exibição segura da tabela da carteira
     if not df_portfolio.empty and "ticker" in df_portfolio.columns:
         df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
         df_portfolio["Lucro/Prejuízo (%)"] = (df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"]) * 100
-        st.dataframe(df_portfolio, use_container_width=True, hide_index=True)
-    else:
-        st.info("ℹ️ Nenhum ativo carregado na carteira no momento (modo offline ou tabela vazia).")
+        st.dataframe(df_portfolio, width='stretch', hide_index=True)
+
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:
     st.subheader("⚖️ Alocação da Carteira")
     if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns:
         fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
         fig_donut.update_layout(template="plotly_dark")
-        st.plotly_chart(fig_donut, use_container_width=True)
+        st.plotly_chart(fig_donut, width='stretch')
     else:
         st.info("Cadastre ativos na Aba 5 para visualizar a alocação.")
 
@@ -224,4 +220,4 @@ with tab7:
         
     fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Anos", "y": "Patrimônio (R$)"}, title="Evolução do Patrimônio")
     fig_s.update_layout(template="plotly_dark")
-    st.plotly_chart(fig_s, use_container_width=True)
+    st.plotly_chart(fig_s, width='stretch')

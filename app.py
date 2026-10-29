@@ -42,7 +42,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL (CORRIGIDA COM .history()) ---
+# --- ABA 1: VISÃO GLOBAL ---
 with tab1:
     st.subheader("🌐 Indicadores Macroeconômicos e Globais")
     ativos_globais = {"Dólar (USD/BRL)": "USDBRL=X", "Bitcoin": "BTC-USD", "Ibovespa": "^BVSP", "S&P 500": "^GSPC"}
@@ -57,7 +57,7 @@ with tab1:
                     val = serie.iloc[-1]
                     ant = serie.iloc[0]
                     var = ((val - ant) / ant) * 100
-                    cols[i].metric(nome, f"R$ {val:.2f}" if "USD" in nome else f"{val:,.2f}", delta=f"{var:+.2f}%")
+                    cols[i].metric(nome, f"R$ {val:.2f}" if "USD" in nome else f"{val:,.0f}", delta=f"{var:+.2f}%")
         except Exception:
             cols[i].metric(nome, "Indisponível", delta="0.00%")
 
@@ -104,7 +104,7 @@ with tab4:
     except Exception as e:
         st.error(f"Erro ao carregar o gráfico: {e}")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & PnL (COM AUTO-PREENCHIMENTO) ---
+# --- ABA 5: GESTÃO DE CARTEIRA & PnL (COM PREÇO ATUAL AUTOMÁTICO) ---
 with tab5:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
     
@@ -119,16 +119,20 @@ with tab5:
     if ticker_input:
         try:
             tk = yf.Ticker(ticker_input)
-            info = tk.info
-            suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
+            hist = tk.history(period="1d")
+            if not hist.empty and 'Close' in hist.columns:
+                suggested_price = float(hist['Close'].iloc[-1])
+            else:
+                info = tk.info
+                suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
             
-            if ticker_input.endswith("11") or "FII" in str(info.get("quoteType", "")):
+            if ticker_input.endswith("11") or "FII" in str(tk.info.get("quoteType", "")):
                 suggested_class = "FII"
             else:
                 suggested_class = "Ação (B3)"
                 
             if suggested_price > 0:
-                st.success(f"🔍 **Ativo localizado!** Preço de mercado atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
+                st.success(f"🔍 **Ativo localizado!** Preço atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
         except Exception:
             pass
 
@@ -143,7 +147,8 @@ with tab5:
         with c3: 
             quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
         with c4: 
-            avg_price = st.number_input("Preço Médio (R$)", min_value=0.0, format="%.2f", value=float(suggested_price))
+            # Campo substituído por Preço atual (R$) preenchido automaticamente
+            avg_price = st.number_input("Preço atual (R$)", min_value=0.0, format="%.2f", value=float(suggested_price))
 
         submitted = st.form_submit_button("Salvar na Carteira")
         

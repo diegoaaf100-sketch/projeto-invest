@@ -187,4 +187,32 @@ with tab5:
 
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:
-    st.subheader("⚖️ Alocação da Carteira
+    st.subheader("⚖️ Alocação da Carteira")
+    if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns and df_portfolio["Valor Atual"].sum() > 0:
+        fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
+        fig_donut.update_layout(template="plotly_dark")
+        st.plotly_chart(fig_donut, width='stretch')
+    else:
+        st.info("Cadastre ativos na Aba 5 para visualizar a alocação.")
+
+# --- ABA 7: SIMULADOR ---
+with tab7:
+    st.subheader("🧮 Simulador de Crescimento Patrimonial")
+    c1, c2 = st.columns(2)
+    with c1:
+        pat = st.number_input("Patrimônio Inicial (R$)", value=20000.0)
+        aporte = st.number_input("Aporte Mensal (R$)", value=1000.0)
+    with c2:
+        taxa = st.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
+        anos = st.slider("Anos", 1, 30, 10)
+    
+    meses = list(range(1, (anos * 12) + 1))
+    taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
+    vals, atual = [], pat
+    for _ in meses:
+        atual = (atual * (1 + taxa_m)) + aporte
+        vals.append(atual)
+        
+    fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Anos", "y": "Patrimônio (R$)"}, title="Evolução do Patrimônio")
+    fig_s.update_layout(template="plotly_dark")
+    st.plotly_chart(fig_s, width='stretch')

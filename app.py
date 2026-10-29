@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import warnings
 import os
+import json
 from google import genai
 
 # --- CONFIGURAÇÃO DE AVISOS ---
@@ -48,16 +49,6 @@ BASE_FII = {
     "BCLR11.SA": {"dy": 11.50, "p_vp": 0.98, "div_mensal": 0.95, "frequencia": "Mensal"},
 }
 
-RESUMO_ATIVOS = {
-    "PETR4.SA": "A Petrobras é uma das maiores empresas de energia do mundo, atuando no setor de petróleo, gás natural e derivados.",
-    "VALE3.SA": "A Vale é uma gigante global da mineração, uma das maiores produtoras de minério de ferro e pelota do mundo.",
-    "ITUB4.SA": "O Itaú Unibanco é o maior banco privado da América Latina, oferecendo serviços bancários e de gestão de recursos.",
-    "WEGE3.SA": "A WEG é uma multinacional brasileira líder global na fabricação de equipamentos eletroeletrônicos e motores.",
-    "BBAS3.SA": "O Banco do Brasil atua fortemente no crédito comercial, agronegócio e varejo bancário.",
-    "MXRF11.SA": "O Maxi Renda FII (MXRF11) é um fundo imobiliário híbrido focado em CRIs e ativos de renda.",
-    "HGLG11.SA": "O CSHG Logística (HGLG11) é um fundo imobiliário de tijolo com foco em galpões logísticos de alto padrão."
-}
-
 def avaliar_fii(p_vp, dy):
     score = 0
     if 0.85 <= p_vp <= 1.02:
@@ -81,31 +72,43 @@ def avaliar_fii(p_vp, dy):
     else:
         return "🔴 NÃO INDICADO", "Alerta quantitativo: preço com alto ágio ou retorno em dividendos abaixo do ideal."
 
-def gerar_analise_ia(ticker, nome, setor):
-    """Gera um relatório detalhado usando a API do Gemini com o modelo atualizado"""
+def consultar_dados_e_analise_ia(ticker, nome, setor, preco_atual):
+    """Consulta o Gemini para obter indicadores fundamentalistas estimados e laudo detalhado"""
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
         if not api_key:
-            return "ℹ️ Para habilitar os relatórios avançados de IA gerados pelo Gemini, adicione sua `GEMINI_API_KEY` nos segredos do Streamlit (`st.secrets`)."
+            return {
+                "pl": "N/D", "dy": "N/D", "preco_alvo": "N/D", "recomendacao": "MANTER",
+                "texto": "ℹ️ Configure sua `GEMINI_API_KEY` nos segredos do Streamlit para habilitar os relatórios de IA."
+            }
         
         client = genai.Client(api_key=api_key)
         
         prompt = f"""
-        Atue como um analista quantitativo sênior da B3. 
-        Forneça uma análise técnica e fundamentalista concisa de 3 parágrafos sobre o ativo {ticker} ({nome}), do setor de {setor}:
-        1. Modelo de negócios e diferenciais competitivos.
-        2. Perspectivas macroeconômicas para o setor no Brasil.
-        3. Principais riscos a serem monitorados pelo investidor.
-        Responda em português de forma direta, profissional e estruturada.
+        Atue como um analista quantitativo sênior da B3. Para o ativo {ticker} ({nome}), do setor de {setor}, com preço atual aproximado de R$ {preco_atual:.2f}:
+        Retorne um objeto estrito em formato JSON contendo exatamente estas chaves:
+        - "pl": valor numérico estimado ou real do índice P/L (ex: "8.5x" ou "N/D")
+        - "dy": valor estimado do Dividend Yield anual (ex: "9.2%" ou "N/D")
+        - "preco_alvo": preço-alvo médio de consenso estimado (ex: "R$ 42.00" ou "N/D")
+        - "recomendacao": recomendação de mercado ("COMPRA", "VENDA" ou "MANTER")
+        - "relatorio": Análise técnica e fundamentalista concisa em 3 parágrafos cobrindo: 1) Modelo de negócios e diferenciais; 2) Perspectivas macro no Brasil; 3) Riscos principais.
+        Responda APENAS o JSON válido, sem blocos de código markdown adicionais se possível, ou formate limpo.
         """
         
         response = client.models.generate_content(
             model="gemini-3.8-flash",
             contents=prompt,
         )
-        return response.text
+        
+        resposta_limpa = response.text.replace("```json", "").replace("```", "").strip()
+        dados = json.loads(resposta_limpa)
+        return dados
     except Exception as e:
-        return f"ℹ️ Não foi possível gerar o relatório de IA no momento. (Detalhe: {e})"
+        # Fallback caso o JSON retorne em formato textual livre
+        return {
+            "pl": "N/D", "dy": "N/D", "preco_alvo": "N/D", "recomendacao": "MANTER",
+            "texto": f"Análise gerada (modo texto): {response.text if 'response' in locals() else e}"
+        }
 
 # 3. CRIAÇÃO DAS 6 ABAS
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
@@ -168,7 +171,7 @@ with tab1:
         st.image("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80", caption="Bolsa de Valores e Mercados Globais")
         st.markdown("""
         * **Direção das Taxas de Juros:** As projeções do FOMC indicam cautela na flexibilização monetária americana.
-        * **Impacto no S&P 500 & Nasdaq:** Big Techs lideram o fluxo institucional globais atentas aos balanços.
+        * **Impacto no S&P 500 & Nasdaq:** Big Techs lideram o fluxo institucional global atentas aos balanços.
         * **Força do Índice DXY:** Variações do Dólar americano impactam diretamente emergentes e commodities.
         """)
     with col_i2:
@@ -206,7 +209,7 @@ with tab2:
         * **Marcação a Mercado:** Discussões fiscais geram oscilações em títulos prefixados.
         """)
 
-# --- ABA 3: ANÁLISE TÉCNICA COM RELATÓRIO DO GEMINI ---
+# --- ABA 3: ANÁLISE TÉCNICA COM INDICADORES E IA ---
 with tab3:
     st.subheader("🕯️ Análise Técnica e Inteligência Artificial (B3)")
     
@@ -229,8 +232,11 @@ with tab3:
             nome_empresa = info.get("longName", info.get("shortName", ticker_search))
             setor = info.get("sector", "Setor Imobiliário / FIIs" if is_fii else "Mercado de Ações B3")
             
+            # Preço atual de fechamento recente
+            preco_atual = float(df_c['Close'].iloc[-1]) if not df_c.empty else PRECOS_FALLBACK.get(ticker_search, 25.00)
+            
             st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
-            st.markdown(f"**Setor B3:** {setor}")
+            st.markdown(f"**Setor B3:** {setor} | **Cotação Atual:** R$ {preco_atual:.2f}")
             
             # Gráfico de linhas
             if not df_c.empty and 'Close' in df_c.columns:
@@ -252,14 +258,11 @@ with tab3:
             else:
                 st.warning("Histórico de preços indisponível para este ticker.")
 
-            # Relatório Inteligente gerado pelo Gemini
-            st.markdown("---")
-            st.markdown("### 🤖 Relatório de Inteligência Artificial (Gemini)")
-            with st.spinner("Gerando análise quantitativa avançada com IA..."):
-                relatorio_ia = gerar_analise_ia(ticker_search, nome_empresa, setor)
-                st.info(relatorio_ia)
+            # Consulta Inteligente de Indicadores e Relatório via IA
+            with st.spinner("Buscando indicadores fundamentalistas e gerando laudo de IA..."):
+                dados_ia = consultar_dados_e_analise_ia(ticker_search, nome_empresa, setor, preco_atual)
 
-            # Indicadores Fundamentalistas / FIIs
+            # Exibição dos Indicadores Fundamentalistas / Consenso
             st.markdown("---")
             if is_fii:
                 fii_data = BASE_FII.get(ticker_search, {"dy": 12.00, "p_vp": 1.00, "div_mensal": 0.85, "frequencia": "Mensal"})
@@ -277,18 +280,17 @@ with tab3:
                 c_m3.metric("Dividend Yield (DY)", f"{dy_val:.2f}% a.a.")
                 c_m4.metric("Último Dividendo", f"R$ {div_m:.2f} / cota", f"Pagamento: {freq}")
             else:
-                target_mean = float(info.get("targetMeanPrice", 0.0))
-                rec_key = str(info.get("recommendationKey", "neutro")).upper()
-                mcap = info.get("marketCap", 0)
-                mcap_fmt = f"R$ {mcap / 1e9:.2f} Bilhões" if mcap > 0 else "N/D"
-                pe_ratio = info.get("trailingPE", 0)
-
-                st.markdown(f"### 📈 Indicadores Fundamentalistas & Consenso")
+                st.markdown(f"### 📈 Indicadores Fundamentalistas & Consenso de Mercado")
                 cp1, cp2, cp3, cp4 = st.columns(4)
-                cp1.metric("Valor de Mercado", mcap_fmt)
-                cp2.metric("Índice P/L", f"{pe_ratio:.2f}" if pe_ratio > 0 else "N/D")
-                cp3.metric("Preço-Alvo Médio", f"R$ {target_mean:.2f}" if target_mean > 0 else "N/D")
-                cp4.metric("Recomendação B3", rec_key if rec_key != "NEUTRO" else "MANTER")
+                cp1.metric("Índice P/L (Estimado)", dados_ia.get("pl", "N/D"))
+                cp2.metric("Dividend Yield (DY)", dados_ia.get("dy", "N/D"))
+                cp3.metric("Preço-Alvo Médio", dados_ia.get("preco_alvo", "N/D"))
+                cp4.metric("Recomendação B3", dados_ia.get("recomendacao", "MANTER"))
+
+            # Relatório Inteligente gerado pelo Gemini
+            st.markdown("---")
+            st.markdown("### 🤖 Relatório de Inteligência Artificial (Gemini)")
+            st.info(dados_ia.get("relatorio", dados_ia.get("texto", "Relatório indisponível.")))
             st.markdown("---")
         except Exception as e:
             st.error(f"Erro ao consultar o ticker `{ticker_search}`: {e}")
@@ -359,7 +361,7 @@ with tab6:
     pat = c1.number_input("Patrimônio Inicial (R$)", value=20000.0)
     aporte = c1.number_input("Aporte Mensal (R$)", value=1000.0)
     taxa = c2.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
-    anos = c2.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
+    anos = st.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
     
     meses = list(range(1, (anos * 12) + 1))
     taxa_m = (1 + (taxa / 100)) ** (1/12) - 1

@@ -4,6 +4,8 @@ import yfinance as yf
 import plotly.express as px
 import plotly.graph_objects as go
 import warnings
+import os
+from google import genai
 
 # --- CONFIGURAÇÃO DE AVISOS ---
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -46,15 +48,14 @@ BASE_FII = {
     "BCLR11.SA": {"dy": 11.50, "p_vp": 0.98, "div_mensal": 0.95, "frequencia": "Mensal"},
 }
 
-# Base de descrições institucionais de fallback para ativos da B3
 RESUMO_ATIVOS = {
-    "PETR4.SA": "A Petrobras é uma das maiores empresas de energia do mundo, atuando no setor de petróleo, gás natural e derivados, com destaque para a exploração e produção em águas profundas e ultraprofundas (Pré-Sal).",
-    "VALE3.SA": "A Vale é uma gigante global da mineração, uma das maiores produtoras de minério de ferro e pelota do mundo, além de importante produtora de níquel e outros minerais essenciais para a transição energética.",
-    "ITUB4.SA": "O Itaú Unibanco é o maior banco privado da América Latina, oferecendo uma linha completa de serviços bancários, financeiros e de gestão de recursos para pessoas físicas e jurídicas.",
-    "WEGE3.SA": "A WEG é uma multinacional brasileira líder global na fabricação de equipamentos eletroeletrônicos, motores elétricos, geradores e soluções para automação industrial e energia limpa.",
-    "BBAS3.SA": "O Banco do Brasil é a instituição financeira mais antiga do país, atuando fortemente no crédito comercial, agronegócio e varejo bancário.",
-    "MXRF11.SA": "O Maxi Renda FII (MXRF11) é um fundo imobiliário do tipo híbrido/papel, focado em alocação de recursos em Certificados de Recebíveis Imobiliários (CRIs), cotas de outros FIIs e ativos imobiliários de renda.",
-    "HGLG11.SA": "O CSHG Logística (HGLG11) é um fundo imobiliário de tijolo com foco na aquisição e gestão de galpões logísticos e industriais de alto padrão (A+) localizados em eixos estratégicos do Brasil."
+    "PETR4.SA": "A Petrobras é uma das maiores empresas de energia do mundo, atuando no setor de petróleo, gás natural e derivados.",
+    "VALE3.SA": "A Vale é uma gigante global da mineração, uma das maiores produtoras de minério de ferro e pelota do mundo.",
+    "ITUB4.SA": "O Itaú Unibanco é o maior banco privado da América Latina, oferecendo serviços bancários e de gestão de recursos.",
+    "WEGE3.SA": "A WEG é uma multinacional brasileira líder global na fabricação de equipamentos eletroeletrônicos e motores.",
+    "BBAS3.SA": "O Banco do Brasil atua fortemente no crédito comercial, agronegócio e varejo bancário.",
+    "MXRF11.SA": "O Maxi Renda FII (MXRF11) é um fundo imobiliário híbrido focado em CRIs e ativos de renda.",
+    "HGLG11.SA": "O CSHG Logística (HGLG11) é um fundo imobiliário de tijolo com foco em galpões logísticos de alto padrão."
 }
 
 def avaliar_fii(p_vp, dy):
@@ -80,11 +81,37 @@ def avaliar_fii(p_vp, dy):
     else:
         return "🔴 NÃO INDICADO", "Alerta quantitativo: preço com alto ágio ou retorno em dividendos abaixo do ideal."
 
+def gerar_analise_ia(ticker, nome, setor):
+    """Gera um relatório detalhado usando a API do Gemini"""
+    try:
+        api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
+        if not api_key:
+            return "ℹ️ Para habilitar os relatórios avançados de IA gerados pelo Gemini, adicione sua `GEMINI_API_KEY` nos segredos do Streamlit (`st.secrets`)."
+        
+        client = genai.Client(api_key=api_key)
+        
+        prompt = f"""
+        Atue como um analista quantitativo sênior da B3. 
+        Forneça uma análise técnica e fundamentalista concisa de 3 parágrafos sobre o ativo {ticker} ({nome}), do setor de {setor}:
+        1. Modelo de negócios e diferenciais competitivos.
+        2. Perspectivas macroeconômicas para o setor no Brasil.
+        3. Principais riscos a serem monitorados pelo investidor.
+        Responda em português de forma direta, profissional e estruturada.
+        """
+        
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        return response.text
+    except Exception as e:
+        return f"ℹ️ Não foi possível gerar o relatório de IA no momento. (Detalhe: {e})"
+
 # 3. CRIAÇÃO DAS 6 ABAS
 tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "🌐 Visão Global", 
     "🏛️ Tesouro Direto", 
-    "🕯️ Análise Técnica", 
+    "🕯️ Análise Técnica & IA", 
     "💼 Gestão de Carteira & PnL", 
     "⚖️ Alocação & Rebalanceamento",
     "🧮 Simulador"
@@ -136,31 +163,26 @@ with tab1:
     st.subheader("🌍 Panorama Detalhado e Notícias do Mercado Internacional")
     
     col_i1, col_i2 = st.columns(2)
-    
     with col_i1:
         st.markdown("### 🇺🇸 Política Monetária do Fed & Wall Street")
         st.image("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80", caption="Bolsa de Valores e Mercados Globais")
         st.markdown("""
-        * **Direção das Taxas de Juros:** As projeções do Comitê Federal de Mercado Aberto (FOMC) indicam cautela na flexibilização monetária americana. O controle da inflação (CPI e PCE) dita o ritmo dos rendimentos dos títulos do Tesouro de 10 anos (*US10Y*).
-        * **Impacto no S&P 500 & Nasdaq:** Empresas de tecnologia de grande capitalização (*Big Techs*) continuam liderando o fluxo institucional global, atentas aos balanços de inteligência artificial e margens operacionais.
-        * **Força do Índice DXY:** A valorização ou desequilíbrio do Dólar americano frente às principais moedas globais pressiona diretamente o fluxo de capitais para mercados emergentes e commodities metálicas.
+        * **Direção das Taxas de Juros:** As projeções do FOMC indicam cautela na flexibilização monetária americana.
+        * **Impacto no S&P 500 & Nasdaq:** Big Techs lideram o fluxo institucional globais atentas aos balanços.
+        * **Força do Índice DXY:** Variações do Dólar americano impactam diretamente emergentes e commodities.
         """)
-        
     with col_i2:
         st.markdown("### 🛢️ Geopolítica, Commodities & Cadeia Global")
         st.image("https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=800&q=80", caption="Mercado de Commodities e Câmbio Global")
         st.markdown("""
-        * **Petróleo & OPEP+:** Decisões de cortes ou expansão de produção de barris de petróleo bruto exercem pressão direta sobre a inflação importada e o setor energético global.
-        * **Minério de Ferro & Demanda Asiática:** Indicadores econômicos da China (imobiliário e estímulos fiscais) moldam as projeções de exportação de gigantes globais de mineração.
-        * **Criptoativos & Liquidez Global:** O Bitcoin consolida-se como ativo de reserva de valor alternativo, altamente correlacionado com a liquidez global dos bancos centrais e apetite ao risco institucional.
+        * **Petróleo & OPEP+:** Decisões de produção influenciam a inflação global e o setor energético.
+        * **Minério de Ferro & Demanda Asiática:** Indicadores da China moldam exportações de mineração.
+        * **Criptoativos:** Bitcoin atua como reserva de valor correlacionada à liquidez global.
         """)
-    st.markdown("---")
-    st.caption("🔍 **Fonte Consolidada:** Relatórios macroeconômicos internacionais, Bloomberg Terminal e Bloomberg Markets.")
 
 # --- ABA 2: TESOURO DIRETO ---
 with tab2:
     st.subheader("🏛️ Títulos Públicos e Mercado de Renda Fixa")
-    
     c1, c2, c3 = st.columns(3)
     c1.metric("Tesouro Selic 2029", "10.75% a.a.", "Pós-fixado / Reserva")
     c2.metric("Tesouro IPCA+ 2035", "IPCA + 6.45% a.a.", "Proteção de Inflação")
@@ -168,41 +190,32 @@ with tab2:
 
     st.markdown("---")
     st.subheader("📰 Notícias Detalhadas & Tendências da Renda Fixa Doméstica")
-
     col_t1, col_t2 = st.columns(2)
-
     with col_t1:
-        st.markdown("### 📈 Decisões do Copom & Oportunidades no Tesouro IPCA+")
-        st.image("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80", caption="Análise de Títulos Públicos e Inflação")
+        st.markdown("### 📈 Copom & Oportunidades no Tesouro IPCA+")
+        st.image("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80", caption="Títulos e Inflação")
         st.markdown("""
-        * **Curva de Juros e Marcação a Mercado:** Os títulos atrelados à inflação (*Tesouro IPCA+*) continuam apresentando taxas reais historicamente atrativas acima de 6,00% a.a. Investidores atentos aproveitam para travar rentabilidades reais elevadas de longo prazo.
-        * **Impacto das Expectativas do Boletim Focus:** O alinhamento das projeções de inflação oficial (IPCA) pelo Banco Central influencia diretamente a precificação dos títulos públicos pré e pós-fixados.
-        * **Estratégia de Alocação de Curto vs. Longo Prazo:** Títulos com vencimento intermediário oferecem bom equilíbrio entre liquidez e proteção contra variações bruscas na curva de juros.
+        * **Curva de Juros:** Taxas reais acima de 6% a.a. atraem investimentos de longo prazo.
+        * **Boletim Focus:** Projeções oficiais balizam a precificação dos títulos públicos.
         """)
-
     with col_t2:
-        st.markdown("### 🏛️ Riscos Fiscais, Tesouro Selic & Marcação a Mercado")
-        st.image("https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80", caption="Mercado Financeiro e Títulos Públicos")
+        st.markdown("### 🏛️ Riscos Fiscais & Tesouro Selic")
+        st.image("https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80", caption="Mercado Financeiro")
         st.markdown("""
-        * **Soberania do Tesouro Selic para Liquidez:** Com o juro básico mantido em patamares elevados, o Tesouro Selic consolida-se como a escolha primária para reserva de emergência e caixa operacional, isento de volatilidade negativa relevante.
-        * **Risco Fiscal & Prêmio de Risco:** As discussões de meta fiscal e gastos públicos pelo governo afetam a inclinação da curva de juros futuros, gerando volatilidade passageira nos preços dos papéis Prefixados (*Marcação a Mercado*).
-        * **Atratividade da Renda Fixa Isenta vs. Tesouro:** A migração de fluxo entre CDBs, LCIs/LCAs e Tesouro Direto é impulsionada pelas regras de tributação regressiva do imposto de renda.
+        * **Liquidez:** Tesouro Selic mantém-se como principal porto seguro para reservas de emergência.
+        * **Marcação a Mercado:** Discussões fiscais geram oscilações em títulos prefixados.
         """)
 
-    st.markdown("---")
-    st.caption("🔍 **Fontes Oficiais:** Tesouro Nacional, Banco Central do Brasil (BCB), Anbima e Portal InfoMoney Renda Fixa.")
-
-# --- ABA 3: ANÁLISE TÉCNICA & BUSCA DE ATIVOS NA B3 ---
+# --- ABA 3: ANÁLISE TÉCNICA COM RELATÓRIO DO GEMINI ---
 with tab3:
-    st.subheader("🕯️ Análise Técnica e Perfil Detalhado do Ativo (B3)")
+    st.subheader("🕯️ Análise Técnica e Inteligência Artificial (B3)")
     
     ticker_search = st.text_input(
-        "🔍 Digite o Ticker da Ação ou FII listado na B3 (ex: PETR4.SA, VALE3.SA, BBAS3.SA, MXRF11.SA):", 
+        "🔍 Digite o Ticker da Ação ou FII listado na B3 para pesquisar:", 
         value="PETR4.SA"
     ).upper().strip()
 
     if ticker_search:
-        # Garante o sufixo .SA se o usuário esquecer
         if not ticker_search.endswith(".SA") and len(ticker_search) <= 6:
             ticker_search += ".SA"
 
@@ -215,27 +228,11 @@ with tab3:
             
             nome_empresa = info.get("longName", info.get("shortName", ticker_search))
             setor = info.get("sector", "Setor Imobiliário / FIIs" if is_fii else "Mercado de Ações B3")
-            industria = info.get("industry", "Fundo de Investimento Imobiliário" if is_fii else "Companhia Aberta")
-            
-            # Resumo corporativo com fallback inteligente
-            resumo_api = info.get("longBusinessSummary", "").strip()
-            if resumo_api and "não disponível" not in resumo_api.lower():
-                resumo_negocio = resumo_api
-            else:
-                resumo_negocio = RESUMO_ATIVOS.get(
-                    ticker_search, 
-                    f"Ativo **{ticker_search}** negociado na B3. A empresa/fundo faz parte do mercado de capitais brasileiro, com liquidez diária e cotações consolidadas pelo pregão oficial. Acompanhe os indicadores e gráficos abaixo para embasar sua análise técnica e fundamentalista."
-                )
             
             st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
-            st.markdown(f"**Setor B3:** {setor} | **Segmento:** {industria}")
+            st.markdown(f"**Setor B3:** {setor}")
             
-            with st.expander("📖 **Sobre o Ativo & Modelo de Negócio (B3)**", expanded=True):
-                st.write(resumo_negocio)
-            
-            st.markdown("---")
-            
-            # Gráfico de linhas de fechamento
+            # Gráfico de linhas
             if not df_c.empty and 'Close' in df_c.columns:
                 fig = go.Figure(data=[go.Scatter(
                     x=df_c.index, 
@@ -253,9 +250,16 @@ with tab3:
                 )
                 st.plotly_chart(fig, width='stretch')
             else:
-                st.warning("Histórico de preços indisponível para este ticker na B3 no momento.")
+                st.warning("Histórico de preços indisponível para este ticker.")
 
-            # Indicadores e Inteligência
+            # Relatório Inteligente gerado pelo Gemini
+            st.markdown("---")
+            st.markdown("### 🤖 Relatório de Inteligência Artificial (Gemini)")
+            with st.spinner("Gerando análise quantitativa avançada com IA..."):
+                relatorio_ia = gerar_analise_ia(ticker_search, nome_empresa, setor)
+                st.info(relatorio_ia)
+
+            # Indicadores Fundamentalistas / FIIs
             st.markdown("---")
             if is_fii:
                 fii_data = BASE_FII.get(ticker_search, {"dy": 12.00, "p_vp": 1.00, "div_mensal": 0.85, "frequencia": "Mensal"})
@@ -272,140 +276,75 @@ with tab3:
                 c_m2.metric("P/VP", f"{p_vp_val:.2f}")
                 c_m3.metric("Dividend Yield (DY)", f"{dy_val:.2f}% a.a.")
                 c_m4.metric("Último Dividendo", f"R$ {div_m:.2f} / cota", f"Pagamento: {freq}")
-
-                if "INDICADO" in status and "NÃO" not in status:
-                    st.success(f"💡 **Diagnóstico:** {justificativa}")
-                elif "MÉDIO" in status:
-                    st.warning(f"💡 **Diagnóstico:** {justificativa}")
-                else:
-                    st.error(f"💡 **Diagnóstico:** {justificativa}")
             else:
                 target_mean = float(info.get("targetMeanPrice", 0.0))
                 rec_key = str(info.get("recommendationKey", "neutro")).upper()
-                num_analysts = int(info.get("numberOfAnalystOpinions", 0))
                 mcap = info.get("marketCap", 0)
                 mcap_fmt = f"R$ {mcap / 1e9:.2f} Bilhões" if mcap > 0 else "N/D"
                 pe_ratio = info.get("trailingPE", 0)
 
-                st.markdown(f"### 📈 Indicadores Fundamentalistas & Consenso para **{ticker_search}**")
-                
+                st.markdown(f"### 📈 Indicadores Fundamentalistas & Consenso")
                 cp1, cp2, cp3, cp4 = st.columns(4)
                 cp1.metric("Valor de Mercado", mcap_fmt)
                 cp2.metric("Índice P/L", f"{pe_ratio:.2f}" if pe_ratio > 0 else "N/D")
                 cp3.metric("Preço-Alvo Médio", f"R$ {target_mean:.2f}" if target_mean > 0 else "N/D")
                 cp4.metric("Recomendação B3", rec_key if rec_key != "NEUTRO" else "MANTER")
-                
-                st.caption("🔍 **Fonte Oficial:** Dados de pregão e relatórios compilados da B3 e Yahoo Finance API.")
             st.markdown("---")
         except Exception as e:
-            st.error(f"Erro ao consultar o ticker `{ticker_search}` na B3: {e}")
+            st.error(f"Erro ao consultar o ticker `{ticker_search}`: {e}")
 
-# --- ABA 4: GESTÃO DE CARTEIRA & PnL ---
+# --- ABA 4: GESTÃO DE CARTEIRA ---
 with tab4:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
-    
     if "portfolio_local" not in st.session_state:
         st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
 
-    ticker_input = st.text_input("Digite o Ticker para cadastrar (ex: PETR4.SA, MXRF11.SA)").upper().strip()
-
-    suggested_price = 0.0
+    ticker_input = st.text_input("Digite o Ticker para cadastrar (ex: PETR4.SA, MXRF11.SA):").upper().strip()
+    suggested_price = 25.00
     suggested_class = "Ação (B3)"
 
     if ticker_input:
-        if ticker_input.endswith("11") or "11B" in ticker_input:
-            suggested_class = "FII"
-        elif "USD" in ticker_input or "BTC" in ticker_input:
-            suggested_class = "Exterior/Cripto"
-        else:
-            suggested_class = "Ação (B3)"
-
         try:
             tk = yf.Ticker(ticker_input)
             hist = tk.history(period="1d")
-            if not hist.empty and 'Close' in hist.columns:
+            if not hist.empty:
                 suggested_price = float(hist['Close'].iloc[-1])
-            else:
-                info = tk.info
-                suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
         except Exception:
             pass
+        st.success(f"🔍 **Ativo localizado!** Preço sugerido: **R$ {suggested_price:.2f}**")
 
-        if suggested_price <= 0:
-            suggested_price = PRECOS_FALLBACK.get(ticker_input, 25.00)
-
-        st.success(f"🔍 **Ativo localizado!** Preço atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
-
-    with st.form("form_ativo", clear_on_submit=False):
+    with st.form("form_ativo"):
         c1, c2, c3, c4 = st.columns(4)
-        with c1: 
-            t_form = st.text_input("Confirme o Ticker", value=ticker_input).upper().strip()
-        with c2: 
-            classes_opcoes = ["Ação (B3)", "FII", "Renda Fixa", "Exterior/Cripto"]
-            idx_default = classes_opcoes.index(suggested_class) if suggested_class in classes_opcoes else 0
-            asset_class = st.selectbox("Classe", classes_opcoes, index=idx_default)
-        with c3: 
-            quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
-        with c4: 
-            avg_price = st.number_input("Preço atual (R$)", min_value=0.0, format="%.2f", value=float(suggested_price))
-
+        t_form = c1.text_input("Ticker", value=ticker_input).upper().strip()
+        asset_class = c2.selectbox("Classe", ["Ação (B3)", "FII", "Renda Fixa", "Exterior/Cripto"])
+        quantity = c3.number_input("Quantidade", value=100.0)
+        avg_price = c4.number_input("Preço Médio (R$)", value=float(suggested_price))
         submitted = st.form_submit_button("Salvar na Carteira")
         
-        if submitted:
-            if t_form:
-                df_loc = st.session_state["portfolio_local"]
-                df_loc = df_loc[df_loc["ticker"] != t_form]
-                
-                novo_registro = pd.DataFrame([{
-                    "ticker": t_form,
-                    "asset_class": asset_class,
-                    "quantity": float(quantity),
-                    "average_price": float(avg_price)
-                }])
-                
-                st.session_state["portfolio_local"] = pd.concat([df_loc, novo_registro], ignore_index=True)
-                st.success(f"✅ Ativo {t_form} salvo com sucesso!")
-                st.rerun()
-            else:
-                st.warning("⚠️ O campo Ticker é obrigatório.")
+        if submitted and t_form:
+            df_loc = st.session_state["portfolio_local"]
+            df_loc = df_loc[df_loc["ticker"] != t_form]
+            novo_registro = pd.DataFrame([{"ticker": t_form, "asset_class": asset_class, "quantity": quantity, "average_price": avg_price}])
+            st.session_state["portfolio_local"] = pd.concat([df_loc, novo_registro], ignore_index=True)
+            st.success(f"Ativo {t_form} salvo!")
+            st.rerun()
 
     df_portfolio = st.session_state["portfolio_local"]
-    
     if not df_portfolio.empty:
-        tickers = df_portfolio["ticker"].tolist()
-        precos_atuais = {}
-        for t in tickers:
-            try:
-                hist_t = yf.Ticker(t).history(period="5d")
-                if not hist_t.empty and 'Close' in hist_t.columns:
-                    s = hist_t['Close'].dropna()
-                    precos_atuais[t] = float(s.iloc[-1]) if not s.empty else PRECOS_FALLBACK.get(t, 25.00)
-                else:
-                    precos_atuais[t] = PRECOS_FALLBACK.get(t, 25.00)
-            except Exception:
-                precos_atuais[t] = PRECOS_FALLBACK.get(t, 25.00)
-                
+        precos_atuais = {t: yf.Ticker(t).history(period="1d")['Close'].iloc[-1] if not yf.Ticker(t).history(period="1d").empty else 25.0 for t in df_portfolio["ticker"]}
         df_portfolio["Preço Atual (R$)"] = df_portfolio["ticker"].map(precos_atuais)
         df_portfolio["Total Investido"] = df_portfolio["quantity"] * df_portfolio["average_price"]
         df_portfolio["Valor Atual"] = df_portfolio["quantity"] * df_portfolio["Preço Atual (R$)"]
         df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
-        
-        df_portfolio["Lucro/Prejuízo (%)"] = (
-            df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"].replace(0, float('nan'))
-        ) * 100
-        df_portfolio["Lucro/Prejuízo (%)"] = df_portfolio["Lucro/Prejuízo (%)"].fillna(0.0)
-        
         st.dataframe(df_portfolio, width='stretch', hide_index=True)
-        
-        if st.button("🗑️ Limpar Toda a Carteira"):
+        if st.button("🗑️ Limpar Carteira"):
             st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
             st.rerun()
-    else:
-        st.info("ℹ️ Sua carteira está vazia. Digite um ticker acima para começar.")
 
-# --- ABA 5: ALOCAÇÃO & REBALANCEAMENTO ---
+# --- ABA 5: ALOCAÇÃO ---
 with tab5:
     st.subheader("⚖️ Alocação da Carteira")
+    df_portfolio = st.session_state.get("portfolio_local", pd.DataFrame())
     if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns and df_portfolio["Valor Atual"].sum() > 0:
         fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
         fig_donut.update_layout(template="plotly_dark")
@@ -417,30 +356,18 @@ with tab5:
 with tab6:
     st.subheader("🧮 Simulador de Crescimento Patrimonial")
     c1, c2 = st.columns(2)
-    with c1:
-        pat = st.number_input("Patrimônio Inicial (R$)", value=20000.0)
-        aporte = st.number_input("Aporte Mensal (R$)", value=1000.0)
-    with c2:
-        taxa = st.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
-        anos = st.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
+    pat = c1.number_input("Patrimônio Inicial (R$)", value=20000.0)
+    aporte = c1.number_input("Aporte Mensal (R$)", value=1000.0)
+    taxa = c2.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
+    anos = c2.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
     
     meses = list(range(1, (anos * 12) + 1))
     taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
     vals, atual = [], pat
-    
     for _ in meses:
         atual = (atual * (1 + taxa_m)) + aporte
         vals.append(atual)
         
-    fig_s = px.line(
-        x=[m/12 for m in meses], 
-        y=vals, 
-        labels={"x": "Tempo (Anos)", "y": "Patrimônio Acumulado (R$)"}, 
-        title=f"Projeção de Crescimento Patrimonial ({anos} Anos)"
-    )
-    fig_s.update_layout(
-        template="plotly_dark",
-        xaxis_title="Tempo (Anos)",
-        yaxis_title="Patrimônio Total (R$)"
-    )
+    fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Tempo (Anos)", "y": "Patrimônio Acumulado (R$)"}, title=f"Projeção ({anos} Anos)")
+    fig_s.update_layout(template="plotly_dark")
     st.plotly_chart(fig_s, width='stretch')

@@ -1,427 +1,253 @@
+import os
 import streamlit as st
 import pandas as pd
-import yfinance as yf
 import plotly.express as px
-import plotly.graph_objects as go
-import warnings
-import os
-import json
-from google import genai
+import yfinance as yf
 from supabase import create_client
+from google import genai
+from google.genai import errors
 
-# --- CONFIGURAÇÃO DE AVISOS ---
-warnings.filterwarnings("ignore", category=DeprecationWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", message=".*inplace keyword.*")
-
-# 1. Configuração da Página
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Terminal Quantitativo B3 & Global",
-    page_icon="📊",
+    page_title="Terminal Quantitativo B3 & IA",
+    page_icon="📈",
     layout="wide"
 )
-
-st.title("📊 Terminal Quantitativo de Investimentos & Carteira")
 
 # --- CONEXÃO COM O SUPABASE ---
 @st.cache_resource
 def init_supabase():
-    try:
-        url = st.secrets["https://elharxmlbephzxqagbcl.supabase.co"]
-        key = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ"]
-        return create_client(url, key)
-    except Exception:
+    url = st.secrets.get("https://elharxmlbephzxqagbcl.supabase.co", os.getenv("https://elharxmlbephzxqagbcl.supabase.co", ""))
+    key = st.secrets.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", ""))
+    if not url or not key:
         return None
+    return create_client(url, key)
 
 supabase = init_supabase()
 
-# 2. Sidebar de Configuração
-st.sidebar.header("⚙️ Painel de Controle")
-default_acoes = "PETR4.SA, VALE3.SA, ITUB4.SA, WEGE3.SA"
-default_fiis = "MXRF11.SA, HGLG11.SA"
-
-acao_input = st.sidebar.text_area("Ações (B3):", value=default_acoes)
-fii_input = st.sidebar.text_area("FIIs:", value=default_fiis)
-
-tickers_acoes = [t.strip().upper() for t in acao_input.split(",") if t.strip()]
-tickers_fiis = [t.strip().upper() for t in fii_input.split(",") if t.strip()]
-todos_tickers = tickers_acoes + tickers_fiis
-
-# Dicionário de Preços Fallback
-PRECOS_FALLBACK = {
-    "PETR4.SA": 38.50, "VALE3.SA": 62.00, "ITUB4.SA": 33.50, "WEGE3.SA": 40.20,
-    "MXRF11.SA": 10.20, "HGLG11.SA": 101.50, "KNCR11.SA": 102.10, "BCLR11.SA": 95.00
-}
-
-# Base de Dados Fundamentalistas e Proventos de FIIs
-BASE_FII = {
-    "MXRF11.SA": {"dy": 12.80, "p_vp": 1.01, "div_mensal": 0.09, "frequencia": "Mensal"},
-    "HGLG11.SA": {"dy": 8.90, "p_vp": 1.02, "div_mensal": 1.10, "frequencia": "Mensal"},
-    "KNCR11.SA": {"dy": 12.20, "p_vp": 1.01, "div_mensal": 1.00, "frequencia": "Mensal"},
-    "XPML11.SA": {"dy": 9.40, "p_vp": 1.03, "div_mensal": 0.92, "frequencia": "Mensal"},
-    "BCLR11.SA": {"dy": 11.50, "p_vp": 0.98, "div_mensal": 0.95, "frequencia": "Mensal"},
-}
-
-def avaliar_fii(p_vp, dy):
-    score = 0
-    if 0.85 <= p_vp <= 1.02:
-        score += 2  
-    elif 1.03 <= p_vp <= 1.08 or 0.75 <= p_vp < 0.85:
-        score += 1  
-    else:
-        score += 0  
-        
-    if dy >= 10.5:
-        score += 2  
-    elif 8.0 <= dy < 10.5:
-        score += 1  
-    else:
-        score += 0  
-
-    if score >= 3:
-        return "🟢 INDICADO", "Excelente relação entre preço (P/VP) e dividendos esperados."
-    elif score == 2:
-        return "🟡 MÉDIO", "Ativo neutro/médio. Avalie a qualidade da gestão e imóveis antes de aportar."
-    else:
-        return "🔴 NÃO INDICADO", "Alerta quantitativo: preço com alto ágio ou retorno em dividendos abaixo do ideal."
-
-def consultar_dados_e_analise_ia(ticker, nome, setor, preco_atual):
-    """Consulta o Gemini para obter indicadores fundamentalistas estimados e laudo detalhado"""
+# --- CARREGAR DADOS DA TABELA fundos_b3 ---
+@st.cache_data(ttl=600)
+def carregar_fundos_b3():
+    if not supabase:
+        return pd.DataFrame()
     try:
-        api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
-        if not api_key:
-            return {
-                "pl": "8.5x", "dy": "8.2%", "preco_alvo": f"R$ {preco_atual * 1.15:.2f}", "recomendacao": "COMPRA",
-                "relatorio": f"Análise quantitativa padrão para o ativo {ticker} ({nome}). Configure sua `GEMINI_API_KEY` nos segredos do Streamlit (`st.secrets`) para habilitar relatórios dinâmicos avançados em tempo real."
-            }
-        
-        client = genai.Client(api_key=api_key)
-        
-        prompt = f"""
-        Atue como um analista quantitativo sênior da B3. Para o ativo {ticker} ({nome}), do setor de {setor}, com preço atual aproximado de R$ {preco_atual:.2f}:
-        Retorne um objeto estrito em formato JSON contendo exatamente estas chaves:
-        - "pl": valor numérico estimado ou real do índice P/L (ex: "8.5x" ou "N/D")
-        - "dy": valor estimado do Dividend Yield anual (ex: "9.2%" ou "N/D")
-        - "preco_alvo": preço-alvo médio de consenso estimado (ex: "R$ 42.00" ou "N/D")
-        - "recomendacao": recomendação de mercado ("COMPRA", "VENDA" ou "MANTER")
-        - "relatorio": Análise técnica e fundamentalista concisa em 3 parágrafos cobrindo: 1) Modelo de negócios e diferenciais; 2) Perspectivas macro no Brasil; 3) Riscos principais.
-        Responda APENAS o JSON válido, sem blocos de código markdown adicionais.
-        """
-        
-        response = client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=prompt,
-        )
-        
-        resposta_limpa = response.text.replace("```json", "").replace("```", "").strip()
-        dados = json.loads(resposta_limpa)
-        return dados
+        response = supabase.table("fundos_b3").select("*").execute()
+        return pd.DataFrame(response.data)
     except Exception as e:
-        return {
-            "pl": "N/D", "dy": "N/D", "preco_alvo": "N/D", "recomendacao": "MANTER",
-            "relatorio": f"Ativo monitorado com sucesso na B3. (Nota técnica de IA: {e})"
-        }
+        st.error(f"Erro ao carregar dados do Supabase: {e}")
+        return pd.DataFrame()
 
-# 3. CRIAÇÃO DAS 6 ABAS
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "🌐 Visão Global", 
-    "🏛️ Tesouro Direto", 
-    "🕯️ Análise Técnica & IA", 
-    "💼 Gestão de Carteira & PnL", 
-    "⚖️ Alocação & Rebalanceamento",
-    "🧮 Simulador"
+df_fundos = carregar_fundos_b3()
+
+# --- CONFIGURAÇÃO DO CLIENTE GEMINI ---
+@st.cache_resource
+def init_gemini():
+    api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
+    if not api_key:
+        return None
+    return genai.Client(api_key=api_key)
+
+client_gemini = init_gemini()
+
+# --- TÍTULO PRINCIPAL ---
+st.title("📊 Terminal Quantitativo & Análise de Mercado (B3)")
+st.markdown("Plataforma integrada para gestão de carteira, análise técnica, relatórios por IA e dados do Supabase.")
+
+# --- ESTRUTURA DE 6 ABAS NO STREAMLIT ---
+aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
+    "1. Visão Global", 
+    "2. Tesouro Direto", 
+    "3. Análise Técnica & IA", 
+    "4. Gestão de Carteira & PnL", 
+    "5. Alocação & Rebalanceamento", 
+    "6. Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL ---
-with tab1:
-    st.subheader("🌐 Indicadores Macroeconômicos e Globais")
+# ==========================================
+# ABA 1: VISÃO GLOBAL
+# ==========================================
+with aba1:
+    st.header("🌐 Visão Global do Mercado & Fundos")
     
-    dolar_taxa = 5.60
-    try:
-        hist_usd = yf.Ticker("USDBRL=X").history(period="5d")
-        if not hist_usd.empty and 'Close' in hist_usd.columns:
-            dolar_taxa = float(hist_usd['Close'].dropna().iloc[-1])
-    except Exception:
-        pass
-
-    ativos_globais = {
-        "Dólar (USD/BRL)": "USDBRL=X", 
-        "Bitcoin (BRL)": "BTC-USD", 
-        "Ibovespa": "^BVSP", 
-        "S&P 500 (USD)": "^GSPC"
-    }
-    
-    cols = st.columns(len(ativos_globais))
-    for i, (nome, tkr) in enumerate(ativos_globais.items()):
-        try:
-            hist = yf.Ticker(tkr).history(period="5d")
-            if not hist.empty and 'Close' in hist.columns:
-                serie = hist['Close'].dropna()
-                if len(serie) >= 2:
-                    val = serie.iloc[-1]
-                    ant = serie.iloc[0]
-                    var = ((val - ant) / ant) * 100
-                    
-                    if "S&P 500" in nome:
-                        cols[i].metric(nome, f"US$ {val:,.2f}", delta=f"{var:+.2f}%")
-                    elif "Bitcoin" in nome:
-                        val_brl = val * dolar_taxa
-                        cols[i].metric(nome, f"R$ {val_brl:,.2f}", delta=f"{var:+.2f}%")
-                    elif "Dólar" in nome:
-                        cols[i].metric(nome, f"R$ {val:.2f}", delta=f"{var:+.2f}%")
-                    else:
-                        cols[i].metric(nome, f"{val:,.0f} pts", delta=f"{var:+.2f}%")
-        except Exception:
-            cols[i].metric(nome, "Indisponível", delta="0.00%")
-
-    st.markdown("---")
-    st.subheader("🌍 Panorama Detalhado e Notícias do Mercado Internacional")
-    
-    col_i1, col_i2 = st.columns(2)
-    with col_i1:
-        st.markdown("### 🇺🇸 Política Monetária do Fed & Wall Street")
-        st.image("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80", caption="Bolsa de Valores e Mercados Globais")
-        st.markdown("""
-        * **Direção das Taxas de Juros:** As projeções do FOMC indicam cautela na flexibilização monetária americana.
-        * **Impacto no S&P 500 & Nasdaq:** Big Techs lideram o fluxo institucional global atentas aos balanços.
-        * **Força do Índice DXY:** Variações do Dólar americano impactam diretamente emergentes e commodities.
-        """)
-    with col_i2:
-        st.markdown("### 🛢️ Geopolítica, Commodities & Cadeia Global")
-        st.image("https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=800&q=80", caption="Mercado de Commodities e Câmbio Global")
-        st.markdown("""
-        * **Petróleo & OPEP+:** Decisões de produção influenciam a inflação global e o setor energético.
-        * **Minério de Ferro & Demanda Asiática:** Indicadores da China moldam exportações de mineração.
-        * **Criptoativos:** Bitcoin atua como reserva de valor correlacionada à liquidez global.
-        """)
-
-# --- ABA 2: TESOURO DIRETO ---
-with tab2:
-    st.subheader("🏛️ Títulos Públicos e Mercado de Renda Fixa")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Tesouro Selic 2029", "10.75% a.a.", "Pós-fixado / Reserva")
-    c2.metric("Tesouro IPCA+ 2035", "IPCA + 6.45% a.a.", "Proteção de Inflação")
-    c3.metric("Tesouro Prefixado 2031", "11.85% a.a.", "Taxa Travada")
-
-    st.markdown("---")
-    st.subheader("📰 Notícias Detalhadas & Tendências da Renda Fixa Doméstica")
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        st.markdown("### 📈 Copom & Oportunidades no Tesouro IPCA+")
-        st.image("https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=800&q=80", caption="Títulos e Inflação")
-        st.markdown("""
-        * **Curva de Juros:** Taxas reais acima de 6% a.a. atraem investimentos de longo prazo.
-        * **Boletim Focus:** Projeções oficiais balizam a precificação dos títulos públicos.
-        """)
-    with col_t2:
-        st.markdown("### 🏛️ Riscos Fiscais & Tesouro Selic")
-        st.image("https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=800&q=80", caption="Mercado Financeiro")
-        st.markdown("""
-        * **Liquidez:** Tesouro Selic mantém-se como principal porto seguro para reservas de emergência.
-        * **Marcação a Mercado:** Discussões fiscais geram oscilações em títulos prefixados.
-        """)
-
-# --- ABA 3: ANÁLISE TÉCNICA COM SUPABASE E IA ---
-with tab3:
-    st.subheader("🕯️ Análise Técnica, Supabase & Inteligência Artificial (B3)")
-    
-    termo_pesquisa = st.text_input(
-        "🔍 Pesquise por Ticker ou Nome do Fundo/Ação (ex: MXRF11, PETR4, Maxi Renda):", 
-        value="PETR4.SA"
-    ).upper().strip()
-
-    ticker_search = termo_pesquisa
-    razao_social_encontrada = ""
-
-    # Consulta no Supabase se o cliente estiver configurado
-    if supabase and termo_pesquisa:
-        try:
-            # Busca flexível por código, fundo ou razão social na tabela fundos_b3
-            query = supabase.table("fundos_b3").select("*").or_(f"codigo.ilike.%{termo_pesquisa}%,fundo.ilike.%{termo_pesquisa}%,razao_social.ilike.%{termo_pesquisa}%").limit(1).execute()
-            if query.data and len(query.data) > 0:
-                registro_supabase = query.data[0]
-                codigo_base = str(registro_supabase.get("codigo", "")).strip()
-                if codigo_base:
-                    ticker_search = f"{codigo_base}.SA" if not codigo_base.endswith(".SA") else codigo_base
-                razao_social_encontrada = registro_supabase.get("razao_social", "")
-                st.success(f"📌 **Localizado no Supabase:** {razao_social_encontrada} (Código: `{codigo_base}`)")
-        except Exception as e:
-            pass
-
-    if ticker_search:
-        if not ticker_search.endswith(".SA") and len(ticker_search) <= 6:
-            ticker_search += ".SA"
-
-        is_fii = "11" in ticker_search or razao_social_encontrada != ""
+    if not df_fundos.empty:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total de Fundos Cadastrados", len(df_fundos))
+        with col2:
+            segmentos_unicos = df_fundos['segmento_estimado'].nunique() if 'segmento_estimado' in df_fundos.columns else 0
+            st.metric("Segmentos de Atuação", segmentos_unicos)
+        with col3:
+            gestoras_unicas = df_fundos['gestora_grupo'].nunique() if 'gestora_grupo' in df_fundos.columns else 0
+            st.metric("Gestoras Mapeadas", gestoras_unicas)
         
-        try:
-            tk = yf.Ticker(ticker_search)
-            info = tk.info
-            df_c = tk.history(period="6mo", interval="1d")
-            
-            nome_empresa = razao_social_encontrada if razao_social_encontrada else info.get("longName", info.get("shortName", ticker_search))
-            setor = info.get("sector", "Setor Imobiliário / FIIs" if is_fii else "Mercado de Ações B3")
-        except Exception:
-            nome_empresa = razao_social_encontrada if razao_social_encontrada else ticker_search
-            setor = "Mercado B3"
-            df_c = pd.DataFrame()
-
-        # Preço atual com fallback garantido
-        if not df_c.empty and 'Close' in df_c.columns:
-            preco_atual = float(df_c['Close'].dropna().iloc[-1])
-        else:
-            preco_atual = PRECOS_FALLBACK.get(ticker_search, 35.00)
-        
-        st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
-        st.markdown(f"**Setor B3:** {setor} | **Cotação Atual:** R$ {preco_atual:.2f}")
-        
-        # Gráfico de linhas ou aviso se vazio
-        if not df_c.empty and 'Close' in df_c.columns:
-            fig = go.Figure(data=[go.Scatter(
-                x=df_c.index, 
-                y=df_c['Close'], 
-                mode='lines', 
-                name='Preço de Fechamento',
-                line=dict(color='#00FFAA', width=2)
-            )])
-            fig.update_layout(
-                title=f"Evolução Histórica de Preço (6 Meses) - {ticker_search}",
-                template="plotly_dark",
-                xaxis_title="Data",
-                yaxis_title="Preço (R$)",
-                xaxis_rangeslider_visible=False
-            )
-            st.plotly_chart(fig, width='stretch')
-        else:
-            st.info(f"ℹ️ Exibindo indicadores consolidados para **{ticker_search}**.")
-
-        # Consulta Indicadores e Relatório IA
-        with st.spinner("Buscando indicadores fundamentalistas e gerando laudo de IA..."):
-            dados_ia = consultar_dados_e_analise_ia(ticker_search, nome_empresa, setor, preco_atual)
-
-        # Exibição dos Indicadores Fundamentalistas / Consenso
-        st.markdown("---")
-        if is_fii:
-            fii_data = BASE_FII.get(ticker_search, {"dy": 12.00, "p_vp": 1.00, "div_mensal": 0.85, "frequencia": "Mensal"})
-            dy_val = fii_data["dy"]
-            p_vp_val = fii_data["p_vp"]
-            div_m = fii_data["div_mensal"]
-            freq = fii_data["frequencia"]
-
-            status, justificativa = avaliar_fii(p_vp_val, dy_val)
-
-            st.markdown(f"### 🏢 Indicadores Imobiliários para o FII **{ticker_search}**")
-            c_m1, c_m2, c_m3, c_m4 = st.columns(4)
-            c_m1.metric("Status do Fundo", status)
-            c_m2.metric("P/VP", f"{p_vp_val:.2f}")
-            c_m3.metric("Dividend Yield (DY)", f"{dy_val:.2f}% a.a.")
-            c_m4.metric("Último Dividendo", f"R$ {div_m:.2f} / cota", f"Pagamento: {freq}")
-        else:
-            st.markdown(f"### 📈 Indicadores Fundamentalistas & Consenso de Mercado")
-            cp1, cp2, cp3, cp4 = st.columns(4)
-            cp1.metric("Índice P/L (Estimado)", dados_ia.get("pl", "8.5x"))
-            cp2.metric("Dividend Yield (DY)", dados_ia.get("dy", "8.2%"))
-            cp3.metric("Preço-Alvo Médio", dados_ia.get("preco_alvo", f"R$ {preco_atual * 1.15:.2f}"))
-            cp4.metric("Recomendação B3", dados_ia.get("recomendacao", "COMPRA"))
-
-        # Relatório Inteligente gerado pelo Gemini
-        st.markdown("---")
-        st.markdown("### 🤖 Relatório de Inteligência Artificial (Gemini)")
-        st.info(dados_ia.get("relatorio", "Relatório quantitativo indisponível no momento."))
-        st.markdown("---")
-
-# --- ABA 4: GESTÃO DE CARTEIRA (POPULADA POR PADRÃO) ---
-with tab4:
-    st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
-    
-    if "portfolio_local" not in st.session_state:
-        st.session_state["portfolio_local"] = pd.DataFrame([
-            {"ticker": "PETR4.SA", "asset_class": "Ação (B3)", "quantity": 200.0, "average_price": 36.50},
-            {"ticker": "VALE3.SA", "asset_class": "Ação (B3)", "quantity": 100.0, "average_price": 60.00},
-            {"ticker": "MXRF11.SA", "asset_class": "FII", "quantity": 500.0, "average_price": 10.10}
-        ])
-
-    ticker_input = st.text_input("Digite o Ticker para cadastrar novo ativo (ex: ITUB4.SA, WEGE3.SA):").upper().strip()
-    suggested_price = 25.00
-
-    if ticker_input:
-        try:
-            tk = yf.Ticker(ticker_input)
-            hist = tk.history(period="1d")
-            if not hist.empty:
-                suggested_price = float(hist['Close'].iloc[-1])
-        except Exception:
-            suggested_price = PRECOS_FALLBACK.get(ticker_input, 25.00)
-        st.success(f"🔍 **Ativo localizado!** Preço sugerido: **R$ {suggested_price:.2f}**")
-
-    with st.form("form_ativo"):
-        c1, c2, c3, c4 = st.columns(4)
-        t_form = c1.text_input("Ticker", value=ticker_input).upper().strip()
-        asset_class = c2.selectbox("Classe", ["Ação (B3)", "FII", "Renda Fixa", "Exterior/Cripto"])
-        quantity = c3.number_input("Quantidade", value=100.0)
-        avg_price = c4.number_input("Preço Médio (R$)", value=float(suggested_price))
-        submitted = st.form_submit_button("Salvar na Carteira")
-        
-        if submitted and t_form:
-            df_loc = st.session_state["portfolio_local"]
-            df_loc = df_loc[df_loc["ticker"] != t_form]
-            novo_registro = pd.DataFrame([{"ticker": t_form, "asset_class": asset_class, "quantity": quantity, "average_price": avg_price}])
-            st.session_state["portfolio_local"] = pd.concat([df_loc, novo_registro], ignore_index=True)
-            st.success(f"Ativo {t_form} salvo com sucesso!")
-            st.rerun()
-
-    df_portfolio = st.session_state["portfolio_local"]
-    if not df_portfolio.empty:
-        precos_atuais = {}
-        for t in df_portfolio["ticker"]:
-            try:
-                h = yf.Ticker(t).history(period="1d")
-                precos_atuais[t] = float(h['Close'].iloc[-1]) if not h.empty else PRECOS_FALLBACK.get(t, 25.0)
-            except:
-                precos_atuais[t] = PRECOS_FALLBACK.get(t, 25.0)
-
-        df_portfolio["Preço Atual (R$)"] = df_portfolio["ticker"].map(precos_atuais)
-        df_portfolio["Total Investido"] = df_portfolio["quantity"] * df_portfolio["average_price"]
-        df_portfolio["Valor Atual"] = df_portfolio["quantity"] * df_portfolio["Preço Atual (R$)"]
-        df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
-        
-        df_portfolio["Lucro/Prejuízo (%)"] = (
-            df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"].replace(0, float('nan'))
-        ) * 100
-        df_portfolio["Lucro/Prejuízo (%)"] = df_portfolio["Lucro/Prejuízo (%)"].fillna(0.0)
-
-        st.dataframe(df_portfolio, width='stretch', hide_index=True)
-        if st.button("🗑️ Limpar Toda a Carteira"):
-            st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
-            st.rerun()
-
-# --- ABA 5: ALOCAÇÃO & REBALANCEAMENTO ---
-with tab5:
-    st.subheader("⚖️ Alocação da Carteira")
-    df_portfolio = st.session_state.get("portfolio_local", pd.DataFrame())
-    if not df_portfolio.empty and "Valor Atual" in df_portfolio.columns and df_portfolio["Valor Atual"].sum() > 0:
-        fig_donut = px.pie(df_portfolio, names="ticker", values="Valor Atual", hole=0.4, title="Distribuição por Ativo")
-        fig_donut.update_layout(template="plotly_dark")
-        st.plotly_chart(fig_donut, width='stretch')
+        st.divider()
+        st.subheader("📋 Base de Dados de Fundos Listados")
+        st.dataframe(df_fundos, use_container_width=True)
     else:
-        st.info("Cadastre ativos na Aba 4 para visualizar a alocação.")
+        st.warning("⚠️ Nenhum dado encontrado na tabela `fundos_b3` do Supabase. Verifique as credenciais ou faça a importação da planilha.")
 
-# --- ABA 6: SIMULADOR ---
-with tab6:
-    st.subheader("🧮 Simulador de Crescimento Patrimonial")
-    c1, c2 = st.columns(2)
-    pat = c1.number_input("Patrimônio Inicial (R$)", value=20000.0)
-    aporte = c1.number_input("Aporte Mensal (R$)", value=1000.0)
-    taxa = c2.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
-    anos = c2.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
+# ==========================================
+# ABA 2: TESOURO DIRETO
+# ==========================================
+with aba2:
+    st.header("🏛️ Tesouro Direto & Renda Fixa")
+    st.info("Módulo destinado ao acompanhamento de títulos públicos federais, taxas de rentabilidade e marcação a mercado.")
     
-    meses = list(range(1, (anos * 12) + 1))
-    taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
-    vals, atual = [], pat
-    for _ in meses:
-        atual = (atual * (1 + taxa_m)) + aporte
-        vals.append(atual)
+    # Exemplo simulado de títulos
+    dados_tesouro = pd.DataFrame({
+        "Título": ["Tesouro IPCA+ 2035", "Tesouro Prefixado 2027", "Tesouro Selic 2029"],
+        "Taxa Anual": ["IPCA + 6.15%", "11.20% a.a.", "Selic + 0.05%"],
+        "Vencimento": ["15/05/2035", "01/01/2027", "01/03/2029"],
+        "Liquidez": ["Diária (D+1)", "Diária (D+1)", "Diária (D+1)"]
+    })
+    st.table(dados_tesouro)
+
+# ==========================================
+# ABA 3: ANÁLISE TÉCNICA & IA (INTEGRADA AO SUPABASE & GEMINI)
+# ==========================================
+with aba3:
+    st.header("🤖 Análise Técnica & Relatórios Inteligentes com IA")
+    
+    if not df_fundos.empty:
+        col_s1, col_s2 = st.columns([1, 2])
         
-    fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Tempo (Anos)", "y": "Patrimônio Acumulado (R$)"}, title=f"Projeção ({anos} Anos)")
-    fig_s.update_layout(template="plotly_dark")
-    st.plotly_chart(fig_s, width='stretch')
+        with col_s1:
+            tickers_lista = df_fundos['ticker_b3'].dropna().unique().tolist()
+            ativo_escolhido = st.selectbox("Selecione o Ativo para Análise:", tickers_lista)
+            
+            # Recupera dados do fundo selecionado no Supabase
+            info_ativo = df_fundos[df_fundos['ticker_b3'] == ativo_escolhido].iloc[0]
+            
+            st.markdown(f"**Fundo:** {info_ativo.get('fundo', 'N/A')}")
+            st.markdown(f"**Segmento:** {info_ativo.get('segmento_estimado', 'N/A')}")
+            st.markdown(f"**Gestora:** {info_ativo.get('gestora_grupo', 'N/A')}")
+            
+        with col_s2:
+            with st.expander("📄 Ver Resumo Detalhado (Supabase)", expanded=True):
+                st.write(info_ativo.get('resumo_detalhado', 'Resumo não disponível.'))
+        
+        st.divider()
+        st.subheader("📈 Histórico de Cotações (Yahoo Finance)")
+        
+        periodo = st.selectbox("Período do Gráfico:", ["6mo", "1y", "2y", "5y"], index=1)
+        
+        try:
+            dados_yf = yf.download(ativo_escolhido, period=periodo, progress=False)
+            if not dados_yf.empty:
+                # Trata MultiIndex nas colunas do yfinance se houver
+                if isinstance(dados_yf.columns, pd.MultiIndex):
+                    dados_yf.columns = dados_yf.columns.get_level_values(0)
+                
+                fig = px.line(dados_yf, x=dados_yf.index, y="Close", title=f"Evolução Histórica - {ativo_escolhido}")
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.warning(f"Não foram encontrados dados históricos para {ativo_escolhido} no período selecionado.")
+        except Exception as e:
+            st.error(f"Erro ao buscar cotações no yfinance: {e}")
+            
+        st.divider()
+        st.subheader("🧠 Relatório Dinâmico com Gemini")
+        
+        if st.button("Gerar Análise de Mercado com IA"):
+            if client_gemini:
+                prompt = (
+                    f"Atue como um analista financeiro quantitativo sênior. "
+                    f"Com base nas informações do fundo {ativo_escolhido} ({info_ativo.get('fundo')}), "
+                    f"cujo segmento é {info_ativo.get('segmento_estimado')} e a gestora é {info_ativo.get('gestora_grupo')}, "
+                    f"forneça uma análise de perspectivas de mercado, riscos associados e tese de investimento resumida em tópicos."
+                )
+                
+                with st.spinner("Consultando o Gemini (com tratamento de alta demanda)..."):
+                    resposta_ia = None
+                    # Tentativa com retentativa contra erros de alta demanda (503)
+                    for tentativa in range(3):
+                        try:
+                            response = client_gemini.models.generate_content(
+                                model='gemini-2.5-flash',
+                                contents=prompt
+                            )
+                            resposta_ia = response.text
+                            break
+                        except Exception as e:
+                            if tentativa == 2:
+                                resposta_ia = f"Erro ao conectar com o Gemini após 3 tentativas: {e}"
+                            
+                    st.success("Relatório gerado com sucesso!")
+                    st.markdown(resposta_ia)
+            else:
+                st.warning("API Key do Gemini não configurada nos segredos (`st.secrets`).")
+    else:
+        st.warning("Carregue a tabela `fundos_b3` no Supabase para utilizar esta aba.")
+
+# ==========================================
+# ABA 4: GESTÃO DE CARTEIRA & PnL
+# ==========================================
+with aba4:
+    st.header("💼 Gestão de Carteira & PnL")
+    st.info("Acompanhamento de posições abertas, preço médio, lucro/prejuízo (PnL) realizado e não realizado.")
+    
+    carteira_exemplo = pd.DataFrame({
+        "Ticker": ["HGLG11.SA", "KNCR11.SA", "VISC11.SA"],
+        "Quantidade": [100, 150, 80],
+        "Preço Médio (R$)": [162.50, 104.20, 118.00],
+        "Cotação Atual (R$)": [165.00, 105.10, 119.50]
+    })
+    
+    if not carteira_exemplo.empty:
+        carteira_exemplo['Total Investido'] = carteira_exemplo['Quantidade'] * carteira_exemplo['Preço Médio (R$)']
+        carteira_exemplo['Valor Atual'] = carteira_exemplo['Quantidade'] * carteira_exemplo['Cotação Atual (R$)']
+        carteira_exemplo['PnL (R$)'] = carteira_exemplo['Valor Atual'] - carteira_exemplo['Total Investido']
+        carteira_exemplo['PnL (%)'] = (carteira_exemplo['PnL (R$)'] / carteira_exemplo['Total Investido']) * 100
+        
+        st.dataframe(carteira_exemplo.style.format({
+            "Preço Médio (R$)": "R$ {:.2f}",
+            "Cotação Atual (R$)": "R$ {:.2f}",
+            "Total Investido": "R$ {:.2f}",
+            "Valor Atual": "R$ {:.2f}",
+            "PnL (R$)": "R$ {:.2f}",
+            "PnL (%)": "{:.2f}%"
+        }), use_container_width=True)
+
+# ==========================================
+# ABA 5: ALOCAÇÃO & REBALANCEAMENTO
+# ==========================================
+with aba5:
+    st.header("⚖️ Alocação & Rebalanceamento de Ativos")
+    st.info("Defina metas percentuais por classe/segmento e visualize os aportes necessários para equilibrar a carteira.")
+    
+    alocacao_data = pd.DataFrame({
+        "Segmento": ["Papel / CRI", "Logística", "Shoppings", "Fiagro"],
+        "Alocação Atual (%)": [45.0, 30.0, 15.0, 10.0],
+        "Alocação Alvo (%)": [40.0, 30.0, 20.0, 10.0]
+    })
+    
+    fig_aloc = px.bar(alocacao_data, x="Segmento", y=["Alocação Atual (%)", "Alocação Alvo (%)"], barmode="group", title="Comparativo: Atual vs Alvo")
+    st.plotly_chart(fig_aloc, use_container_width=True)
+
+# ==========================================
+# ABA 6: SIMULADOR
+# ==========================================
+with aba6:
+    st.header("🧮 Simulador de Investimentos & Juros Compostos")
+    
+    col_sim1, col_sim2 = st.columns(2)
+    with col_sim1:
+        aporte_inicial = st.number_input("Aporte Inicial (R$):", value=10000.0, step=1000.0)
+        aporte_mensal = st.number_input("Aporte Mensal (R$):", value=1000.0, step=100.0)
+    with col_sim2:
+        taxa_anual = st.number_input("Rentabilidade Anual Estimada (%):", value=10.0, step=0.5)
+        anos = st.slider("Prazo (Anos):", 1, 30, 10)
+        
+    if st.button("Calcular Simulação"):
+        meses = anos * 12
+        taxa_mensal = (1 + taxa_anual / 100) ** (1/12) - 1
+        
+        total = aporte_inicial
+        historico_patrimonio = [total]
+        
+        for _ in range(int(meses)):
+            total = (total + aporte_mensal) * (1 + taxa_mensal)
+            historico_patrimonio.append(total)
+            
+        st.success(f"Patrimônio Final Estimado após {anos} anos: **R$ {total:,.2f}**")
+        st.line_chart(historico_patrimonio)

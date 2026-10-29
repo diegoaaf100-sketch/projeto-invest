@@ -82,7 +82,7 @@ def avaliar_fii(p_vp, dy):
         return "🔴 NÃO INDICADO", "Alerta quantitativo: preço com alto ágio ou retorno em dividendos abaixo do ideal."
 
 def gerar_analise_ia(ticker, nome, setor):
-    """Gera um relatório detalhado usando a API do Gemini"""
+    """Gera um relatório detalhado usando a API do Gemini com o modelo atualizado"""
     try:
         api_key = st.secrets.get("GEMINI_API_KEY", os.environ.get("GEMINI_API_KEY", ""))
         if not api_key:
@@ -100,7 +100,7 @@ def gerar_analise_ia(ticker, nome, setor):
         """
         
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3.8-flash",
             contents=prompt,
         )
         return response.text

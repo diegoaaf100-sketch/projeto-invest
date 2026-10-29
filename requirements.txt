@@ -1,6 +1,6 @@
-streamlit
 supabase
+streamlit
 pandas
-numpy
-plotly
 yfinance
+plotly
+google-genai

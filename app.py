@@ -272,7 +272,7 @@ with tab3:
         else:
             preco_atual = PRECOS_FALLBACK.get(ticker_search, 35.00)
         
-        st.markdown(## 🏢 {nome_empresa} (`{ticker_search}`))
+        st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
         st.markdown(f"**Setor B3:** {setor} | **Cotação Atual:** R$ {preco_atual:.2f}")
         
         # Gráfico de linhas ou aviso se vazio

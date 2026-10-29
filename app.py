@@ -42,27 +42,24 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL ---
+# --- ABA 1: VISÃO GLOBAL (CORRIGIDA COM .history()) ---
 with tab1:
     st.subheader("🌐 Indicadores Macroeconômicos e Globais")
     ativos_globais = {"Dólar (USD/BRL)": "USDBRL=X", "Bitcoin": "BTC-USD", "Ibovespa": "^BVSP", "S&P 500": "^GSPC"}
     
-    try:
-        df_global = yf.download(list(ativos_globais.values()), period="5s", progress=False)['Close']
-        if isinstance(df_global, pd.Series):
-            df_global = df_global.to_frame()
-            
-        cols = st.columns(len(ativos_globais))
-        for i, (nome, tkr) in enumerate(ativos_globais.items()):
-            if not df_global.empty and tkr in df_global.columns:
-                serie = df_global[tkr].dropna()
+    cols = st.columns(len(ativos_globais))
+    for i, (nome, tkr) in enumerate(ativos_globais.items()):
+        try:
+            hist = yf.Ticker(tkr).history(period="5d")
+            if not hist.empty and 'Close' in hist.columns:
+                serie = hist['Close'].dropna()
                 if len(serie) >= 2:
                     val = serie.iloc[-1]
                     ant = serie.iloc[0]
                     var = ((val - ant) / ant) * 100
                     cols[i].metric(nome, f"R$ {val:.2f}" if "USD" in nome else f"{val:,.2f}", delta=f"{var:+.2f}%")
-    except Exception:
-        st.info("Aguardando estabilização dos dados globais do yfinance...")
+        except Exception:
+            cols[i].metric(nome, "Indisponível", delta="0.00%")
 
 # --- ABA 2: AÇÕES & FIIS ---
 with tab2:
@@ -99,9 +96,7 @@ with tab4:
     st.subheader("🕯️ Gráfico de Candlestick")
     ticker_c = st.selectbox("Escolha o Ticker:", todos_tickers if todos_tickers else ["PETR4.SA"])
     try:
-        df_c = yf.download(ticker_c, period="6mo", interval="1d", progress=False)
-        if isinstance(df_c.columns, pd.MultiIndex):
-            df_c.columns = df_c.columns.get_level_values(0)
+        df_c = yf.Ticker(ticker_c).history(period="6mo", interval="1d")
         if not df_c.empty:
             fig = go.Figure(data=[go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'])])
             fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False)
@@ -116,8 +111,7 @@ with tab5:
     if "portfolio_local" not in st.session_state:
         st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
 
-    # Captura o input do ticker digitado fora ou dentro do form para consulta prévia
-    ticker_input = st.text_input("Digite o Ticker (ex: PETR4.SA, MXRF11.SA)").upper().strip()
+    ticker_input = st.text_input("Digite o Ticker para cadastrar (ex: PETR4.SA, MXRF11.SA)").upper().strip()
 
     suggested_price = 0.0
     suggested_class = "Ação (B3)"
@@ -128,34 +122,27 @@ with tab5:
             info = tk.info
             suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
             
-            # Identificação automática da classe
             if ticker_input.endswith("11") or "FII" in str(info.get("quoteType", "")):
                 suggested_class = "FII"
-            elif "CRYPTO" in str(info.get("quoteType", "")).upper():
-                suggested_class = "Cripto"
             else:
                 suggested_class = "Ação (B3)"
                 
             if suggested_price > 0:
                 st.success(f"🔍 **Ativo localizado!** Preço de mercado atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
-            else:
-                st.warning(f"⚠️ Ticker encontrado, mas cotação em tempo real indisponível no momento.")
         except Exception:
-            st.warning(f"⚠️ Não foi possível carregar dados automáticos para '{ticker_input}'. Você pode preencher manualmente abaixo.")
+            pass
 
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)
         with c1: 
             t_form = st.text_input("Confirme o Ticker", value=ticker_input).upper().strip()
         with c2: 
-            # Define o índice padrão com base na classe sugerida pelo yfinance
             classes_opcoes = ["Ação (B3)", "FII", "Renda Fixa", "Exterior", "Cripto"]
             idx_default = classes_opcoes.index(suggested_class) if suggested_class in classes_opcoes else 0
             asset_class = st.selectbox("Classe", classes_opcoes, index=idx_default)
         with c3: 
             quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
         with c4: 
-            # Preenche automaticamente com o preço real encontrado
             avg_price = st.number_input("Preço Médio (R$)", min_value=0.0, format="%.2f", value=float(suggested_price))
 
         submitted = st.form_submit_button("Salvar na Carteira")
@@ -178,24 +165,21 @@ with tab5:
             else:
                 st.warning("⚠️ O campo Ticker é obrigatório.")
 
-    # Processamento e exibição da carteira local
+    # Processamento da Carteira Local
     df_portfolio = st.session_state["portfolio_local"]
     
     if not df_portfolio.empty:
         tickers = df_portfolio["ticker"].tolist()
-        try:
-            dados_mercado = yf.download(tickers, period="5d", progress=False)['Close']
-            if isinstance(dados_mercado, pd.Series):
-                dados_mercado = dados_mercado.to_frame()
-        except Exception:
-            dados_mercado = pd.DataFrame()
-            
         precos_atuais = {}
         for t in tickers:
-            if not dados_mercado.empty and t in dados_mercado.columns:
-                s = dados_mercado[t].dropna()
-                precos_atuais[t] = float(s.iloc[-1]) if not s.empty else 0.0
-            else:
+            try:
+                hist_t = yf.Ticker(t).history(period="5d")
+                if not hist_t.empty and 'Close' in hist_t.columns:
+                    s = hist_t['Close'].dropna()
+                    precos_atuais[t] = float(s.iloc[-1]) if not s.empty else 0.0
+                else:
+                    precos_atuais[t] = 0.0
+            except Exception:
                 precos_atuais[t] = 0.0
                 
         df_portfolio["Preço Atual (R$)"] = df_portfolio["ticker"].map(precos_atuais)
@@ -214,7 +198,7 @@ with tab5:
             st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
             st.rerun()
     else:
-        st.info("ℹ️ Sua carteira está vazia. Digite um ticker acima para preencher automaticamente.")
+        st.info("ℹ️ Sua carteira está vazia. Digite um ticker acima para começar.")
 
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:

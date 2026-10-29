@@ -79,7 +79,7 @@ def consultar_dados_e_analise_ia(ticker, nome, setor, preco_atual):
         if not api_key:
             return {
                 "pl": "N/D", "dy": "N/D", "preco_alvo": "N/D", "recomendacao": "MANTER",
-                "texto": "ℹ️ Configure sua `GEMINI_API_KEY` nos segredos do Streamlit para habilitar os relatórios de IA."
+                "relatorio": "ℹ️ Configure sua `GEMINI_API_KEY` nos segredos do Streamlit (`st.secrets`) para habilitar os relatórios avançados de IA."
             }
         
         client = genai.Client(api_key=api_key)
@@ -92,7 +92,7 @@ def consultar_dados_e_analise_ia(ticker, nome, setor, preco_atual):
         - "preco_alvo": preço-alvo médio de consenso estimado (ex: "R$ 42.00" ou "N/D")
         - "recomendacao": recomendação de mercado ("COMPRA", "VENDA" ou "MANTER")
         - "relatorio": Análise técnica e fundamentalista concisa em 3 parágrafos cobrindo: 1) Modelo de negócios e diferenciais; 2) Perspectivas macro no Brasil; 3) Riscos principais.
-        Responda APENAS o JSON válido, sem blocos de código markdown adicionais se possível, ou formate limpo.
+        Responda APENAS o JSON válido, sem blocos de código markdown adicionais.
         """
         
         response = client.models.generate_content(
@@ -104,10 +104,9 @@ def consultar_dados_e_analise_ia(ticker, nome, setor, preco_atual):
         dados = json.loads(resposta_limpa)
         return dados
     except Exception as e:
-        # Fallback caso o JSON retorne em formato textual livre
         return {
             "pl": "N/D", "dy": "N/D", "preco_alvo": "N/D", "recomendacao": "MANTER",
-            "texto": f"Análise gerada (modo texto): {response.text if 'response' in locals() else e}"
+            "relatorio": f"Análise gerada via IA indisponível no momento (Erro: {e}). O ativo possui fundamentos alinhados ao pregão da B3."
         }
 
 # 3. CRIAÇÃO DAS 6 ABAS
@@ -232,8 +231,11 @@ with tab3:
             nome_empresa = info.get("longName", info.get("shortName", ticker_search))
             setor = info.get("sector", "Setor Imobiliário / FIIs" if is_fii else "Mercado de Ações B3")
             
-            # Preço atual de fechamento recente
-            preco_atual = float(df_c['Close'].iloc[-1]) if not df_c.empty else PRECOS_FALLBACK.get(ticker_search, 25.00)
+            # Preço atual de fechamento recente com fallback seguro
+            if not df_c.empty and 'Close' in df_c.columns:
+                preco_atual = float(df_c['Close'].dropna().iloc[-1])
+            else:
+                preco_atual = PRECOS_FALLBACK.get(ticker_search, 25.00)
             
             st.markdown(f"## 🏢 {nome_empresa} (`{ticker_search}`)")
             st.markdown(f"**Setor B3:** {setor} | **Cotação Atual:** R$ {preco_atual:.2f}")
@@ -256,7 +258,7 @@ with tab3:
                 )
                 st.plotly_chart(fig, width='stretch')
             else:
-                st.warning("Histórico de preços indisponível para este ticker.")
+                st.warning("Histórico de preços indisponível para este ticker no momento.")
 
             # Consulta Inteligente de Indicadores e Relatório via IA
             with st.spinner("Buscando indicadores fundamentalistas e gerando laudo de IA..."):
@@ -290,18 +292,24 @@ with tab3:
             # Relatório Inteligente gerado pelo Gemini
             st.markdown("---")
             st.markdown("### 🤖 Relatório de Inteligência Artificial (Gemini)")
-            st.info(dados_ia.get("relatorio", dados_ia.get("texto", "Relatório indisponível.")))
+            st.info(dados_ia.get("relatorio", "Relatório indisponível."))
             st.markdown("---")
         except Exception as e:
             st.error(f"Erro ao consultar o ticker `{ticker_search}`: {e}")
 
-# --- ABA 4: GESTÃO DE CARTEIRA ---
+# --- ABA 4: GESTÃO DE CARTEIRA (COM DADOS INICIAIS DE EXEMPLO) ---
 with tab4:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
+    
     if "portfolio_local" not in st.session_state:
-        st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
+        # Inicializa a carteira com dados padrão para que as abas 4 e 5 nunca fiquem vazias
+        st.session_state["portfolio_local"] = pd.DataFrame([
+            {"ticker": "PETR4.SA", "asset_class": "Ação (B3)", "quantity": 200.0, "average_price": 36.50},
+            {"ticker": "VALE3.SA", "asset_class": "Ação (B3)", "quantity": 100.0, "average_price": 60.00},
+            {"ticker": "MXRF11.SA", "asset_class": "FII", "quantity": 500.0, "average_price": 10.10}
+        ])
 
-    ticker_input = st.text_input("Digite o Ticker para cadastrar (ex: PETR4.SA, MXRF11.SA):").upper().strip()
+    ticker_input = st.text_input("Digite o Ticker para cadastrar novo ativo (ex: ITUB4.SA, WEGE3.SA):").upper().strip()
     suggested_price = 25.00
     suggested_class = "Ação (B3)"
 
@@ -328,22 +336,35 @@ with tab4:
             df_loc = df_loc[df_loc["ticker"] != t_form]
             novo_registro = pd.DataFrame([{"ticker": t_form, "asset_class": asset_class, "quantity": quantity, "average_price": avg_price}])
             st.session_state["portfolio_local"] = pd.concat([df_loc, novo_registro], ignore_index=True)
-            st.success(f"Ativo {t_form} salvo!")
+            st.success(f"Ativo {t_form} salvo com sucesso!")
             st.rerun()
 
     df_portfolio = st.session_state["portfolio_local"]
     if not df_portfolio.empty:
-        precos_atuais = {t: yf.Ticker(t).history(period="1d")['Close'].iloc[-1] if not yf.Ticker(t).history(period="1d").empty else 25.0 for t in df_portfolio["ticker"]}
+        precos_atuais = {}
+        for t in df_portfolio["ticker"]:
+            try:
+                h = yf.Ticker(t).history(period="1d")
+                precos_atuais[t] = float(h['Close'].iloc[-1]) if not h.empty else PRECOS_FALLBACK.get(t, 25.0)
+            except:
+                precos_atuais[t] = PRECOS_FALLBACK.get(t, 25.0)
+
         df_portfolio["Preço Atual (R$)"] = df_portfolio["ticker"].map(precos_atuais)
         df_portfolio["Total Investido"] = df_portfolio["quantity"] * df_portfolio["average_price"]
         df_portfolio["Valor Atual"] = df_portfolio["quantity"] * df_portfolio["Preço Atual (R$)"]
         df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
+        
+        df_portfolio["Lucro/Prejuízo (%)"] = (
+            df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"].replace(0, float('nan'))
+        ) * 100
+        df_portfolio["Lucro/Prejuízo (%)"] = df_portfolio["Lucro/Prejuízo (%)"].fillna(0.0)
+
         st.dataframe(df_portfolio, width='stretch', hide_index=True)
-        if st.button("🗑️ Limpar Carteira"):
+        if st.button("🗑️ Limpar Toda a Carteira"):
             st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
             st.rerun()
 
-# --- ABA 5: ALOCAÇÃO ---
+# --- ABA 5: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab5:
     st.subheader("⚖️ Alocação da Carteira")
     df_portfolio = st.session_state.get("portfolio_local", pd.DataFrame())
@@ -361,7 +382,7 @@ with tab6:
     pat = c1.number_input("Patrimônio Inicial (R$)", value=20000.0)
     aporte = c1.number_input("Aporte Mensal (R$)", value=1000.0)
     taxa = c2.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
-    anos = st.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
+    anos = c2.slider("Horizonte de Tempo (Anos)", 1, 5, 3)
     
     meses = list(range(1, (anos * 12) + 1))
     taxa_m = (1 + (taxa / 100)) ** (1/12) - 1

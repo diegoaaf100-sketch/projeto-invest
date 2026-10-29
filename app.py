@@ -80,7 +80,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "🧮 Simulador"
 ])
 
-# --- ABA 1: VISÃO GLOBAL ---
+# --- ABA 1: VISÃO GLOBAL (FOCO EXCLUSIVO INTERNACIONAL E IMAGENS ILUSTRATIVAS) ---
 with tab1:
     st.subheader("🌐 Indicadores Macroeconômicos e Globais")
     
@@ -123,26 +123,29 @@ with tab1:
             cols[i].metric(nome, "Indisponível", delta="0.00%")
 
     st.markdown("---")
-    st.subheader("📰 Notícias e Fatores de Influência Global")
+    st.subheader("🌍 Panorama Detalhado e Notícias do Mercado Internacional")
     
-    col_n1, col_n2 = st.columns(2)
+    col_i1, col_i2 = st.columns(2)
     
-    with col_n1:
+    with col_i1:
+        st.markdown("### 🇺🇸 Política Monetária do Fed & Wall Street")
+        st.image("https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80", caption="Bolsa de Valores e Mercados Globais")
         st.markdown("""
-        ### 🇺🇸 Cenário Internacional & Fed
-        * **Política Monetária dos EUA:** Decisões de taxa de juros do Federal Reserve (Fed) continuam guiando o apetite ao risco em ativos globais e emergentes.
-        * **Cadeia de Suprimentos & Commodities:** Flutuações nos preços globais de petróleo e minério de ferro impactam diretamente o Ibovespa e gigantes como Petrobras e Vale.
-        * **Índices de Inflação (CPI/PCE):** Divulgações de inflação americana ditam a volatilidade no S&P 500 e a força do Dólar (DXY).
+        * **Direção das Taxas de Juros:** As projeções do Comitê Federal de Mercado Aberto (FOMC) indicam cautela na flexibilização monetária americana. O controle da inflação (CPI e PCE) dita o ritmo dos rendimentos dos títulos do Tesouro de 10 anos (*US10Y*).
+        * **Impacto no S&P 500 & Nasdaq:** Empresas de tecnologia de grande capitalização (*Big Techs*) continuam liderando o fluxo institucional global, atentas aos balanços de inteligência artificial e margens operacionais.
+        * **Força do Índice DXY:** A valorização ou desequilíbrio do Dólar americano frente às principais moedas globais pressiona diretamente o fluxo de capitais para mercados emergentes e commodities metálicas.
         """)
         
-    with col_n2:
+    with col_i2:
+        st.markdown("### 🛢️ Geopolítica, Commodities & Cadeia Global")
+        st.image("https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=800&q=80", caption="Mercado de Commodities e Câmbio Global")
         st.markdown("""
-        ### 🇧🇷 Cenário Doméstico & B3
-        * **Fiscal e Contas Públicas:** Acompanhamento rigoroso de metas fiscais e controle de gastos pelo Governo Federal, influenciando a curva de juros futuros (DIs).
-        * **Copom e Taxa Selic:** O patamar da taxa básica de juros afeta diretamente a atratividade da Renda Fixa (Tesouro Direto) versus Renda Variável (Ações e FIIs).
-        * **Fluxo de Capital Estrangeiro:** A entrada/saída de capital externo na B3 dita os grandes movimentos de alta e baixa das blue chips brasileiras.
+        * **Petróleo & OPEP+:** Decisões de cortes ou expansão de produção de barris de petróleo bruto exercem pressão direta sobre a inflação importada e o setor energético global.
+        * **Minério de Ferro & Demanda Asiática:** Indicadores econômicos da China (imobiliário e estímulos fiscais) moldam as projeções de exportação de gigantes globais de mineração.
+        * **Criptoativos & Liquidez Global:** O Bitcoin consolida-se como ativo de reserva de valor alternativo, altamente correlacionado com a liquidez global dos bancos centrais e apetite ao risco institucional.
         """)
-    st.caption("🔍 **Fonte de Monitoramento:** Agências internacionais de notícias financeiras e boletins macroeconômicos B3/Bloomberg.")
+    st.markdown("---")
+    st.caption("🔍 **Fonte Consolidada:** Relatórios macroeconômicos internacionais, Bloomberg Terminal e Bloomberg Markets.")
 
 # --- ABA 2: AÇÕES & FIIS ---
 with tab2:

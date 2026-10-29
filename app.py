@@ -47,9 +47,7 @@ BASE_FII = {
 }
 
 def avaliar_fii(p_vp, dy):
-    """Métrica de avaliação e scoring para FIIs"""
     score = 0
-    
     if 0.85 <= p_vp <= 1.02:
         score += 2  
     elif 1.03 <= p_vp <= 1.08 or 0.75 <= p_vp < 0.85:
@@ -144,7 +142,6 @@ with tab4:
             info = tk.info
             df_c = tk.history(period="6mo", interval="1d")
             
-            # Gráfico de Linha (substituindo o Candlestick)
             if not df_c.empty and 'Close' in df_c.columns:
                 fig = go.Figure(data=[go.Scatter(
                     x=df_c.index, 
@@ -164,7 +161,6 @@ with tab4:
             else:
                 st.warning("Dados de histórico indisponíveis para este ativo.")
 
-            # Seção de Inteligência e Projeções logo abaixo do gráfico
             st.markdown("---")
             if is_fii:
                 fii_data = BASE_FII.get(ticker_c, {"dy": 12.80, "p_vp": 1.01, "div_mensal": 0.09, "frequencia": "Mensal"})
@@ -276,7 +272,6 @@ with tab5:
             else:
                 st.warning("⚠️ O campo Ticker é obrigatório.")
 
-    # Processamento da Carteira Local
     df_portfolio = st.session_state["portfolio_local"]
     
     if not df_portfolio.empty:
@@ -321,7 +316,7 @@ with tab6:
     else:
         st.info("Cadastre ativos na Aba 5 para visualizar a alocação.")
 
-# --- ABA 7: SIMULADOR ---
+# --- ABA 7: SIMULADOR (ATUALIZADO PARA ATÉ 5 ANOS E EM PORTUGUÊS) ---
 with tab7:
     st.subheader("🧮 Simulador de Crescimento Patrimonial")
     c1, c2 = st.columns(2)
@@ -330,7 +325,7 @@ with tab7:
         aporte = st.number_input("Aporte Mensal (R$)", value=1000.0)
     with c2:
         taxa = st.slider("Rentabilidade Anual (% a.a.)", 4.0, 20.0, 10.5)
-        anos = st.slider("Anos", 1, 30, 10)
+        anos = st.slider("Horizonte de Tempo (Anos)", 1, 5, 3)  # Ajustado para limite de até 5 anos
     
     meses = list(range(1, (anos * 12) + 1))
     taxa_m = (1 + (taxa / 100)) ** (1/12) - 1
@@ -339,6 +334,15 @@ with tab7:
         atual = (atual * (1 + taxa_m)) + aporte
         vals.append(atual)
         
-    fig_s = px.line(x=[m/12 for m in meses], y=vals, labels={"x": "Anos", "y": "Patrimônio (R$)"}, title="Evolução do Patrimônio")
-    fig_s.update_layout(template="plotly_dark")
+    fig_s = px.line(
+        x=[m/12 for m in meses], 
+        y=vals, 
+        labels={"x": "Tempo (Anos)", "y": "Patrimônio Acumulado (R$)"}, 
+        title=f"Projeção de Crescimento Patrimonial ({anos} Anos)"
+    )
+    fig_s.update_layout(
+        template="plotly_dark",
+        xaxis_title="Tempo (Anos)",
+        yaxis_title="Patrimônio Total (R$)"
+    )
     st.plotly_chart(fig_s, width='stretch')

@@ -43,7 +43,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📊 Ações & FIIs", 
     "🏛️ Tesouro Direto", 
     "🕯️ Análise Técnica", 
-    "💼 Gestão de Carteira & PnL", 
+    "💼 Gestão de Carteira & Análise", 
     "⚖️ Alocação & Rebalanceamento",
     "🧮 Simulador"
 ])
@@ -110,24 +110,32 @@ with tab4:
     except Exception as e:
         st.error(f"Erro ao carregar o gráfico: {e}")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & ANÁLISE PREDITIVA DE MERCADO ---
+# --- ABA 5: GESTÃO DE CARTEIRA & ANÁLISE INTELIGENTE ---
 with tab5:
-    st.subheader("💼 Gerenciamento de Carteira & Previsões de Mercado")
+    st.subheader("💼 Gerenciamento de Carteira & Análise de Ativo")
     
     if "portfolio_local" not in st.session_state:
         st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
 
-    ticker_input = st.text_input("Digite o Ticker para analisar e cadastrar (ex: PETR4.SA, VALE3.SA)").upper().strip()
+    ticker_input = st.text_input("Digite o Ticker para analisar e cadastrar (ex: PETR4.SA, MXRF11.SA)").upper().strip()
 
     suggested_price = 0.0
     suggested_class = "Ação (B3)"
+    is_fii = False
+    
+    # Variáveis de Ação
     target_mean = 0.0
     rec_key = "N/A"
     num_analysts = 0
 
+    # Variáveis de FII
+    dy_val = 0.0
+    p_vp_val = 0.0
+
     if ticker_input:
         if ticker_input.endswith("11") or "11B" in ticker_input:
             suggested_class = "FII"
+            is_fii = True
         elif "USD" in ticker_input or "BTC" in ticker_input:
             suggested_class = "Exterior/Cripto"
         else:
@@ -137,17 +145,19 @@ with tab5:
             tk = yf.Ticker(ticker_input)
             info = tk.info
             
-            # Preço atual
             hist = tk.history(period="1d")
             if not hist.empty and 'Close' in hist.columns:
                 suggested_price = float(hist['Close'].iloc[-1])
             else:
                 suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
             
-            # Dados de previsão/consenso de analistas
-            target_mean = float(info.get("targetMeanPrice", 0.0))
-            rec_key = str(info.get("recommendationKey", "neutro")).upper()
-            num_analysts = int(info.get("numberOfAnalystOpinions", 0))
+            if is_fii:
+                dy_val = float(info.get("dividendYield", 0.0)) * 100
+                p_vp_val = float(info.get("priceToBook", 0.0))
+            else:
+                target_mean = float(info.get("targetMeanPrice", 0.0))
+                rec_key = str(info.get("recommendationKey", "neutro")).upper()
+                num_analysts = int(info.get("numberOfAnalystOpinions", 0))
         except Exception:
             pass
 
@@ -156,18 +166,24 @@ with tab5:
 
         st.success(f"🔍 **Ativo localizado!** Preço atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
 
-        # --- SEÇÃO DE PREVISÕES E ANÁLISE DE MERCADO ABAIXO DO INPUT ---
+        # --- PAINEL CONDICIONAL DE ANÁLISE (AÇÃO VS FII) ---
         st.markdown("---")
-        st.markdown(f"### 📈 Previsões e Consenso de Analistas para **{ticker_input}**")
-        
-        if target_mean > 0 or num_analysts > 0:
-            cp1, cp2, cp3 = st.columns(3)
-            cp1.metric("Preço-Alvo Médio (Consenso)", f"R$ {target_mean:.2f}")
-            cp2.metric("Recomendação de Mercado", f"{rec_key}")
-            cp3.metric("Analistas Avaliando", f"{num_analysts} instituições")
-            st.caption("🔍 **Fonte Confiável:** Consenso de mercado e projeções compiladas de analistas financeiros via **Yahoo Finance API**.")
+        if is_fii:
+            st.markdown(f"### 🏢 Indicadores Imobiliários para o FII **{ticker_input}**")
+            cp1, cp2 = st.columns(2)
+            cp1.metric("Dividend Yield (DY Anual)", f"{dy_val:.2f}%" if dy_val > 0 else "N/D")
+            cp2.metric("P/VP (Preço / Valor Patrimonial)", f"{p_vp_val:.2f}" if p_vp_val > 0 else "N/D")
+            st.caption("🔍 **Fonte Confiável:** Indicadores fundamentalistas atualizados via **Yahoo Finance API**.")
         else:
-            st.info(f"ℹ️ O ativo **{ticker_input}** não possui cobertura ativa de preço-alvo por analistas no momento, mas você pode cadastrá-lo normalmente abaixo.")
+            st.markdown(f"### 📈 Projeções e Consenso de Analistas para **{ticker_input}**")
+            if target_mean > 0 or num_analysts > 0:
+                cp1, cp2, cp3 = st.columns(3)
+                cp1.metric("Preço-Alvo Médio (Consenso)", f"R$ {target_mean:.2f}")
+                cp2.metric("Recomendação de Mercado", f"{rec_key}")
+                cp3.metric("Analistas Avaliando", f"{num_analysts} instituições")
+                st.caption("🔍 **Fonte Confiável:** Consenso de mercado e projeções compiladas de analistas financeiros via **Yahoo Finance API**.")
+            else:
+                st.info(f"ℹ️ O ativo **{ticker_input}** é uma ação que não possui cobertura ativa de preço-alvo por analistas no momento, mas você pode cadastrá-la normalmente abaixo.")
         st.markdown("---")
 
     with st.form("form_ativo", clear_on_submit=False):

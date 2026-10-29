@@ -31,7 +31,7 @@ tickers_acoes = [t.strip().upper() for t in acao_input.split(",")]
 tickers_fiis = [t.strip().upper() for t in fii_input.split(",")]
 todos_tickers = tickers_acoes + tickers_fiis
 
-# Dicionário de fallback com preços de referência caso o yfinance bloqueie
+# Dicionário de fallback com preços de referência
 PRECOS_FALLBACK = {
     "PETR4.SA": 38.50, "VALE3.SA": 62.00, "ITUB4.SA": 33.50, "WEGE3.SA": 40.20,
     "MXRF11.SA": 10.20, "HGLG11.SA": 101.50, "BBDC4.SA": 13.80, "ABEV3.SA": 12.50
@@ -110,20 +110,22 @@ with tab4:
     except Exception as e:
         st.error(f"Erro ao carregar o gráfico: {e}")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & PnL (COM PREÇO E CLASSE AUTOMÁTICOS) ---
+# --- ABA 5: GESTÃO DE CARTEIRA & ANÁLISE PREDITIVA DE MERCADO ---
 with tab5:
-    st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
+    st.subheader("💼 Gerenciamento de Carteira & Previsões de Mercado")
     
     if "portfolio_local" not in st.session_state:
         st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
 
-    ticker_input = st.text_input("Digite o Ticker para cadastrar (ex: PETR4.SA, MXRF11.SA)").upper().strip()
+    ticker_input = st.text_input("Digite o Ticker para analisar e cadastrar (ex: PETR4.SA, VALE3.SA)").upper().strip()
 
     suggested_price = 0.0
     suggested_class = "Ação (B3)"
+    target_mean = 0.0
+    rec_key = "N/A"
+    num_analysts = 0
 
     if ticker_input:
-        # Define classe sugerida automaticamente pelo sufixo
         if ticker_input.endswith("11") or "11B" in ticker_input:
             suggested_class = "FII"
         elif "USD" in ticker_input or "BTC" in ticker_input:
@@ -131,15 +133,21 @@ with tab5:
         else:
             suggested_class = "Ação (B3)"
 
-        # Tenta buscar do yfinance, caso falhe usa o fallback
         try:
             tk = yf.Ticker(ticker_input)
+            info = tk.info
+            
+            # Preço atual
             hist = tk.history(period="1d")
             if not hist.empty and 'Close' in hist.columns:
                 suggested_price = float(hist['Close'].iloc[-1])
             else:
-                info = tk.info
                 suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
+            
+            # Dados de previsão/consenso de analistas
+            target_mean = float(info.get("targetMeanPrice", 0.0))
+            rec_key = str(info.get("recommendationKey", "neutro")).upper()
+            num_analysts = int(info.get("numberOfAnalystOpinions", 0))
         except Exception:
             pass
 
@@ -147,6 +155,20 @@ with tab5:
             suggested_price = PRECOS_FALLBACK.get(ticker_input, 25.00)
 
         st.success(f"🔍 **Ativo localizado!** Preço atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
+
+        # --- SEÇÃO DE PREVISÕES E ANÁLISE DE MERCADO ABAIXO DO INPUT ---
+        st.markdown("---")
+        st.markdown(f"### 📈 Previsões e Consenso de Analistas para **{ticker_input}**")
+        
+        if target_mean > 0 or num_analysts > 0:
+            cp1, cp2, cp3 = st.columns(3)
+            cp1.metric("Preço-Alvo Médio (Consenso)", f"R$ {target_mean:.2f}")
+            cp2.metric("Recomendação de Mercado", f"{rec_key}")
+            cp3.metric("Analistas Avaliando", f"{num_analysts} instituições")
+            st.caption("🔍 **Fonte Confiável:** Consenso de mercado e projeções compiladas de analistas financeiros via **Yahoo Finance API**.")
+        else:
+            st.info(f"ℹ️ O ativo **{ticker_input}** não possui cobertura ativa de preço-alvo por analistas no momento, mas você pode cadastrá-lo normalmente abaixo.")
+        st.markdown("---")
 
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)

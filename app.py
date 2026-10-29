@@ -109,49 +109,76 @@ with tab4:
     except Exception as e:
         st.error(f"Erro ao carregar o gráfico: {e}")
 
-# --- ABA 5: GESTÃO DE CARTEIRA & PnL (LOCAL STORAGE) ---
+# --- ABA 5: GESTÃO DE CARTEIRA & PnL (COM AUTO-PREENCHIMENTO) ---
 with tab5:
     st.subheader("💼 Gerenciamento de Carteira & PnL em Tempo Real")
     
     if "portfolio_local" not in st.session_state:
         st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
 
+    # Captura o input do ticker digitado fora ou dentro do form para consulta prévia
+    ticker_input = st.text_input("Digite o Ticker (ex: PETR4.SA, MXRF11.SA)").upper().strip()
+
+    suggested_price = 0.0
+    suggested_class = "Ação (B3)"
+
+    if ticker_input:
+        try:
+            tk = yf.Ticker(ticker_input)
+            info = tk.info
+            suggested_price = float(info.get("currentPrice", info.get("regularMarketPrice", 0.0)))
+            
+            # Identificação automática da classe
+            if ticker_input.endswith("11") or "FII" in str(info.get("quoteType", "")):
+                suggested_class = "FII"
+            elif "CRYPTO" in str(info.get("quoteType", "")).upper():
+                suggested_class = "Cripto"
+            else:
+                suggested_class = "Ação (B3)"
+                
+            if suggested_price > 0:
+                st.success(f"🔍 **Ativo localizado!** Preço de mercado atual: **R$ {suggested_price:.2f}** | Classe sugerida: **{suggested_class}**")
+            else:
+                st.warning(f"⚠️ Ticker encontrado, mas cotação em tempo real indisponível no momento.")
+        except Exception:
+            st.warning(f"⚠️ Não foi possível carregar dados automáticos para '{ticker_input}'. Você pode preencher manualmente abaixo.")
+
     with st.form("form_ativo", clear_on_submit=False):
         c1, c2, c3, c4 = st.columns(4)
-        with c1: ticker_input = st.text_input("Ticker (ex: PETR4.SA)").upper().strip()
-        with c2: asset_class = st.selectbox("Classe", ["Ação (B3)", "FII", "Renda Fixa", "Exterior", "Cripto"])
-        with c3: quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
-        with c4: avg_price = st.number_input("Preço Médio (R$)", min_value=0.0, format="%.2f", value=0.00)
-        
-        if ticker_input:
-            try:
-                p_atual = yf.Ticker(ticker_input).info.get("currentPrice", 0.0)
-                if p_atual > 0:
-                    st.info(f"💡 Preço de mercado atual para **{ticker_input}**: R$ {p_atual:.2f}")
-            except Exception:
-                pass
+        with c1: 
+            t_form = st.text_input("Confirme o Ticker", value=ticker_input).upper().strip()
+        with c2: 
+            # Define o índice padrão com base na classe sugerida pelo yfinance
+            classes_opcoes = ["Ação (B3)", "FII", "Renda Fixa", "Exterior", "Cripto"]
+            idx_default = classes_opcoes.index(suggested_class) if suggested_class in classes_opcoes else 0
+            asset_class = st.selectbox("Classe", classes_opcoes, index=idx_default)
+        with c3: 
+            quantity = st.number_input("Quantidade", min_value=0.0001, format="%.4f", value=100.0)
+        with c4: 
+            # Preenche automaticamente com o preço real encontrado
+            avg_price = st.number_input("Preço Médio (R$)", min_value=0.0, format="%.2f", value=float(suggested_price))
 
         submitted = st.form_submit_button("Salvar na Carteira")
         
         if submitted:
-            if ticker_input:
+            if t_form:
                 df_loc = st.session_state["portfolio_local"]
-                df_loc = df_loc[df_loc["ticker"] != ticker_input]
+                df_loc = df_loc[df_loc["ticker"] != t_form]
                 
                 novo_registro = pd.DataFrame([{
-                    "ticker": ticker_input,
+                    "ticker": t_form,
                     "asset_class": asset_class,
                     "quantity": float(quantity),
                     "average_price": float(avg_price)
                 }])
                 
                 st.session_state["portfolio_local"] = pd.concat([df_loc, novo_registro], ignore_index=True)
-                st.success(f"✅ Ativo {ticker_input} salvo com sucesso!")
+                st.success(f"✅ Ativo {t_form} salvo com sucesso!")
                 st.rerun()
             else:
                 st.warning("⚠️ O campo Ticker é obrigatório.")
 
-    # Processamento da Carteira Local
+    # Processamento e exibição da carteira local
     df_portfolio = st.session_state["portfolio_local"]
     
     if not df_portfolio.empty:
@@ -175,7 +202,11 @@ with tab5:
         df_portfolio["Total Investido"] = df_portfolio["quantity"] * df_portfolio["average_price"]
         df_portfolio["Valor Atual"] = df_portfolio["quantity"] * df_portfolio["Preço Atual (R$)"]
         df_portfolio["Lucro/Prejuízo (R$)"] = df_portfolio["Valor Atual"] - df_portfolio["Total Investido"]
-        df_portfolio["Lucro/Prejuízo (%)"] = (df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"]) * 100
+        
+        df_portfolio["Lucro/Prejuízo (%)"] = (
+            df_portfolio["Lucro/Prejuízo (R$)"] / df_portfolio["Total Investido"].replace(0, float('nan'))
+        ) * 100
+        df_portfolio["Lucro/Prejuízo (%)"] = df_portfolio["Lucro/Prejuízo (%)"].fillna(0.0)
         
         st.dataframe(df_portfolio, width='stretch', hide_index=True)
         
@@ -183,7 +214,7 @@ with tab5:
             st.session_state["portfolio_local"] = pd.DataFrame(columns=["ticker", "asset_class", "quantity", "average_price"])
             st.rerun()
     else:
-        st.info("ℹ️ Sua carteira está vazia. Adicione ativos acima para começar.")
+        st.info("ℹ️ Sua carteira está vazia. Digite um ticker acima para preencher automaticamente.")
 
 # --- ABA 6: ALOCAÇÃO & REBALANCEAMENTO ---
 with tab6:

@@ -348,3 +348,4 @@ def buscar_cotacoes_atuais():
         f"R$ {btc['preco']:,.2f}"
         .replace(",", "X").replace(".", ",").replace("X", ".")
         if btc and btc["preco"] > 
+)

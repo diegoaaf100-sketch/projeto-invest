@@ -6,6 +6,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -204,24 +205,141 @@ def obter_dados_ticker_seguro(ticker_raw):
     except Exception:
         return {"symbol": t_symbol, "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0}
 
-# --- BARRA DE COTAÇÕES NATIVA SUPER ESTABILIZADA ---
+# --- MAPEAMENTO DE ÍCONES CORPORATIVOS ---
+def obter_icone_ativo(simbolo):
+    icones = {
+        "AAPL": "https://img.icons8.com/color/48/mac-os.png",
+        "MSFT": "https://img.icons8.com/color/48/microsoft.png",
+        "GOOGL": "https://img.icons8.com/color/48/google-logo.png",
+        "AMZN": "https://img.icons8.com/color/48/amazon.png",
+        "TSLA": "https://img.icons8.com/color/48/tesla-logo.png",
+        "NVDA": "https://img.icons8.com/color/48/nvidia.png",
+        "META": "https://img.icons8.com/color/48/meta.png",
+        "SPY": "https://img.icons8.com/color/48/stocks.png",
+        "QQQ": "https://img.icons8.com/color/48/line-chart.png",
+        "BTC": "https://img.icons8.com/color/48/bitcoin--v1.png",
+        "ETH": "https://img.icons8.com/color/48/ethereum.png",
+        "PETR4": "https://img.icons8.com/color/48/petrol.png",
+        "VALE3": "https://img.icons8.com/color/48/ore.png",
+        "ITUB4": "https://img.icons8.com/color/48/bank-building.png",
+        "BBDC4": "https://img.icons8.com/color/48/money-bag.png",
+        "ABEV3": "https://img.icons8.com/color/48/beer-bottle.png",
+        "WEGE3": "https://img.icons8.com/color/48/engine.png",
+        "RENT3": "https://img.icons8.com/color/48/car--v1.png",
+        "BBAS3": "https://img.icons8.com/color/48/safe.png",
+        "HGLG11": "https://img.icons8.com/color/48/commercial-development.png",
+        "MXRF11": "https://img.icons8.com/color/48/real-estate.png",
+        "VIVA3": "https://img.icons8.com/color/48/shopping-bag.png",
+        "CEAB3": "https://img.icons8.com/color/48/t-shirt.png"
+    }
+    limpo = simbolo.replace(".SA", "").split("-")[0]
+    return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
+
+# --- TICKER TAPE ANIMADO COM ROLAGEM ISOLADA E COMPACTA ---
 def renderizar_ticker_tape(lista_tickers):
-    st.markdown("---")
-    cols = st.columns(len(lista_tickers))
-    for idx, t in enumerate(lista_tickers):
+    itens_html = ""
+    for t in lista_tickers:
         dados = obter_dados_ticker_seguro(t)
         if dados and dados["preco"] > 0:
             simbolo = dados["symbol"].replace(".SA", "")
+            icone_url = obter_icone_ativo(simbolo)
+            
             if "BRL" in t or ".SA" in t:
                 preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             else:
                 preco_str = f"${dados['preco']:,.2f}"
+                
             var = dados["variacao"]
+            cor_var = "#4ade80" if var >= 0 else "#f87171"
             sinal = "+" if var >= 0 else ""
-            var_str = f"{sinal}{var:.2f}%"
-            with cols[idx]:
-                st.metric(label=simbolo, value=preco_str, delta=var_str)
-    st.markdown("---")
+            var_str = f"({sinal}{var:.2f}%)"
+            
+            itens_html += f"""
+                <div class="ticker-item">
+                    <img src="{icone_url}" class="ticker-logo">
+                    <span class="ticker-symbol">{simbolo}</span>
+                    <span class="ticker-price">{preco_str}</span>
+                    <span class="ticker-var" style="color: {cor_var};">{var_str}</span>
+                </div>
+            """
+
+    # HTML/CSS renderizado dentro do iframe do Streamlit para animação garantida
+    full_component = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                margin: 0;
+                padding: 0;
+                background-color: transparent;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                overflow: hidden;
+            }}
+            .ticker-container {{
+                width: 100%;
+                overflow: hidden;
+                background: #0b132b;
+                border-radius: 8px;
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 6px 0;
+                white-space: nowrap;
+            }}
+            .ticker-wrapper {{
+                display: inline-block;
+                white-space: nowrap;
+                animation: marquee 35s linear infinite;
+            }}
+            .ticker-wrapper:hover {{
+                animation-play-state: paused;
+            }}
+            .ticker-item {{
+                display: inline-flex;
+                align-items: center;
+                margin-right: 25px;
+                font-size: 0.85rem;
+                background: rgba(30, 41, 59, 0.7);
+                padding: 4px 10px;
+                border-radius: 16px;
+                border: 1px solid rgba(255, 255, 255, 0.08);
+            }}
+            .ticker-logo {{
+                width: 16px;
+                height: 16px;
+                margin-right: 6px;
+                border-radius: 50%;
+                background: #fff;
+                padding: 1px;
+            }}
+            .ticker-symbol {{
+                font-weight: bold;
+                color: #38bdf8;
+                margin-right: 6px;
+            }}
+            .ticker-price {{
+                color: #f1f5f9;
+                margin-right: 6px;
+            }}
+            .ticker-var {{
+                font-weight: 600;
+            }}
+            @keyframes marquee {{
+                0% {{ transform: translateX(0%); }}
+                100% {{ transform: translateX(-50%); }}
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="ticker-container">
+            <div class="ticker-wrapper">
+                {itens_html}
+                {itens_html}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    components.html(full_component, height=52)
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -302,7 +420,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v6.3 (Stable UI)")
+    st.caption("Terminal B3 v6.4 (Compact Ticker)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -322,7 +440,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 # ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
-    tickers_globais = ["AAPL", "MSFT", "GOOGL", "AMZN", "BTC-USD"]
+    tickers_globais = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
     renderizar_ticker_tape(tickers_globais)
 
     st.markdown("""
@@ -387,7 +505,7 @@ with aba1:
 # ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
 with aba2:
-    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "HGLG11"]
+    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
     renderizar_ticker_tape(tickers_br)
 
     st.markdown("""

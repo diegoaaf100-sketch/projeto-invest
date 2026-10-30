@@ -19,8 +19,9 @@ st.markdown("""
     <style>
         .main { background-color: #0e1117; }
         .stMetric { background-color: #161b22; padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
-        .news-card { background-color: #161b22; padding: 15px; border-radius: 8px; border-left: 4px solid #58a6ff; margin-bottom: 10px; }
-        .news-title { font-weight: bold; color: #58a6ff; font-size: 1.05rem; }
+        .news-container { background-color: #161b22; border-radius: 10px; border: 1px solid #30363d; overflow: hidden; margin-bottom: 15px; }
+        .news-content { padding: 15px; }
+        .news-title { font-weight: bold; color: #58a6ff; font-size: 1.05rem; margin-bottom: 5px; }
         .news-date { font-size: 0.8rem; color: #8b949e; }
     </style>
 """, unsafe_allow_html=True)
@@ -74,11 +75,11 @@ with st.sidebar:
     st.markdown(f"**Gemini IA:** {status_gem}")
     
     st.markdown("---")
-    st.markdown("Desenvolvido para análise quantitativa de ativos e fundos listados na B3.")
+    st.markdown("Plataforma institucional de análise quantitativa e gestão de portfólio.")
 
 # --- TÍTULO PRINCIPAL ---
 st.title("📊 Terminal Quantitativo & Inteligência de Mercado")
-st.markdown("Plataforma institucional de gestão de carteiras, análises técnicas, relatórios generativos e base relacional.")
+st.markdown("Visão executiva integrada de ativos globais, base relacional e análises generativas.")
 
 # --- ESTRUTURA DE 6 ABAS NO STREAMLIT ---
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
@@ -91,66 +92,96 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL (COM MÉTRICAS E NOTÍCIAS)
+# ABA 1: VISÃO GLOBAL (MERCADO INTERNACIONAL & NOTÍCIAS ILUSTRADAS)
 # ==========================================
 with aba1:
-    st.header("🌐 Visão Global do Mercado & Fundos B3")
-    st.markdown("Painel executivo com os principais indicadores macroeconômicos e estatísticas da base de dados.")
+    st.header("🌐 Visão Global & Indicadores Internacionais")
+    st.markdown("Panorama macroeconômico global, índices de referência internacionais e fatos relevantes.")
     
-    if not df_fundos.empty:
-        # 1. Métricas de Destaque Profissionais
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.metric(label="Total de Fundos Mapeados", value=f"{len(df_fundos):,}".replace(",", "."))
-        with m2:
-            seg_count = df_fundos['segmento_estimado'].nunique() if 'segmento_estimado' in df_fundos.columns else 0
-            st.metric(label="Segmentos de Atuação", value=seg_count)
-        with m3:
-            gest_count = df_fundos['gestora_grupo'].nunique() if 'gestora_grupo' in df_fundos.columns else 0
-            st.metric(label="Gestoras Cadastradas", value=gest_count)
-        with m4:
-            st.metric(label="Taxa Selic Referência", value="11.25% a.a.", delta="+0.25%")
+    # 1. Indicadores do Mercado Internacional (Destaques Globais)
+    st.subheader("🌍 Principais Indicadores Globais")
+    ig1, ig2, ig3, ig4, ig5 = st.columns(5)
+    with ig1:
+        st.metric(label="S&P 500 (EUA)", value="5.842 pts", delta="+0.45%")
+    with ig2:
+        st.metric(label="Nasdaq 100", value="18.320 pts", delta="+0.78%")
+    with ig3:
+        st.metric(label="Petróleo Brent", value="74.50 USD", delta="-1.12%")
+    with ig4:
+        st.metric(label="Ouro (Gold)", value="2.745 USD", delta="+0.32%")
+    with ig5:
+        st.metric(label="Índice VIX (Medo)", value="18.40 pts", delta="-2.10%")
         
-        st.divider()
+    st.divider()
+    
+    # 2. Métricas Nacionais de Destaque
+    st.subheader("🇧🇷 Indicadores & Base B3")
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric(label="Total de Fundos Mapeados", value=f"{len(df_fundos):,}".replace(",", "."))
+    with m2:
+        seg_count = df_fundos['segmento_estimado'].nunique() if 'segmento_estimado' in df_fundos.columns else 0
+        st.metric(label="Segmentos de Atuação", value=seg_count)
+    with m3:
+        gest_count = df_fundos['gestora_grupo'].nunique() if 'gestora_grupo' in df_fundos.columns else 0
+        st.metric(label="Gestoras Cadastradas", value=gest_count)
+    with m4:
+        st.metric(label="Taxa Selic Referência", value="11.25% a.a.", delta="+0.25%")
+    
+    st.divider()
+    
+    # 3. Layout Dividido: Tabela Interativa & Notícias Ilustradas
+    col_tabela, col_noticias = st.columns([1.5, 1])
+    
+    with col_tabela:
+        st.subheader("📋 Base de Dados Consolidada (Supabase)")
         
-        # 2. Layout dividido: Tabela Interativa & Notícias Recentes do Mercado
-        col_tabela, col_noticias = st.columns([2, 1])
-        
-        with col_tabela:
-            st.subheader("📋 Base de Dados Consolidada (Supabase)")
-            
-            # Filtros rápidos
-            if 'segmento_estimado' in df_fundos.columns:
-                segmentos_filtro = st.multiselect("Filtrar por Segmento:", options=df_fundos['segmento_estimado'].dropna().unique(), key="filtro_seg_global")
-                if segmentos_filtro:
-                    df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)]
-                else:
-                    df_filtrado = df_fundos
+        if 'segmento_estimado' in df_fundos.columns:
+            segmentos_filtro = st.multiselect("Filtrar por Segmento:", options=df_fundos['segmento_estimado'].dropna().unique(), key="filtro_seg_global")
+            if segmentos_filtro:
+                df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)]
             else:
                 df_filtrado = df_fundos
-                
-            st.dataframe(df_filtrado, use_container_width=True, height=400)
+        else:
+            df_filtrado = df_fundos
             
-        with col_noticias:
-            st.subheader("📰 Fatos Relevantes & Notícias")
-            st.markdown("Últimas atualizações do mercado de capitais e FIIs.")
-            
-            # Cards de notícias simuladas / feed profissional
-            noticias = [
-                {"titulo": "Boletim Focus: Projeção de inflação recua para o final do ano", "data": "Hoje, 09:30", "fonte": "Banco Central / B3"},
-                {"titulo": "Fundos imobiliários de papel mantêm patamar de dividend yield atrativo", "data": "Ontem, 16:45", "fonte": "Análise de Mercado"},
-                {"titulo": "Novo lote de relatórios gerenciais disponibilizado na CVM", "data": "28/10/2026", "fonte": "CVM / B3"}
-            ]
-            
-            for n in noticias:
-                st.markdown(f"""
-                    <div class="news-card">
+        st.dataframe(df_filtrado, use_container_width=True, height=450)
+        
+    with col_noticias:
+        st.subheader("📰 Notícias & Fatos Relevantes")
+        st.markdown("Últimas atualizações do mercado financeiro global e local.")
+        
+        noticias_visuais = [
+            {
+                "titulo": "BancosCentrais mantêm cautela diante da inflação global",
+                "data": "Hoje, 10:15",
+                "fonte": "Bloomberg / Reuters",
+                "imagem": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"
+            },
+            {
+                "titulo": "Fundos imobiliários registram forte captação no trimestre",
+                "data": "Ontem, 17:00",
+                "fonte": "B3 Mercado",
+                "imagem": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80"
+            },
+            {
+                "titulo": "Commodities agrícolas pressionam balança comercial positiva",
+                "data": "28/10/2026",
+                "fonte": "AgroAnalysis",
+                "imagem": "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80"
+            }
+        ]
+        
+        for n in noticias_visuais:
+            st.markdown(f"""
+                <div class="news-container">
+                    <img src="{n['imagem']}" style="width: 100%; height: 130px; object-fit: cover;">
+                    <div class="news-content">
                         <div class="news-title">{n['titulo']}</div>
                         <div class="news-date">📅 {n['data']} &nbsp;|&nbsp; 🏢 {n['fonte']}</div>
                     </div>
-                """, unsafe_allow_html=True)
-    else:
-        st.warning("⚠️ Nenhum dado encontrado na tabela `fundos_b3` do Supabase. Verifique suas credenciais em `secrets.toml`.")
+                </div>
+            """, unsafe_allow_html=True)
 
 # ==========================================
 # ABA 2: TESOURO DIRETO

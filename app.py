@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA (WEBSITE DESIGN / DEGRADÊ AZUL) ---
+# --- ESTILIZAÇÃO CSS CUSTOMIZADA ---
 st.markdown("""
     <style>
         .stApp {
@@ -134,7 +134,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CONEXÃO COM O SUPABASE (BLINDADA) ---
+# --- CONEXÃO COM O SUPABASE ---
 @st.cache_resource
 def init_supabase():
     url = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
@@ -148,18 +148,53 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- CARREGAR DADOS DA TABELA fundos_b3 ---
-@st.cache_data(ttl=600)
-def carregar_fundos_b3():
-    if not supabase:
-        return pd.DataFrame()
-    try:
-        response = supabase.table("fundos_b3").select("*").execute()
-        return pd.DataFrame(response.data)
-    except Exception:
-        return pd.DataFrame()
+# --- FUNÇÃO UNIVERSAL SEGURO DE BUSCA DE ATIVOS ---
+@st.cache_data(ttl=300)
+def obter_dados_ticker_seguro(ticker_raw):
+    t_clean = ticker_raw.strip().upper()
+    if not t_clean.endswith(".SA") and not t_clean.startswith("^") and "=" not in t_clean:
+        t_symbol = f"{t_clean}.SA"
+    else:
+        t_symbol = t_clean
 
-df_fundos = carregar_fundos_b3()
+    try:
+        t_obj = yf.Ticker(t_symbol)
+        
+        # Tenta obter info
+        info = {}
+        try:
+            info = t_obj.info or {}
+        except Exception:
+            info = {}
+
+        # Fallback de preço via Histórico
+        hist = t_obj.history(period="5d")
+        preco_atual = 0.0
+        if not hist.empty:
+            preco_atual = float(hist['Close'].iloc[-1])
+        else:
+            preco_atual = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
+
+        dy = info.get('dividendYield', 0.0)
+        dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
+        pe = info.get('trailingPE', 'N/D')
+        pb = info.get('priceToBook', 'N/D')
+        min52 = info.get('fiftyTwoWeekLow', 'N/D')
+        max52 = info.get('fiftyTwoWeekHigh', 'N/D')
+
+        return {
+            "symbol": t_symbol,
+            "preco": preco_atual,
+            "dy_str": dy_str,
+            "pe": pe,
+            "pb": pb,
+            "min52": min52,
+            "max52": max52,
+            "history": hist,
+            "object": t_obj
+        }
+    except Exception as e:
+        return None
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -174,18 +209,16 @@ def carregar_carteira_supabase():
 # --- COTAÇÕES GLOBAIS ---
 @st.cache_data(ttl=300)
 def buscar_cotacoes_atuais():
-    try:
-        dolar = yf.Ticker("USDBRL=X").history(period="1d")
-        btc = yf.Ticker("BTC-BRL").history(period="1d")
-        val_dolar = f"R$ {dolar['Close'].iloc[-1]:.2f}" if not dolar.empty else "R$ 5,80"
-        val_btc = f"R$ {btc['Close'].iloc[-1]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if not btc.empty else "R$ 350.000"
-        return val_dolar, val_btc
-    except Exception:
-        return "R$ 5,80", "R$ 350.000"
+    dolar_data = obter_dados_ticker_seguro("USDBRL=X")
+    btc_data = obter_dados_ticker_seguro("BTC-BRL")
+    
+    val_dolar = f"R$ {dolar_data['preco']:.2f}" if dolar_data and dolar_data['preco'] > 0 else "R$ 5,80"
+    val_btc = f"R$ {btc_data['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if btc_data and btc_data['preco'] > 0 else "R$ 350.000"
+    return val_dolar, val_btc
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
 
-# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS COM IMAGENS ---
+# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS ---
 @st.cache_data(ttl=1800)
 def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
     for url in urls:
@@ -198,7 +231,6 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
                     link = entry.get("link", "#")
                     data = entry.get("published", "Hoje")
                     
-                    # Tenta extrair a imagem do RSS
                     img_url = img_fallback_default
                     if "media_content" in entry and len(entry.media_content) > 0:
                         img_url = entry.media_content[0].get("url", img_fallback_default)
@@ -243,7 +275,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v5.0")
+    st.caption("Terminal B3 v5.2 (Universal Ticker)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -260,7 +292,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL (NOTÍCIAS ILUSTRADAS)
+# ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
     st.markdown("""
@@ -320,11 +352,9 @@ with aba1:
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
-    else:
-        st.info("Buscando notícias do mercado internacional...")
 
 # ==========================================
-# ABA 2: MERCADO BRASILEIRO (NOTÍCIAS ILUSTRADAS)
+# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
 with aba2:
     st.markdown("""
@@ -372,8 +402,6 @@ with aba2:
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
-    else:
-        st.info("Buscando notícias do mercado nacional...")
 
 # ==========================================
 # ABA 3: ANÁLISE PROFISSIONAL & IA
@@ -388,42 +416,32 @@ with aba3:
         </div>
     """, unsafe_allow_html=True)
     
-    ticker_input = st.text_input("Digite o ticker do ativo B3 (ex: PETR4, VALE3, WEGE3, HGLG11):", value="PETR4").strip().upper()
+    ticker_input = st.text_input("Digite o ticker do ativo B3 (ex: PETR4, VALE3, WEGE3, HGLG11, MXRF11):", value="PETR4").strip().upper()
     
     if ticker_input:
-        ticker_formatado = f"{ticker_input}.SA" if not ticker_input.endswith(".SA") else ticker_input
+        dados_ativo = obter_dados_ticker_seguro(ticker_input)
         
-        try:
-            asset_obj = yf.Ticker(ticker_formatado)
-            info = asset_obj.info
-            
-            cp = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
-            dy = info.get('dividendYield', 0.0)
-            dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
-            pe = info.get('trailingPE', 'N/D')
-            pb = info.get('priceToBook', 'N/D')
-            min52 = info.get('fiftyTwoWeekLow', 'N/D')
-            max52 = info.get('fiftyTwoWeekHigh', 'N/D')
-            
-            st.subheader(f"🔍 Indicadores Fundamentalistas & de Mercado - {ticker_formatado}")
+        if dados_ativo and dados_ativo["preco"] > 0:
+            st.subheader(f"🔍 Indicadores Fundamentalistas & de Mercado - {dados_ativo['symbol']}")
             
             m1, m2, m3, m4, m5, m6 = st.columns(6)
             with m1:
-                st.metric("Preço Atual", f"R$ {cp:.2f}" if isinstance(cp, (int, float)) else "N/D")
+                st.metric("Preço Atual", f"R$ {dados_ativo['preco']:.2f}")
             with m2:
-                st.metric("Dividend Yield", dy_str)
+                st.metric("Dividend Yield", dados_ativo['dy_str'])
             with m3:
-                st.metric("P/L", f"{pe:.2f}" if isinstance(pe, (int, float)) else pe)
+                st.metric("P/L", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
             with m4:
-                st.metric("P/VP", f"{pb:.2f}" if isinstance(pb, (int, float)) else pb)
+                st.metric("P/VP", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
             with m5:
-                st.metric("Mínima 52S", f"R$ {min52:.2f}" if isinstance(min52, (int, float)) else min52)
+                st.metric("Mínima 52S", f"R$ {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
             with m6:
-                st.metric("Máxima 52S", f"R$ {max52:.2f}" if isinstance(max52, (int, float)) else max52)
+                st.metric("Máxima 52S", f"R$ {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
                 
             st.divider()
             
-            df_hist = asset_obj.history(period="2y")
+            # Histórico estendido para o gráfico
+            df_hist = dados_ativo["object"].history(period="2y")
             
             if not df_hist.empty:
                 df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
@@ -475,35 +493,32 @@ with aba3:
                 )
                 
                 st.plotly_chart(fig, width='stretch')
-            else:
-                st.error("Não foram encontrados dados históricos para este ticker.")
                 
-        except Exception as e:
-            st.error(f"Erro ao buscar informações do ativo `{ticker_formatado}`: {e}")
+            st.divider()
+            st.subheader("🧠 Relatório de Inteligência & Recomendação Estratégica (Gemini IA)")
             
-        st.divider()
-        st.subheader("🧠 Relatório de Inteligência & Recomendação Estratégica (Gemini IA)")
-        
-        if st.button("Gerar Parecer de Decisão com IA", type="primary"):
-            if client_gemini:
-                prompt = (
-                    f"Atue como um analista financeiro sênior certificado (CNPI). "
-                    f"Faça uma avaliação detalhada e profissional para o ativo {ticker_formatado} B3 com base nos seguintes dados: "
-                    f"Cotação: {cp}, P/L: {pe}, P/VP: {pb}, Dividend Yield: {dy_str}. "
-                    f"Estruture a resposta em:\n"
-                    f"1. **Análise de Múltiplos e Tendência**\n"
-                    f"2. **Matriz SWOT (Forças, Oportunidades, Fraquezas e Ameaças)**\n"
-                    f"3. **Veredito para Tomada de Decisão (Compra, Neutro ou Venda)** e perfil de investidor indicado."
-                )
-                with st.spinner("Analisando indicadores e gerando parecer estratégico..."):
-                    try:
-                        resp = client_gemini.models.generate_content(model='gemini-1.5-flash', contents=prompt)
-                        st.success("Relatório gerado com sucesso!")
-                        st.markdown(resp.text)
-                    except Exception as ex:
-                        st.error(f"Erro ao consultar o Gemini IA: {ex}")
-            else:
-                st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
+            if st.button("Gerar Parecer de Decisão com IA", type="primary"):
+                if client_gemini:
+                    prompt = (
+                        f"Atue como um analista financeiro sênior certificado (CNPI). "
+                        f"Faça uma avaliação detalhada e profissional para o ativo {dados_ativo['symbol']} B3 com base nos seguintes dados: "
+                        f"Cotação: {dados_ativo['preco']}, P/L: {dados_ativo['pe']}, P/VP: {dados_ativo['pb']}, Dividend Yield: {dados_ativo['dy_str']}. "
+                        f"Estruture a resposta em:\n"
+                        f"1. **Análise de Múltiplos e Tendência**\n"
+                        f"2. **Matriz SWOT (Forças, Oportunidades, Fraquezas e Ameaças)**\n"
+                        f"3. **Veredito para Tomada de Decisão (Compra, Neutro ou Venda)** e perfil de investidor indicado."
+                    )
+                    with st.spinner("Analisando indicadores e gerando parecer estratégico..."):
+                        try:
+                            resp = client_gemini.models.generate_content(model='gemini-1.5-flash', contents=prompt)
+                            st.success("Relatório gerado com sucesso!")
+                            st.markdown(resp.text)
+                        except Exception as ex:
+                            st.error(f"Erro ao consultar o Gemini IA: {ex}")
+                else:
+                    st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
+        else:
+            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`. Verifique se o código está correto (ex: PETR4, VALE3, HGLG11).")
 
 # ==========================================
 # ABA 4: ADICIONAR À CARTEIRA
@@ -549,35 +564,24 @@ with aba4:
     st.subheader("🔍 Indicadores em Tempo Real do Ativo Selecionado")
     
     if ticker_cad_input:
-        ticker_preview = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
-        try:
-            t_obj = yf.Ticker(ticker_preview)
-            info = t_obj.info
-            
-            cotacao_atual = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
-            div_yield = info.get('dividendYield', 0.0)
-            div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/D"
-            p_l = info.get('trailingPE', 'N/D')
-            min_52 = info.get('fiftyTwoWeekLow', 'N/D')
-            max_52 = info.get('fiftyTwoWeekHigh', 'N/D')
-            
+        preview_data = obter_dados_ticker_seguro(ticker_cad_input)
+        if preview_data and preview_data["preco"] > 0:
             ip1, ip2, ip3, ip4, ip5 = st.columns(5)
             with ip1:
-                st.metric("Cotação Atual", f"R$ {cotacao_atual:.2f}" if cotacao_atual else "N/D")
+                st.metric("Cotação Atual", f"R$ {preview_data['preco']:.2f}")
             with ip2:
-                st.metric("Dividend Yield (DY)", div_yield_str)
+                st.metric("Dividend Yield (DY)", preview_data['dy_str'])
             with ip3:
-                st.metric("Índice P/L", f"{p_l:.2f}" if isinstance(p_l, (int, float)) else p_l)
+                st.metric("Índice P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
             with ip4:
-                st.metric("Mínima 52 Semanas", f"R$ {min_52:.2f}" if isinstance(min_52, (int, float)) else min_52)
+                st.metric("Mínima 52 Semanas", f"R$ {preview_data['min52']:.2f}" if isinstance(preview_data['min52'], (int, float)) else preview_data['min52'])
             with ip5:
-                st.metric("Máxima 52 Semanas", f"R$ {max_52:.2f}" if isinstance(max_52, (int, float)) else max_52)
-                
-        except Exception:
-            st.info("Digite um ticker válido para visualizar os indicadores.")
+                st.metric("Máxima 52 Semanas", f"R$ {preview_data['max52']:.2f}" if isinstance(preview_data['max52'], (int, float)) else preview_data['max52'])
+        else:
+            st.info("Digite um ticker válido da B3 para visualizar os indicadores.")
 
 # ==========================================
-# ABA 5: GESTÃO DE CARTEIRA & PnL DETALHADO
+# ABA 5: GESTÃO DE CARTEIRA & PnL
 # ==========================================
 with aba5:
     st.markdown("""
@@ -595,11 +599,8 @@ with aba5:
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
             t = row['ticker']
-            try:
-                hist = yf.Ticker(t).history(period="1d")
-                preco = hist['Close'].iloc[-1] if not hist.empty else row['preco_medio']
-            except Exception:
-                preco = row['preco_medio']
+            d_asset = obter_dados_ticker_seguro(t)
+            preco = d_asset['preco'] if d_asset and d_asset['preco'] > 0 else row['preco_medio']
             cotacoes_atuais.append(preco)
             
         df_cart['Cotacao_Atual'] = cotacoes_atuais

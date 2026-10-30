@@ -1,6 +1,7 @@
-supabase
 streamlit
 pandas
-yfinance
 plotly
+yfinance
+supabase
 google-genai
+feedparser

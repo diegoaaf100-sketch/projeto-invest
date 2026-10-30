@@ -454,47 +454,46 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
     "6. Simulador"
 ])
 
-# --- FUNDO EXCLUSIVO DA ABA 1 ---
-# Mantenha fundo_aba1.webp na mesma pasta deste app.py.
-imagem_fundo_path = Path(__file__).parent / "fundo_aba1.webp"
-
-if imagem_fundo_path.exists():
-    imagem_fundo_base64 = base64.b64encode(
-        imagem_fundo_path.read_bytes()
-    ).decode("utf-8")
-
-    st.markdown(
-        f"""
-        <style>
-            .stTabs [data-baseweb="tab-panel"]:nth-of-type(1) {{
-                background-image:
-                    linear-gradient(
-                        rgba(5, 12, 25, 0.82),
-                        rgba(5, 12, 25, 0.88)
-                    ),
-                    url("data:image/webp;base64,{imagem_fundo_base64}");
-                background-size: cover;
-                background-position: center center;
-                background-repeat: no-repeat;
-                background-attachment: fixed;
-                border-radius: 14px;
-                padding: 18px;
-            }}
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-else:
-    st.warning(
-        "Imagem de fundo não encontrada. "
-        "Envie fundo_aba1.webp para a mesma pasta do app.py no GitHub."
-    )
-
-
 # ==========================================
 # ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
+    # Marcador para identificar somente o painel da primeira aba.
+    # O CSS usa :has() para aplicar a imagem ao painel correto.
+    imagem_fundo_path = Path(__file__).parent / "fundo_aba1.webp"
+
+    if imagem_fundo_path.exists():
+        imagem_fundo_base64 = base64.b64encode(
+            imagem_fundo_path.read_bytes()
+        ).decode("utf-8")
+
+        st.markdown(
+            f"""
+            <style>
+                .stTabs [data-baseweb="tab-panel"]:has(#aba1-background-marker) {{
+                    background-image:
+                        linear-gradient(
+                            rgba(5, 12, 25, 0.76),
+                            rgba(5, 12, 25, 0.84)
+                        ),
+                        url("data:image/webp;base64,{imagem_fundo_base64}");
+                    background-size: cover;
+                    background-position: center top;
+                    background-repeat: no-repeat;
+                    border-radius: 14px;
+                    padding: 18px;
+                }}
+            </style>
+            <div id="aba1-background-marker"></div>
+            """,
+            unsafe_allow_html=True
+        )
+    else:
+        st.warning(
+            "Imagem de fundo não encontrada. Confira se fundo_aba1.webp "
+            "está na mesma pasta do app.py no GitHub."
+        )
+
     tickers_globais = ["AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
     renderizar_ticker_tape(tickers_globais)
 

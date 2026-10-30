@@ -100,15 +100,31 @@ st.markdown("""
             border: 1px solid rgba(255, 255, 255, 0.08);
             overflow: hidden;
             margin-bottom: 15px;
-            padding: 15px;
+            transition: transform 0.2s;
             height: 100%;
+        }
+
+        .news-card:hover {
+            transform: translateY(-2px);
+            border-color: #0284c7;
+        }
+
+        .news-img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+        }
+
+        .news-content {
+            padding: 12px 15px;
         }
 
         .news-title {
             font-weight: 700;
             color: #f1f5f9;
             font-size: 0.95rem;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
+            line-height: 1.3;
         }
 
         .news-date {
@@ -169,9 +185,9 @@ def buscar_cotacoes_atuais():
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
 
-# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS (COM FALLBACKS SEGUROS) ---
+# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS COM IMAGENS ---
 @st.cache_data(ttl=1800)
-def buscar_noticias_rss(urls, limite=3):
+def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
     for url in urls:
         try:
             feed = feedparser.parse(url)
@@ -181,7 +197,25 @@ def buscar_noticias_rss(urls, limite=3):
                     titulo = entry.get("title", "Sem título")
                     link = entry.get("link", "#")
                     data = entry.get("published", "Hoje")
-                    noticias.append({"titulo": titulo, "link": link, "data": data})
+                    
+                    # Tenta extrair a imagem do RSS
+                    img_url = img_fallback_default
+                    if "media_content" in entry and len(entry.media_content) > 0:
+                        img_url = entry.media_content[0].get("url", img_fallback_default)
+                    elif "media_thumbnail" in entry and len(entry.media_thumbnail) > 0:
+                        img_url = entry.media_thumbnail[0].get("url", img_fallback_default)
+                    elif "links" in entry:
+                        for l in entry.links:
+                            if l.get("type", "").startswith("image/"):
+                                img_url = l.get("href", img_fallback_default)
+                                break
+                                
+                    noticias.append({
+                        "titulo": titulo, 
+                        "link": link, 
+                        "data": data,
+                        "imagem": img_url
+                    })
                 return noticias
         except Exception:
             continue
@@ -209,7 +243,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v4.5")
+    st.caption("Terminal Institucional B3 v5.0")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -226,7 +260,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL
+# ABA 1: VISÃO GLOBAL (NOTÍCIAS ILUSTRADAS)
 # ==========================================
 with aba1:
     st.markdown("""
@@ -263,13 +297,14 @@ with aba1:
     st.divider()
     st.subheader("📰 Notícias Diárias do Mercado Global")
     
-    # Lista de feeds globais para garantir carregamento contínuo
     urls_globais = [
         "https://feeds.content.dowjones.io/public/rss/mw_topstories",
         "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance",
         "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"
     ]
-    noticias_globais = buscar_noticias_rss(urls_globais, limite=3)
+    img_fallback_global = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"
+    
+    noticias_globais = buscar_noticias_rss_com_imagens(urls_globais, img_fallback_global, limite=3)
     
     if noticias_globais:
         ng1, ng2, ng3 = st.columns(3)
@@ -278,15 +313,18 @@ with aba1:
             with cols_g[idx]:
                 st.markdown(f"""
                     <div class="news-card">
-                        <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
-                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Mercado Global</div>
+                        <img src="{item['imagem']}" class="news-img">
+                        <div class="news-content">
+                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
+                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Mercado Global</div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
     else:
         st.info("Buscando notícias do mercado internacional...")
 
 # ==========================================
-# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS DIÁRIAS
+# ABA 2: MERCADO BRASILEIRO (NOTÍCIAS ILUSTRADAS)
 # ==========================================
 with aba2:
     st.markdown("""
@@ -316,7 +354,9 @@ with aba2:
         "https://exame.com/invest/feed/",
         "https://www.infomoney.com.br/feed/"
     ]
-    noticias_nacionais = buscar_noticias_rss(urls_nacionais, limite=3)
+    img_fallback_nacional = "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80"
+    
+    noticias_nacionais = buscar_noticias_rss_com_imagens(urls_nacionais, img_fallback_nacional, limite=3)
     
     if noticias_nacionais:
         nn1, nn2, nn3 = st.columns(3)
@@ -325,15 +365,18 @@ with aba2:
             with cols_n[idx]:
                 st.markdown(f"""
                     <div class="news-card">
-                        <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
-                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
+                        <img src="{item['imagem']}" class="news-img">
+                        <div class="news-content">
+                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
+                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
     else:
         st.info("Buscando notícias do mercado nacional...")
 
 # ==========================================
-# ABA 3: ANÁLISE PROFISSIONAL, INDICATIVOS & IA
+# ABA 3: ANÁLISE PROFISSIONAL & IA
 # ==========================================
 with aba3:
     st.markdown("""
@@ -354,7 +397,6 @@ with aba3:
             asset_obj = yf.Ticker(ticker_formatado)
             info = asset_obj.info
             
-            # Painel Superior de Indicadores do Ativo
             cp = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
             dy = info.get('dividendYield', 0.0)
             dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
@@ -381,11 +423,9 @@ with aba3:
                 
             st.divider()
             
-            # Download de histórico de 2 anos para o gráfico profissional
             df_hist = asset_obj.history(period="2y")
             
             if not df_hist.empty:
-                # Cálculo de Médias Móveis Técnicas
                 df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
                 df_hist['MMA200'] = df_hist['Close'].rolling(window=200).mean()
                 
@@ -398,7 +438,6 @@ with aba3:
                     row_heights=[0.75, 0.25]
                 )
                 
-                # Candlesticks
                 fig.add_trace(
                     go.Candlestick(
                         x=df_hist.index,
@@ -411,19 +450,16 @@ with aba3:
                     row=1, col=1
                 )
                 
-                # Média Móvel 21
                 fig.add_trace(
                     go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21 (Curto Prazo)', line=dict(color='#0284c7', width=1.5)),
                     row=1, col=1
                 )
                 
-                # Média Móvel 200
                 fig.add_trace(
                     go.Scatter(x=df_hist.index, y=df_hist['MMA200'], mode='lines', name='MMA 200 (Longo Prazo)', line=dict(color='#f59e0b', width=1.5)),
                     row=1, col=1
                 )
                 
-                # Volume de Negociação
                 fig.add_trace(
                     go.Bar(x=df_hist.index, y=df_hist['Volume'], name="Volume", marker_color='rgba(37, 99, 235, 0.5)'),
                     row=2, col=1
@@ -461,7 +497,6 @@ with aba3:
                 )
                 with st.spinner("Analisando indicadores e gerando parecer estratégico..."):
                     try:
-                        # Atualizado para utilizar o modelo gemini-1.5-flash
                         resp = client_gemini.models.generate_content(model='gemini-1.5-flash', contents=prompt)
                         st.success("Relatório gerado com sucesso!")
                         st.markdown(resp.text)
@@ -469,6 +504,7 @@ with aba3:
                         st.error(f"Erro ao consultar o Gemini IA: {ex}")
             else:
                 st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
+
 # ==========================================
 # ABA 4: ADICIONAR À CARTEIRA
 # ==========================================
@@ -541,14 +577,14 @@ with aba4:
             st.info("Digite um ticker válido para visualizar os indicadores.")
 
 # ==========================================
-# ABA 5: GESTÃO DE CARTEIRA, PnL & EXCLUSÃO
+# ABA 5: GESTÃO DE CARTEIRA & PnL DETALHADO
 # ==========================================
 with aba5:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
-                <div class="hero-subtitle">Acompanhe seus investimentos e remova posições diretamente do banco de dados</div>
+                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e rentabilidade dos ativos salvos</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -556,7 +592,6 @@ with aba5:
     df_cart = carregar_carteira_supabase()
     
     if not df_cart.empty:
-        # Busca cotação atual para cada ticker salvo
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
             t = row['ticker']
@@ -573,7 +608,6 @@ with aba5:
         df_cart['PnL_Reais'] = df_cart['Valor_Atual'] - df_cart['Total_Investido']
         df_cart['PnL_Percent'] = (df_cart['PnL_Reais'] / df_cart['Total_Investido']) * 100
         
-        # Métricas gerais
         tot_inv = df_cart['Total_Investido'].sum()
         tot_val = df_cart['Valor_Atual'].sum()
         tot_pnl = df_cart['PnL_Reais'].sum()
@@ -588,46 +622,16 @@ with aba5:
             st.metric("Lucro / Prejuízo Total (PnL)", f"R$ {tot_pnl:,.2f}", f"{tot_pnl_pct:.2f}%")
             
         st.divider()
-        st.subheader("📋 Gerenciamento e Exclusão de Ativos")
-        st.caption("Marque a caixa na coluna 'Excluir' do ativo desejado e clique no botão abaixo para removê-lo da carteira.")
+        st.subheader("📋 Detalhamento por Ativo")
         
-        # Adiciona coluna booleana de seleção para exclusão
-        df_cart.insert(0, "Excluir", False)
-        
-        # Editor de dados interativo no Streamlit
-        df_editado = st.data_editor(
-            df_cart[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
-            column_config={
-                "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir?", required=True),
-                "id": st.column_config.NumberColumn("ID", disabled=True),
-                "ticker": st.column_config.TextColumn("Ticker", disabled=True),
-                "quantidade": st.column_config.NumberColumn("Qtd", disabled=True),
-                "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
-                "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
-                "Total_Investido": st.column_config.NumberColumn("Total Investido", format="R$ %.2f", disabled=True),
-                "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
-                "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
-                "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
-            },
-            hide_index=True,
-            width='stretch',
-            key="editor_carteira"
-        )
-        
-        # Botão para processar a exclusão dos itens marcados
-        if st.button("🗑️ Remover Ativos Selecionados do Supabase", type="secondary"):
-            ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
-            
-            if ids_para_remover and supabase:
-                try:
-                    for item_id in ids_para_remover:
-                        supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
-                    st.success(f"Ativo(s) removido(s) com sucesso! Atualizando...")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao excluir do Supabase: {e}")
-            else:
-                st.warning("Nenhum ativo foi selecionado para exclusão.")
+        st.dataframe(df_cart[['ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']].style.format({
+            "preco_medio": "R$ {:.2f}",
+            "Cotacao_Atual": "R$ {:.2f}",
+            "Total_Investido": "R$ {:.2f}",
+            "Valor_Atual": "R$ {:.2f}",
+            "PnL_Reais": "R$ {:.2f}",
+            "PnL_Percent": "{:.2f}%"
+        }), width='stretch')
     else:
         st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
 

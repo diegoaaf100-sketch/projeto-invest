@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA (INSPIRADA EM DRIBBBLE / TICKER TAPE) ---
+# --- ESTILIZAÇÃO CSS CUSTOMIZADA ---
 st.markdown("""
     <style>
         .stApp {
@@ -25,35 +25,39 @@ st.markdown("""
             color: #f8fafc;
         }
 
-        /* --- ESTILO DA BARRA ROLANTE (TICKER TAPE) --- */
+        /* --- BARRA ROLANTE ESTILO BLOOMBERG / TRADINGVIEW --- */
         .ticker-container {
             width: 100%;
             overflow: hidden;
             background: rgba(15, 23, 42, 0.95);
             border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+            border-top: 1px solid rgba(56, 189, 248, 0.2);
             padding: 10px 0;
             white-space: nowrap;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
-            border-radius: 8px;
         }
 
         .ticker-wrapper {
             display: inline-block;
             white-space: nowrap;
-            animation: marquee 35s linear infinite;
+            animation: marquee 30s linear infinite;
+        }
+
+        .ticker-wrapper:hover {
+            animation-play-state: paused; /* Pausa ao passar o mouse */
         }
 
         .ticker-item {
             display: inline-flex;
             align-items: center;
-            margin-right: 40px;
-            font-family: monospace;
-            font-size: 0.9rem;
-            background: rgba(30, 41, 59, 0.7);
-            padding: 6px 14px;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            margin-right: 35px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 0.85rem;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
         .ticker-symbol {
@@ -65,6 +69,7 @@ st.markdown("""
         .ticker-price {
             color: #f1f5f9;
             margin-right: 8px;
+            font-weight: 500;
         }
 
         .ticker-pos {
@@ -81,115 +86,45 @@ st.markdown("""
             0% { transform: translateX(0%); }
             100% { transform: translateX(-50%); }
         }
-
-        .hero-header {
-            position: relative;
-            width: 100%;
-            height: 180px;
-            border-radius: 12px;
-            background-size: cover;
-            background-position: center;
-            margin-bottom: 25px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .hero-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, rgba(10, 17, 40, 0.9) 0%, rgba(28, 37, 65, 0.65) 100%);
-            padding: 25px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-        }
-
-        .hero-title {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: #ffffff;
-            margin: 0;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .hero-subtitle {
-            font-size: 0.95rem;
-            color: #38bdf8;
-            margin-top: 5px;
-        }
-
-        div[data-testid="stMetric"] {
-            background: rgba(30, 41, 59, 0.6) !important;
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
-            border-radius: 12px !important;
-            padding: 15px 20px !important;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-            background-color: rgba(15, 23, 42, 0.8);
-            padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            height: 45px;
-            background-color: transparent;
-            border-radius: 8px;
-            color: #94a3b8;
-            font-weight: 600;
-            padding: 0px 20px;
-        }
-
-        .stTabs [aria-selected="true"] {
-            background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%) !important;
-            color: #ffffff !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-
-        .news-card {
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            overflow: hidden;
-            margin-bottom: 15px;
-            transition: transform 0.2s;
-            height: 100%;
-        }
-
-        .news-card:hover {
-            transform: translateY(-2px);
-            border-color: #0284c7;
-        }
-
-        .news-img {
-            width: 100%;
-            height: 140px;
-            object-fit: cover;
-        }
-
-        .news-content {
-            padding: 12px 15px;
-        }
-
-        .news-title {
-            font-weight: 700;
-            color: #f1f5f9;
-            font-size: 0.95rem;
-            margin-bottom: 6px;
-            line-height: 1.3;
-        }
-
-        .news-date {
-            font-size: 0.75rem;
-            color: #38bdf8;
-        }
     </style>
 """, unsafe_allow_html=True)
+
+# --- GERADOR DE HTML PARA O TICKER TAPE COM RENDERIZAÇÃO SEGURA ---
+def renderizar_ticker_tape(lista_tickers):
+    itens_html = ""
+    for t in lista_tickers:
+        dados = obter_dados_ticker_seguro(t)
+        if dados and dados["preco"] > 0:
+            simbolo = dados["symbol"].replace(".SA", "")
+            
+            if "BRL" in t or ".SA" in t:
+                preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            else:
+                preco_str = f"${dados['preco']:,.2f}"
+                
+            var = dados["variacao"]
+            classe_css = "ticker-pos" if var >= 0 else "ticker-neg"
+            sinal = "+" if var >= 0 else ""
+            var_str = f"{sinal}{var:.2f}%"
+            
+            itens_html += f"""
+                <div class="ticker-item">
+                    <span class="ticker-symbol">{simbolo}</span>
+                    <span class="ticker-price">{preco_str}</span>
+                    <span class="{classe_css}">{var_str}</span>
+                </div>
+            """
+    
+    # Importante: O parâmetro unsafe_allow_html=True garante que o Streamlit processe o HTML visualmente
+    ticker_html = f"""
+        <div class="ticker-container">
+            <div class="ticker-wrapper">
+                {itens_html}
+                {itens_html}
+            </div>
+        </div>
+    """
+    st.markdown(ticker_html, unsafe_allow_html=True)
 
 # --- CONEXÃO COM O SUPABASE ---
 @st.cache_resource

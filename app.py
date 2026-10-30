@@ -281,7 +281,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v5.5 (Multi-Asset Pro)")
+    st.caption("Terminal B3 v5.6 (Multi-Asset Pro)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -551,15 +551,15 @@ with aba4:
                 ticker_cad_input = st.text_input("Ticker da Ação/FII (ex: PETR4, HGLG11):", value="PETR4").strip().upper()
             elif tipo_ativo == "Tesouro Direto":
                 tipo_tesouro = st.selectbox(
-                    "Tipo de Título Público:", 
+                    "Modalidade do Título Público:", 
                     ["Tesouro IPCA+", "Tesouro Selic", "Tesouro Prefixado"]
                 )
                 vencimento_tesouro = st.text_input("Ano de Vencimento (ex: 2035):", value="2035").strip()
                 ticker_cad_input = f"{tipo_tesouro} {vencimento_tesouro}"
             else:
                 banco_emissor = st.text_input("Instituição / Banco Emissor (ex: Banco Inter, XP):", value="Banco Inter").strip()
-                indexador = st.selectbox("Indexador:", ["95% do CDI", "100% do CDI", "102% do CDI", "IPCA + 6% a.a.", "Prefixado 11% a.a."])
-                ticker_cad_input = f"{tipo_ativo[:3].upper()} {banco_emissor} ({indexador})"
+                indexador = st.selectbox("Indexador da Renda Fixa:", ["95% do CDI", "100% do CDI", "102% do CDI", "IPCA + 6% a.a.", "Prefixado 11% a.a."])
+                ticker_cad_input = f"{banco_emissor} ({indexador})"
                 
         with col_f2:
             if tipo_ativo == "Ações / FIIs (B3)":
@@ -567,7 +567,7 @@ with aba4:
                 pm_cad = st.number_input("Preço Médio Unitário (R$):", min_value=0.01, value=35.00, step=0.50)
             else:
                 qtd_cad = 1
-                pm_cad = st.number_input("Valor Total Investido / Aporte (R$):", min_value=0.01, value=5000.00, step=100.00)
+                pm_cad = st.number_input("Valor Total Aplicado / Aporte (R$):", min_value=0.01, value=5000.00, step=100.00)
                 
         with col_f3:
             st.markdown("<br>", unsafe_allow_html=True)
@@ -578,8 +578,12 @@ with aba4:
                 ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
                 preco_medio_final = float(pm_cad)
                 quantidade_final = int(qtd_cad)
+            elif tipo_ativo == "Tesouro Direto":
+                ticker_final = f"[TESOURO DIRETO] {ticker_cad_input}"
+                preco_medio_final = float(pm_cad)
+                quantidade_final = 1
             else:
-                ticker_final = f"[{tipo_ativo.upper()}] {ticker_cad_input}"
+                ticker_final = f"[RENDA FIXA] {ticker_cad_input}"
                 preco_medio_final = float(pm_cad)
                 quantidade_final = 1
 
@@ -615,7 +619,7 @@ with aba4:
             with ip5:
                 st.metric("Máxima 52 Semanas", f"R$ {preview_data['max52']:.2f}" if isinstance(preview_data['max52'], (int, float)) else preview_data['max52'])
     else:
-        st.info("💡 Dica: Para **Tesouro Direto** e **Renda Fixa**, o valor aplicado é registrado diretamente como seu principal investido e acompanhado na Aba 5.")
+        st.info("💡 Para **Tesouro Direto** e **Renda Fixa**, o valor aplicado é registrado diretamente como seu principal investido e acompanhado na Aba 5.")
 
 # ==========================================
 # ABA 5: GESTÃO DE CARTEIRA & PnL COM EXCLUSÃO
@@ -636,7 +640,7 @@ with aba5:
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
             t = row['ticker']
-            if "[TESOURO DIRETO]" in t or "[RENDA FIXA" in t:
+            if "[TESOURO DIRETO]" in t or "[RENDA FIXA]" in t:
                 preco = row['preco_medio']
             else:
                 d_asset = obter_dados_ticker_seguro(t, "Ações / FIIs (B3)")

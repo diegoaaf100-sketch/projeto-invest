@@ -2,9 +2,9 @@
 import os
 import warnings
 import html
+import textwrap
 
-warnings.filterwarnings("ignore", category=FutureWarning)
-warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore")
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -18,7 +18,7 @@ import feedparser
 
 
 # =========================================================
-# 1. CONFIGURAÇÕES
+# 1. CONFIGURAÇÃO GERAL
 # =========================================================
 
 st.set_page_config(
@@ -28,12 +28,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+
+# =========================================================
+# 2. CSS
+# =========================================================
+
 st.markdown("""
 <style>
+
 .stApp {
     background: linear-gradient(
-        135deg, #0a1128 0%, #1c2541 50%, #0f172a 100%
-    ) !important;
+        135deg,
+        #0a1128 0%,
+        #1c2541 50%,
+        #0f172a 100%
+    );
     color: #f8fafc;
 }
 
@@ -77,10 +86,10 @@ st.markdown("""
 }
 
 div[data-testid="stMetric"] {
-    background: rgba(30,41,59,0.6) !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    border-radius: 12px !important;
-    padding: 12px 15px !important;
+    background: rgba(30,41,59,0.6);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 12px 15px;
 }
 
 .stTabs [data-baseweb="tab-list"] {
@@ -99,7 +108,11 @@ div[data-testid="stMetric"] {
 }
 
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(90deg,#0284c7,#2563eb) !important;
+    background: linear-gradient(
+        90deg,
+        #0284c7,
+        #2563eb
+    ) !important;
     color: white !important;
 }
 
@@ -109,9 +122,11 @@ div[data-testid="stMetric"] {
     border: 1px solid rgba(255,255,255,0.08);
     overflow: hidden;
     margin-bottom: 15px;
+    min-height: 280px;
 }
 
 .news-img {
+    display: block;
     width: 100%;
     height: 140px;
     object-fit: cover;
@@ -125,7 +140,7 @@ div[data-testid="stMetric"] {
     font-weight: 700;
     color: #f1f5f9;
     font-size: 0.95rem;
-    line-height: 1.3;
+    line-height: 1.5;
 }
 
 .news-date {
@@ -133,12 +148,33 @@ div[data-testid="stMetric"] {
     color: #38bdf8;
     margin-top: 8px;
 }
+
+.news-title a:hover {
+    color: #38bdf8 !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
 
 # =========================================================
-# 2. CONEXÃO COM SUPABASE
+# 3. FUNÇÃO CENTRAL DE RENDERIZAÇÃO HTML
+# =========================================================
+
+def renderizar_html(conteudo):
+
+    conteudo_limpo = textwrap.dedent(
+        conteudo
+    ).strip()
+
+    st.markdown(
+        conteudo_limpo,
+        unsafe_allow_html=True
+    )
+
+
+# =========================================================
+# 4. CONEXÃO SUPABASE
 # =========================================================
 
 @st.cache_resource
@@ -159,6 +195,7 @@ def init_supabase():
 
     try:
         return create_client(url, key)
+
     except Exception as erro:
         print(f"Erro Supabase: {erro}")
         return None
@@ -168,7 +205,7 @@ supabase = init_supabase()
 
 
 # =========================================================
-# 3. CONEXÃO COM GEMINI
+# 5. CONEXÃO GEMINI
 # =========================================================
 
 @st.cache_resource
@@ -184,6 +221,7 @@ def init_gemini():
 
     try:
         return genai.Client(api_key=api_key)
+
     except Exception as erro:
         print(f"Erro Gemini: {erro}")
         return None
@@ -198,7 +236,7 @@ GEMINI_MODEL = st.secrets.get(
 
 
 # =========================================================
-# 4. FORMATAÇÃO DE VALORES
+# 6. FORMATAÇÃO
 # =========================================================
 
 def formatar_reais(valor):
@@ -210,6 +248,7 @@ def formatar_reais(valor):
             .replace(".", ",")
             .replace("X", ".")
         )
+
     except (ValueError, TypeError):
         return "N/D"
 
@@ -218,6 +257,7 @@ def formatar_numero(valor):
 
     try:
         return f"{float(valor):,.2f}"
+
     except (ValueError, TypeError):
         return "N/D"
 
@@ -231,7 +271,7 @@ def formatar_indicador(valor):
 
 
 # =========================================================
-# 5. BUSCA DE COTAÇÕES
+# 7. BUSCA DE COTAÇÕES
 # =========================================================
 
 @st.cache_data(ttl=300)
@@ -249,6 +289,7 @@ def obter_dados_ticker_seguro(ticker_raw):
         and "-" not in t_clean
     ):
         t_symbol = f"{t_clean}.SA"
+
     else:
         t_symbol = t_clean
 
@@ -267,10 +308,16 @@ def obter_dados_ticker_seguro(ticker_raw):
 
             if len(fechamento) >= 2:
 
-                preco_atual = float(fechamento.iloc[-1])
-                preco_ant = float(fechamento.iloc[-2])
+                preco_atual = float(
+                    fechamento.iloc[-1]
+                )
+
+                preco_ant = float(
+                    fechamento.iloc[-2]
+                )
 
                 if preco_ant != 0:
+
                     var_pct = (
                         (preco_atual - preco_ant)
                         / preco_ant
@@ -278,12 +325,15 @@ def obter_dados_ticker_seguro(ticker_raw):
 
             elif len(fechamento) == 1:
 
-                preco_atual = float(fechamento.iloc[-1])
+                preco_atual = float(
+                    fechamento.iloc[-1]
+                )
 
         info = {}
 
         try:
             info = t_obj.info or {}
+
         except Exception:
             pass
 
@@ -330,7 +380,7 @@ def obter_dados_ticker_seguro(ticker_raw):
 
 
 # =========================================================
-# 6. ÍCONES DOS ATIVOS
+# 8. ÍCONES DOS ATIVOS
 # =========================================================
 
 def obter_icone_ativo(simbolo):
@@ -370,10 +420,13 @@ def obter_icone_ativo(simbolo):
 
 
 # =========================================================
-# 7. TICKER TAPE
+# 9. TICKER TAPE
 # =========================================================
 
-def renderizar_ticker_tape(lista_tickers, internacional=False):
+def renderizar_ticker_tape(
+    lista_tickers,
+    internacional=False
+):
 
     itens_html = ""
 
@@ -390,31 +443,41 @@ def renderizar_ticker_tape(lista_tickers, internacional=False):
 
         if internacional:
             preco_str = f"${dados['preco']:,.2f}"
+
         else:
-            preco_str = formatar_reais(dados["preco"])
+            preco_str = formatar_reais(
+                dados["preco"]
+            )
 
         variacao = dados["variacao"]
 
-        cor = "#4ade80" if variacao >= 0 else "#f87171"
+        cor = (
+            "#4ade80"
+            if variacao >= 0
+            else "#f87171"
+        )
 
         sinal = "+" if variacao >= 0 else ""
 
         var_str = f"({sinal}{variacao:.2f}%)"
 
         itens_html += f"""
-        <div class="ticker-item">
-            <img src="{icone_url}" class="ticker-logo">
-            <span class="ticker-symbol">{html.escape(simbolo)}</span>
-            <span class="ticker-price">{html.escape(preco_str)}</span>
-            <span class="ticker-var" style="color:{cor}">
-                {html.escape(var_str)}
-            </span>
-        </div>
+            <div class="ticker-item">
+                <img src="{icone_url}" class="ticker-logo">
+                <span class="ticker-symbol">{html.escape(simbolo)}</span>
+                <span class="ticker-price">{html.escape(preco_str)}</span>
+                <span class="ticker-var" style="color:{cor}">
+                    {html.escape(var_str)}
+                </span>
+            </div>
         """
 
     if not itens_html:
 
-        st.info("Não foi possível carregar as cotações neste momento.")
+        st.info(
+            "Não foi possível carregar as cotações neste momento."
+        )
+
         return
 
     full_component = f"""
@@ -508,11 +571,14 @@ def renderizar_ticker_tape(lista_tickers, internacional=False):
     </html>
     """
 
-    components.html(full_component, height=52)
+    components.html(
+        full_component,
+        height=52
+    )
 
 
 # =========================================================
-# 8. CARTEIRA SUPABASE
+# 10. SUPABASE - CARTEIRA
 # =========================================================
 
 def carregar_carteira_supabase():
@@ -529,17 +595,21 @@ def carregar_carteira_supabase():
             .execute()
         )
 
-        return pd.DataFrame(response.data or [])
+        return pd.DataFrame(
+            response.data or []
+        )
 
     except Exception as erro:
 
-        st.error(f"Erro ao consultar carteira: {erro}")
+        st.error(
+            f"Erro ao consultar carteira: {erro}"
+        )
 
         return pd.DataFrame()
 
 
 # =========================================================
-# 9. COTAÇÕES DE CÂMBIO E CRIPTO
+# 11. CÂMBIO E CRIPTOMOEDAS
 # =========================================================
 
 @st.cache_data(ttl=300)
@@ -581,11 +651,13 @@ def buscar_cotacoes_atuais():
     )
 
 
-cot_dolar, cot_btc, var_dolar, var_btc = buscar_cotacoes_atuais()
+cot_dolar, cot_btc, var_dolar, var_btc = (
+    buscar_cotacoes_atuais()
+)
 
 
 # =========================================================
-# 10. NOTÍCIAS RSS
+# 12. NOTÍCIAS RSS
 # =========================================================
 
 @st.cache_data(ttl=1800)
@@ -608,11 +680,20 @@ def buscar_noticias_rss_com_imagens(
 
             for entry in feed.entries[:limite]:
 
-                titulo = entry.get("title", "Sem título")
+                titulo = entry.get(
+                    "title",
+                    "Sem título"
+                )
 
-                link = entry.get("link", "#")
+                link = entry.get(
+                    "link",
+                    "#"
+                )
 
-                data = entry.get("published", "Data não informada")
+                data = entry.get(
+                    "published",
+                    "Data não informada"
+                )
 
                 imagem = img_fallback_default
 
@@ -649,11 +730,17 @@ def buscar_noticias_rss_com_imagens(
     return noticias
 
 
+# =========================================================
+# 13. EXIBIÇÃO DOS CARTÕES DE NOTÍCIAS
+# =========================================================
+
 def exibir_noticias(noticias, categoria):
 
     if not noticias:
 
-        st.info("Não foi possível carregar notícias neste momento.")
+        st.info(
+            "Não foi possível carregar notícias neste momento."
+        )
 
         return
 
@@ -663,40 +750,95 @@ def exibir_noticias(noticias, categoria):
 
         with colunas[idx % 3]:
 
-            titulo = html.escape(item["titulo"])
+            titulo = html.escape(
+                str(item["titulo"])
+            )
 
-            link = html.escape(item["link"], quote=True)
+            link = html.escape(
+                str(item["link"]),
+                quote=True
+            )
 
-            imagem = html.escape(item["imagem"], quote=True)
+            imagem = html.escape(
+                str(item["imagem"]),
+                quote=True
+            )
 
-            data = html.escape(item["data"][:35])
+            data = html.escape(
+                str(item["data"])[:35]
+            )
 
-            st.markdown(f"""
-            <div class="news-card">
+            renderizar_html(f"""
+                <div class="news-card">
 
-                <img src="{imagem}" class="news-img">
+                    <img
+                        src="{imagem}"
+                        class="news-img"
+                        alt="Imagem da notícia"
+                    >
 
-                <div class="news-content">
+                    <div class="news-content">
 
-                    <div class="news-title">
-                        <a href="{link}"
-                           target="_blank"
-                           style="color:#f1f5f9;text-decoration:none;">
-                            {titulo}
-                        </a>
-                    </div>
+                        <div class="news-title">
 
-                    <div class="news-date">
-                        📅 {data} | {categoria}
+                            <a
+                                href="{link}"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style="color:#f1f5f9;text-decoration:none;"
+                            >
+                                {titulo}
+                            </a>
+
+                        </div>
+
+                        <div class="news-date">
+                            📅 {data} | {html.escape(categoria)}
+                        </div>
+
                     </div>
 
                 </div>
-            </div>
-            """, unsafe_allow_html=True)
+            """)
 
 
 # =========================================================
-# 11. SIDEBAR
+# 14. CABEÇALHO VISUAL REUTILIZÁVEL
+# =========================================================
+
+def exibir_cabecalho(titulo, subtitulo, imagem=None):
+
+    estilo = ""
+
+    if imagem:
+
+        estilo = (
+            "background-image:url('"
+            + html.escape(imagem, quote=True)
+            + "');"
+        )
+
+    renderizar_html(f"""
+        <div class="hero-header" style="{estilo}">
+
+            <div class="hero-overlay">
+
+                <div class="hero-title">
+                    {html.escape(titulo)}
+                </div>
+
+                <div class="hero-subtitle">
+                    {html.escape(subtitulo)}
+                </div>
+
+            </div>
+
+        </div>
+    """)
+
+
+# =========================================================
+# 15. SIDEBAR
 # =========================================================
 
 with st.sidebar:
@@ -712,19 +854,27 @@ with st.sidebar:
 
     if supabase:
 
-        st.markdown("**Base Supabase:** 🟢 Conectado")
+        st.markdown(
+            "**Base Supabase:** 🟢 Conectado"
+        )
 
     else:
 
-        st.markdown("**Base Supabase:** 🔴 Não configurado")
+        st.markdown(
+            "**Base Supabase:** 🔴 Não configurado"
+        )
 
     if client_gemini:
 
-        st.markdown("**IA Gemini:** 🟢 Ativo")
+        st.markdown(
+            "**IA Gemini:** 🟢 Ativo"
+        )
 
     else:
 
-        st.markdown("**IA Gemini:** 🟡 Indisponível")
+        st.markdown(
+            "**IA Gemini:** 🟡 Indisponível"
+        )
 
     st.markdown("---")
 
@@ -732,10 +882,12 @@ with st.sidebar:
 
 
 # =========================================================
-# 12. CABEÇALHO
+# 16. TÍTULO PRINCIPAL
 # =========================================================
 
-st.title("📊 Terminal Quantitativo & Inteligência B3")
+st.title(
+    "📊 Terminal Quantitativo & Inteligência B3"
+)
 
 st.markdown(
     "Plataforma de análise quantitativa, gestão de carteiras "
@@ -744,7 +896,7 @@ st.markdown(
 
 
 # =========================================================
-# 13. ABAS
+# 17. ABAS DO SISTEMA
 # =========================================================
 
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
@@ -778,18 +930,11 @@ with aba1:
         internacional=True
     )
 
-    st.markdown("""
-    <div class="hero-header">
-        <div class="hero-overlay">
-            <div class="hero-title">
-                🌍 Mercado Financeiro Global
-            </div>
-            <div class="hero-subtitle">
-                Acompanhamento dos principais ativos internacionais
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    exibir_cabecalho(
+        "🌍 Mercado Financeiro Global",
+        "Acompanhamento dos principais ativos internacionais",
+        "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80"
+    )
 
     st.subheader("💱 Câmbio & Criptoativos")
 
@@ -813,7 +958,9 @@ with aba1:
 
     st.divider()
 
-    st.subheader("📰 Notícias do Mercado Global")
+    st.subheader(
+        "📰 Notícias do Mercado Global"
+    )
 
     urls_globais = [
         "https://feeds.content.dowjones.io/public/rss/mw_topstories",
@@ -861,27 +1008,15 @@ with aba2:
 
     renderizar_ticker_tape(tickers_br)
 
-    st.markdown("""
-    <div class="hero-header"
-    style="background-image:url(
-    'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f
-    ?auto=format&fit=crop&w=1200&q=80');">
+    exibir_cabecalho(
+        "🇧🇷 Mercado Brasileiro & Notícias",
+        "Indicadores e notícias do mercado nacional",
+        "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80"
+    )
 
-        <div class="hero-overlay">
-
-            <div class="hero-title">
-                🇧🇷 Mercado Brasileiro & Notícias
-            </div>
-
-            <div class="hero-subtitle">
-                Indicadores e notícias do mercado nacional
-            </div>
-
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
-    st.subheader("📊 Principais Ativos Brasileiros")
+    st.subheader(
+        "📊 Principais Ativos Brasileiros"
+    )
 
     ativos_br = [
         "PETR4",
@@ -908,11 +1043,16 @@ with aba2:
 
             else:
 
-                st.metric(ticker, "Indisponível")
+                st.metric(
+                    ticker,
+                    "Indisponível"
+                )
 
     st.divider()
 
-    st.subheader("📰 Notícias do Mercado Nacional")
+    st.subheader(
+        "📰 Notícias do Mercado Nacional"
+    )
 
     urls_nacionais = [
         "https://exame.com/invest/feed/",
@@ -942,25 +1082,11 @@ with aba2:
 
 with aba3:
 
-    st.markdown("""
-    <div class="hero-header"
-    style="background-image:url(
-    'https://images.unsplash.com/photo-1642543492481-44e81e3914a7
-    ?auto=format&fit=crop&w=1200&q=80');">
-
-        <div class="hero-overlay">
-
-            <div class="hero-title">
-                📈 Terminal Profissional de Análise
-            </div>
-
-            <div class="hero-subtitle">
-                Indicadores fundamentalistas, análise técnica e IA
-            </div>
-
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    exibir_cabecalho(
+        "📈 Terminal Profissional de Análise",
+        "Indicadores fundamentalistas, análise técnica e IA",
+        "https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80"
+    )
 
     ticker_input = st.text_input(
         "Digite o ticker do ativo (ex: PETR4, VALE3, WEGE3):",
@@ -969,7 +1095,9 @@ with aba3:
 
     if ticker_input:
 
-        dados_ativo = obter_dados_ticker_seguro(ticker_input)
+        dados_ativo = obter_dados_ticker_seguro(
+            ticker_input
+        )
 
         if dados_ativo and dados_ativo["preco"] > 0:
 
@@ -1199,7 +1327,9 @@ with aba3:
                                     "Relatório gerado com sucesso!"
                                 )
 
-                                st.markdown(resposta.text)
+                                st.markdown(
+                                    resposta.text
+                                )
 
                             else:
 
@@ -1232,25 +1362,11 @@ with aba3:
 
 with aba4:
 
-    st.markdown("""
-    <div class="hero-header"
-    style="background-image:url(
-    'https://images.unsplash.com/photo-1559526324-4b87b5e36e44
-    ?auto=format&fit=crop&w=1200&q=80');">
-
-        <div class="hero-overlay">
-
-            <div class="hero-title">
-                ➕ Adicionar Ativo à Carteira
-            </div>
-
-            <div class="hero-subtitle">
-                Cadastro de ações, FIIs e ETFs
-            </div>
-
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    exibir_cabecalho(
+        "➕ Adicionar Ativo à Carteira",
+        "Cadastro de ações, FIIs e ETFs",
+        "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80"
+    )
 
     with st.form("form_carteira"):
 
@@ -1288,17 +1404,19 @@ with aba4:
 
         if salvar_btn:
 
-            ticker_final = (
-                ticker_cad_input
-                if ticker_cad_input.endswith(".SA")
-                else f"{ticker_cad_input}.SA"
-            )
-
             if not ticker_cad_input:
 
-                st.warning("Informe um ticker válido.")
+                st.warning(
+                    "Informe um ticker válido."
+                )
 
             elif supabase:
+
+                ticker_final = (
+                    ticker_cad_input
+                    if ticker_cad_input.endswith(".SA")
+                    else f"{ticker_cad_input}.SA"
+                )
 
                 try:
 
@@ -1333,7 +1451,9 @@ with aba4:
 
     st.divider()
 
-    st.subheader("🔍 Pré-visualização em Tempo Real")
+    st.subheader(
+        "🔍 Pré-visualização em Tempo Real"
+    )
 
     if ticker_cad_input:
 
@@ -1393,25 +1513,11 @@ with aba4:
 
 with aba5:
 
-    st.markdown("""
-    <div class="hero-header"
-    style="background-image:url(
-    'https://images.unsplash.com/photo-1460925895917-afdab827c52f
-    ?auto=format&fit=crop&w=1200&q=80');">
-
-        <div class="hero-overlay">
-
-            <div class="hero-title">
-                💼 Gestão de Carteira & PnL
-            </div>
-
-            <div class="hero-subtitle">
-                Acompanhamento de ganhos, perdas e posições
-            </div>
-
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    exibir_cabecalho(
+        "💼 Gestão de Carteira & PnL",
+        "Acompanhamento de ganhos, perdas e posições",
+        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80"
+    )
 
     if not supabase:
 
@@ -1438,7 +1544,8 @@ with aba5:
             ):
 
                 st.error(
-                    "A tabela do Supabase não possui todas as colunas necessárias."
+                    "A tabela do Supabase não possui todas "
+                    "as colunas necessárias."
                 )
 
             else:
@@ -1488,7 +1595,10 @@ with aba5:
 
                 df_cart["PnL_Percent"] = (
                     df_cart["PnL_Reais"]
-                    / df_cart["Total_Investido"].replace(0, pd.NA)
+                    / df_cart["Total_Investido"].replace(
+                        0,
+                        pd.NA
+                    )
                 ) * 100
 
                 tot_inv = df_cart["Total_Investido"].sum()
@@ -1666,25 +1776,11 @@ with aba5:
 
 with aba6:
 
-    st.markdown("""
-    <div class="hero-header"
-    style="background-image:url(
-    'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c
-    ?auto=format&fit=crop&w=1200&q=80');">
-
-        <div class="hero-overlay">
-
-            <div class="hero-title">
-                🧮 Simulador de Investimentos
-            </div>
-
-            <div class="hero-subtitle">
-                Projeção de patrimônio com juros compostos
-            </div>
-
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    exibir_cabecalho(
+        "🧮 Simulador de Investimentos",
+        "Projeção de patrimônio com juros compostos",
+        "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80"
+    )
 
     col_sim1, col_sim2 = st.columns(2)
 
@@ -1789,11 +1885,18 @@ with aba6:
 
         st.caption(
             "Simulação matemática ilustrativa. "
-            "Não considera impostos, taxas, inflação ou oscilações "
-            "reais dos investimentos."
+            "Não considera impostos, taxas, inflação ou "
+            "oscilações reais dos investimentos."
         )
 
 
 # =========================================================
-# FIM DO APP
+# FIM DO SISTEMA
 # =========================================================
+
+st.divider()
+
+st.caption(
+    "Terminal Quantitativo B3 | "
+    "Dados de mercado sujeitos à disponibilidade dos provedores."
+)

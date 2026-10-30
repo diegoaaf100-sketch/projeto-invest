@@ -23,85 +23,12 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA (TICKER TAPE IDÊNTICO À B3 / ESTILO PROFISSIONAL) ---
+# --- ESTILIZAÇÃO CSS GLOBAL ---
 st.markdown("""
     <style>
         .stApp {
             background: linear-gradient(135deg, #0a1128 0%, #1c2541 50%, #0f172a 100%) !important;
             color: #f8fafc;
-        }
-
-        /* --- CONTAINER DO TICKER TAPE (ESTILO B3 / TRADINGVIEW) --- */
-        .b3-ticker-container {
-            width: 100%;
-            overflow: hidden;
-            background: #0b132b;
-            border-bottom: 2px solid rgba(56, 189, 248, 0.2);
-            border-top: 1px solid rgba(56, 189, 248, 0.2);
-            padding: 8px 0;
-            white-space: nowrap;
-            box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
-            margin-bottom: 25px;
-        }
-
-        .b3-ticker-wrapper {
-            display: inline-block;
-            white-space: nowrap;
-            animation: b3-marquee 40s linear infinite;
-        }
-
-        .b3-ticker-wrapper:hover {
-            animation-play-state: paused;
-        }
-
-        .b3-ticker-item {
-            display: inline-flex;
-            align-items: center;
-            margin-right: 30px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 0.85rem;
-            background: rgba(30, 41, 59, 0.6);
-            padding: 5px 12px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
-
-        .b3-ticker-logo {
-            width: 18px;
-            height: 18px;
-            object-fit: contain;
-            margin-right: 8px;
-            border-radius: 50%;
-            background: #ffffff;
-            padding: 1px;
-        }
-
-        .b3-ticker-symbol {
-            font-weight: 700;
-            color: #38bdf8;
-            margin-right: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .b3-ticker-price {
-            color: #f1f5f9;
-            margin-right: 8px;
-            font-weight: 500;
-        }
-
-        .b3-ticker-pos {
-            color: #4ade80;
-            font-weight: 600;
-        }
-
-        .b3-ticker-neg {
-            color: #f87171;
-            font-weight: 600;
-        }
-
-        @keyframes b3-marquee {
-            0% { transform: translateX(0%); }
-            100% { transform: translateX(-50%); }
         }
 
         .hero-header {
@@ -146,7 +73,7 @@ st.markdown("""
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
             border-radius: 12px !important;
-            padding: 15px 20px !important;
+            padding: 12px 15px !important;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
@@ -277,75 +204,24 @@ def obter_dados_ticker_seguro(ticker_raw):
     except Exception:
         return {"symbol": t_symbol, "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0}
 
-# --- MAPEAMENTO DE ÍCONES CORPORATIVOS ---
-def obter_icone_ativo(simbolo):
-    icones = {
-        "AAPL": "https://img.icons8.com/color/48/mac-os.png",
-        "MSFT": "https://img.icons8.com/color/48/microsoft.png",
-        "GOOGL": "https://img.icons8.com/color/48/google-logo.png",
-        "AMZN": "https://img.icons8.com/color/48/amazon.png",
-        "TSLA": "https://img.icons8.com/color/48/tesla-logo.png",
-        "NVDA": "https://img.icons8.com/color/48/nvidia.png",
-        "META": "https://img.icons8.com/color/48/meta.png",
-        "SPY": "https://img.icons8.com/color/48/stocks.png",
-        "QQQ": "https://img.icons8.com/color/48/line-chart.png",
-        "BTC": "https://img.icons8.com/color/48/bitcoin--v1.png",
-        "ETH": "https://img.icons8.com/color/48/ethereum.png",
-        "PETR4": "https://img.icons8.com/color/48/petrol.png",
-        "VALE3": "https://img.icons8.com/color/48/ore.png",
-        "ITUB4": "https://img.icons8.com/color/48/bank-building.png",
-        "BBDC4": "https://img.icons8.com/color/48/money-bag.png",
-        "ABEV3": "https://img.icons8.com/color/48/beer-bottle.png",
-        "WEGE3": "https://img.icons8.com/color/48/engine.png",
-        "RENT3": "https://img.icons8.com/color/48/car--v1.png",
-        "BBAS3": "https://img.icons8.com/color/48/safe.png",
-        "HGLG11": "https://img.icons8.com/color/48/commercial-development.png",
-        "MXRF11": "https://img.icons8.com/color/48/real-estate.png",
-        "VIVA3": "https://img.icons8.com/color/48/shopping-bag.png",
-        "CEAB3": "https://img.icons8.com/color/48/t-shirt.png"
-    }
-    limpo = simbolo.replace(".SA", "").split("-")[0]
-    return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
-
-# --- RENDERIZADOR DO TICKER TAPE COM ROLAGEM CONTÍNUA E ÍCONES ---
+# --- BARRA DE COTAÇÕES NATIVA SUPER ESTABILIZADA ---
 def renderizar_ticker_tape(lista_tickers):
-    itens_html = ""
-    for t in lista_tickers:
+    st.markdown("---")
+    cols = st.columns(len(lista_tickers))
+    for idx, t in enumerate(lista_tickers):
         dados = obter_dados_ticker_seguro(t)
         if dados and dados["preco"] > 0:
             simbolo = dados["symbol"].replace(".SA", "")
-            icone_url = obter_icone_ativo(simbolo)
-            
             if "BRL" in t or ".SA" in t:
                 preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             else:
                 preco_str = f"${dados['preco']:,.2f}"
-                
             var = dados["variacao"]
-            classe_css = "b3-ticker-pos" if var >= 0 else "b3-ticker-neg"
             sinal = "+" if var >= 0 else ""
-            var_str = f"({sinal}{var:.2f}%)"
-            
-            # Formato idêntico ao padrão institucional da B3 (Ícone + Ticker + Preço + Variação)
-            itens_html += f"""
-                <div class="b3-ticker-item">
-                    <img src="{icone_url}" class="b3-ticker-logo">
-                    <span class="b3-ticker-symbol">{simbolo}</span>
-                    <span class="b3-ticker-price">{preco_str}</span>
-                    <span class="{classe_css}">{var_str}</span>
-                </div>
-            """
-    
-    # Duplicamos os itens para garantir o efeito de looping contínuo infinito sem saltos
-    ticker_html = f"""
-        <div class="b3-ticker-container">
-            <div class="b3-ticker-wrapper">
-                {itens_html}
-                {itens_html}
-            </div>
-        </div>
-    """
-    st.markdown(ticker_html, unsafe_allow_html=True)
+            var_str = f"{sinal}{var:.2f}%"
+            with cols[idx]:
+                st.metric(label=simbolo, value=preco_str, delta=var_str)
+    st.markdown("---")
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -426,7 +302,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v6.2 (B3 Ticker Pro)")
+    st.caption("Terminal B3 v6.3 (Stable UI)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -446,8 +322,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 # ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
-    # Barra global contínua com vários ativos e ícones
-    tickers_globais = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
+    tickers_globais = ["AAPL", "MSFT", "GOOGL", "AMZN", "BTC-USD"]
     renderizar_ticker_tape(tickers_globais)
 
     st.markdown("""
@@ -512,8 +387,7 @@ with aba1:
 # ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
 with aba2:
-    # Barra nacional contínua com vários ativos e ícones
-    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
+    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "HGLG11"]
     renderizar_ticker_tape(tickers_br)
 
     st.markdown("""

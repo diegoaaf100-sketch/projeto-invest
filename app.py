@@ -142,7 +142,7 @@ def carregar_fundos_b3():
     try:
         response = supabase.table("fundos_b3").select("*").execute()
         return pd.DataFrame(response.data)
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 df_fundos = carregar_fundos_b3()
@@ -154,7 +154,7 @@ def carregar_carteira_supabase():
     try:
         response = supabase.table("carteira_usuarios").select("*").execute()
         return pd.DataFrame(response.data)
-    except:
+    except Exception:
         return pd.DataFrame()
 
 # --- COTAÇÕES GLOBAIS ---
@@ -166,7 +166,7 @@ def buscar_cotacoes_atuais():
         val_dolar = f"R$ {dolar['Close'].iloc[-1]:.2f}" if not dolar.empty else "R$ 5,80"
         val_btc = f"R$ {btc['Close'].iloc[-1]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if not btc.empty else "R$ 350.000"
         return val_dolar, val_btc
-    except:
+    except Exception:
         return "R$ 5,80", "R$ 350.000"
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
@@ -191,7 +191,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v3.0")
+    st.caption("Terminal Institucional B3 v3.1")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -243,7 +243,7 @@ with aba1:
         st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
 
 # ==========================================
-# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
+# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS ILUSTRADAS
 # ==========================================
 with aba2:
     st.markdown("""
@@ -303,8 +303,9 @@ with aba2:
                     </div>
                 </div>
             """, unsafe_allow_html=True)
+
 # ==========================================
-# ABA 3: ANÁLISE TÉCNICA & IA (FILTRO POR DIGITAÇÃO + GRÁFICO 2 ANOS)
+# ABA 3: ANÁLISE TÉCNICA & IA
 # ==========================================
 with aba3:
     st.markdown("""
@@ -316,13 +317,11 @@ with aba3:
         </div>
     """, unsafe_allow_html=True)
     
-    # Campo de digitação de ticker
     ticker_input = st.text_input("Digite o código do ativo (ex: PETR4, VALE3, HGLG11, ITUB4):", value="PETR4").strip().upper()
     
     if ticker_input:
         ticker_formatado = f"{ticker_input}.SA" if not ticker_input.endswith(".SA") else ticker_input
         
-        # Verifica se existe no Supabase
         info_ativo = None
         if not df_fundos.empty:
             match = df_fundos[df_fundos['ticker_b3'].str.upper() == ticker_formatado]
@@ -358,7 +357,7 @@ with aba3:
                 
                 fig = px.line(dados_2y, x=dados_2y.index, y="Close", title=f"Evolução de Preços (Últimos 2 Anos) - {ticker_formatado}")
                 fig.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width='stretch')
             else:
                 st.error(f"Não foram encontrados dados históricos para {ticker_formatado}.")
         except Exception as e:
@@ -384,7 +383,7 @@ with aba3:
                 st.warning("API Key do Gemini não configurada.")
 
 # ==========================================
-# ABA 4: ADICIONAR À CARTEIRA (SUPABASE)
+# ABA 4: ADICIONAR À CARTEIRA
 # ==========================================
 with aba4:
     st.markdown("""
@@ -438,14 +437,13 @@ with aba5:
     df_cart = carregar_carteira_supabase()
     
     if not df_cart.empty:
-        # Busca cotação atual para cada ticker salvo
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
             t = row['ticker']
             try:
                 hist = yf.Ticker(t).history(period="1d")
                 preco = hist['Close'].iloc[-1] if not hist.empty else row['preco_medio']
-            except:
+            except Exception:
                 preco = row['preco_medio']
             cotacoes_atuais.append(preco)
             
@@ -455,7 +453,6 @@ with aba5:
         df_cart['PnL_Reais'] = df_cart['Valor_Atual'] - df_cart['Total_Investido']
         df_cart['PnL_Percent'] = (df_cart['PnL_Reais'] / df_cart['Total_Investido']) * 100
         
-        # Exibe métricas gerais da carteira
         tot_inv = df_cart['Total_Investido'].sum()
         tot_val = df_cart['Valor_Atual'].sum()
         tot_pnl = df_cart['PnL_Reais'].sum()
@@ -479,9 +476,10 @@ with aba5:
             "Valor_Atual": "R$ {:.2f}",
             "PnL_Reais": "R$ {:.2f}",
             "PnL_Percent": "{:.2f}%"
-        }), use_container_width=True)
+        }), width='stretch')
     else:
         st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
+
 # ==========================================
 # ABA 6: SIMULADOR
 # ==========================================

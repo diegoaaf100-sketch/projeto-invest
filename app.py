@@ -159,10 +159,29 @@ supabase = init_supabase()
 @st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
     t_clean = ticker_raw.strip().upper()
-    if not t_clean.endswith(".SA") and not t_clean.startswith("^") and "=" not in t_clean and "-" not in t_clean:
-        t_symbol = f"{t_clean}.SA"
-    else:
-        t_symbol = t_clean
+    itickers_internacionais = {
+    "AAPL",
+    "AMZN",
+    "TSLA",
+    "NVDA",
+    "GOOGL",
+    "MSFT",
+    "META"
+}
+
+if t_clean in tickers_internacionais:
+    t_symbol = t_clean
+
+elif (
+    not t_clean.endswith(".SA")
+    and not t_clean.startswith("^")
+    and "=" not in t_clean
+    and "-" not in t_clean
+):
+    t_symbol = f"{t_clean}.SA"
+
+else:
+    t_symbol = t_clean
 
     try:
         t_obj = yf.Ticker(t_symbol)

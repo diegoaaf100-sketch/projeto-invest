@@ -161,19 +161,7 @@ supabase = init_supabase()
 @st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
     t_clean = ticker_raw.strip().upper()
-
-    # Ativos negociados nos Estados Unidos: não acrescentar .SA
-    tickers_internacionais = {
-        "AAPL",   # Apple
-        "AMZN",   # Amazon
-        "TSLA",   # Tesla
-        "NVDA",   # Nvidia
-        "GOOGL",  # Google
-        "MSFT",   # Microsoft
-        "META",   # Meta
-        "SPY",
-        "QQQ"
-    }
+    tickers_internacionais = {"AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ"}
 
     if t_clean in tickers_internacionais:
         t_symbol = t_clean
@@ -253,7 +241,7 @@ def obter_icone_ativo(simbolo):
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
 
-# --- TICKER TAPE ANIMADO COM ROLAGEM ISOLADA E COMPACTA ---
+# --- TICKER TAPE ESTILO INVESTIDOR10 (FLUIDO E COMPACTO) ---
 def renderizar_ticker_tape(lista_tickers):
     itens_html = ""
     for t in lista_tickers:
@@ -270,7 +258,7 @@ def renderizar_ticker_tape(lista_tickers):
             var = dados["variacao"]
             cor_var = "#4ade80" if var >= 0 else "#f87171"
             sinal = "+" if var >= 0 else ""
-            var_str = f"({sinal}{var:.2f}%)"
+            var_str = f"{sinal}{var:.2f}%"
             
             itens_html += f"""
                 <div class="ticker-item">
@@ -281,7 +269,6 @@ def renderizar_ticker_tape(lista_tickers):
                 </div>
             """
 
-    # HTML/CSS renderizado dentro do iframe do Streamlit para animação garantida
     full_component = f"""
     <!DOCTYPE html>
     <html>
@@ -290,17 +277,17 @@ def renderizar_ticker_tape(lista_tickers):
             body {{
                 margin: 0;
                 padding: 0;
-                background-color: transparent;
+                background-color: #050b14;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 overflow: hidden;
             }}
             .ticker-container {{
                 width: 100%;
                 overflow: hidden;
-                background: #0b132b;
-                border-radius: 8px;
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                padding: 6px 0;
+                background: #050b14;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                padding: 8px 0;
                 white-space: nowrap;
             }}
             .ticker-wrapper {{
@@ -314,29 +301,26 @@ def renderizar_ticker_tape(lista_tickers):
             .ticker-item {{
                 display: inline-flex;
                 align-items: center;
-                margin-right: 25px;
+                margin-right: 30px;
                 font-size: 0.85rem;
-                background: rgba(30, 41, 59, 0.7);
-                padding: 4px 10px;
-                border-radius: 16px;
-                border: 1px solid rgba(255, 255, 255, 0.08);
             }}
             .ticker-logo {{
-                width: 16px;
-                height: 16px;
+                width: 18px;
+                height: 18px;
                 margin-right: 6px;
                 border-radius: 50%;
                 background: #fff;
                 padding: 1px;
             }}
             .ticker-symbol {{
-                font-weight: bold;
-                color: #38bdf8;
+                font-weight: 700;
+                color: #ffffff;
                 margin-right: 6px;
             }}
             .ticker-price {{
-                color: #f1f5f9;
+                color: #cbd5e1;
                 margin-right: 6px;
+                font-weight: 500;
             }}
             .ticker-var {{
                 font-weight: 600;
@@ -357,7 +341,7 @@ def renderizar_ticker_tape(lista_tickers):
     </body>
     </html>
     """
-    components.html(full_component, height=52)
+    components.html(full_component, height=38, scrolling=False)
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -438,7 +422,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v6.4 (Compact Ticker)")
+    st.caption("Terminal B3 v6.5 (Pro Ticker)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -458,7 +442,6 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 # ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
-    # Carrega a imagem local e aplica diretamente no painel e no banner da aba 1.
     imagem_fundo_path = Path(__file__).parent / "fundo_aba1_mercado.jpg"
     imagem_fundo_base64 = ""
 
@@ -470,7 +453,6 @@ with aba1:
         st.markdown(
             f"""
             <style>
-                /* Fundo da área de conteúdo da primeira aba */
                 .stTabs [role="tabpanel"]:first-of-type,
                 .stTabs [data-baseweb="tab-panel"]:first-of-type {{
                     background-image:
@@ -479,18 +461,12 @@ with aba1:
                     background-size: cover;
                     background-position: center center;
                     background-repeat: no-repeat;
-                    background-attachment: scroll;
                     border-radius: 14px;
                     padding: 14px;
                 }}
             </style>
             """,
             unsafe_allow_html=True
-        )
-    else:
-        st.warning(
-            "Imagem de fundo não encontrada. Confira se fundo_aba1_mercado.jpg "
-            "está na mesma pasta do app.py no GitHub."
         )
 
     tickers_globais = ["AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]

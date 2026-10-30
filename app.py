@@ -241,7 +241,7 @@ def obter_icone_ativo(simbolo):
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
 
-# --- TICKER TAPE ESTILO INVESTIDOR10 (FLUIDO E COMPACTO) ---
+# --- TICKER TAPE ESTILO INVESTIDOR10 (FLUIDO, COMPACTO E COM ROLAGEM GARANTIDA) ---
 def renderizar_ticker_tape(lista_tickers):
     itens_html = ""
     for t in lista_tickers:
@@ -274,26 +274,28 @@ def renderizar_ticker_tape(lista_tickers):
     <html>
     <head>
         <style>
-            body {{
+            html, body {{
                 margin: 0;
                 padding: 0;
+                width: 100%;
                 background-color: #050b14;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 overflow: hidden;
             }}
             .ticker-container {{
                 width: 100%;
                 overflow: hidden;
                 background: #050b14;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                padding: 8px 0;
+                border-top: 1px solid rgba(255, 255, 255, 0.12);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+                padding: 6px 0;
                 white-space: nowrap;
+                box-sizing: border-box;
             }}
             .ticker-wrapper {{
-                display: inline-block;
+                display: inline-flex;
                 white-space: nowrap;
-                animation: marquee 35s linear infinite;
+                animation: marquee 30s linear infinite;
+                width: max-content;
             }}
             .ticker-wrapper:hover {{
                 animation-play-state: paused;
@@ -301,32 +303,35 @@ def renderizar_ticker_tape(lista_tickers):
             .ticker-item {{
                 display: inline-flex;
                 align-items: center;
-                margin-right: 30px;
+                margin-right: 35px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
                 font-size: 0.85rem;
+                flex-shrink: 0;
             }}
             .ticker-logo {{
                 width: 18px;
                 height: 18px;
-                margin-right: 6px;
+                margin-right: 8px;
                 border-radius: 50%;
                 background: #fff;
                 padding: 1px;
+                object-fit: contain;
             }}
             .ticker-symbol {{
                 font-weight: 700;
                 color: #ffffff;
-                margin-right: 6px;
+                margin-right: 8px;
             }}
             .ticker-price {{
                 color: #cbd5e1;
-                margin-right: 6px;
+                margin-right: 8px;
                 font-weight: 500;
             }}
             .ticker-var {{
                 font-weight: 600;
             }}
             @keyframes marquee {{
-                0% {{ transform: translateX(0%); }}
+                0% {{ transform: translateX(0); }}
                 100% {{ transform: translateX(-50%); }}
             }}
         </style>
@@ -341,7 +346,7 @@ def renderizar_ticker_tape(lista_tickers):
     </body>
     </html>
     """
-    components.html(full_component, height=38, scrolling=False)
+    components.html(full_component, height=42, scrolling=False)
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -422,7 +427,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v6.5 (Pro Ticker)")
+    st.caption("Terminal B3 v6.6 (Pro Ticker)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")

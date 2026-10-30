@@ -5,6 +5,7 @@ import plotly.express as px
 import yfinance as yf
 from supabase import create_client
 from google import genai
+import feedparser
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -98,6 +99,8 @@ st.markdown("""
             overflow: hidden;
             margin-bottom: 15px;
             transition: transform 0.2s;
+            padding: 15px;
+            height: 100%;
         }
 
         .news-card:hover {
@@ -105,15 +108,11 @@ st.markdown("""
             border-color: #0284c7;
         }
 
-        .news-content {
-            padding: 12px 15px;
-        }
-
         .news-title {
             font-weight: 700;
             color: #f1f5f9;
             font-size: 0.95rem;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
 
         .news-date {
@@ -128,7 +127,6 @@ st.markdown("""
 def init_supabase():
     url = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
     key = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
-    
     if not url or not key:
         return None
     try:
@@ -175,6 +173,21 @@ def buscar_cotacoes_atuais():
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
 
+# --- FUNÇÃO DE BUSCA DE NOTÍCIAS DIÁRIAS (RSS FEED) ---
+@st.cache_data(ttl=3600)
+def buscar_noticias_rss(url_rss, limite=3):
+    try:
+        feed = feedparser.parse(url_rss)
+        noticias = []
+        for entry in feed.entries[:limite]:
+            titulo = entry.get("title", "Sem título")
+            link = entry.get("link", "#")
+            data = entry.get("published", "Atualizado hoje")
+            noticias.append({"titulo": titulo, "link": link, "data": data})
+        return noticias
+    except Exception:
+        return []
+
 # --- CLIENTE GEMINI ---
 @st.cache_resource
 def init_gemini():
@@ -190,17 +203,14 @@ with st.sidebar:
     st.image("https://img.icons8.com/color/96/bullish.png", width=60)
     st.title("Terminal Quant")
     st.markdown("---")
-    
     if supabase:
         st.markdown("**Base Supabase:** 🟢 Conectado")
     else:
         st.markdown("**Base Supabase:** 🔴 Não configurado")
-        st.caption("Configure SUPABASE_URL e SUPABASE_KEY no arquivo `.streamlit/secrets.toml`")
-        
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v3.2")
+    st.caption("Terminal Institucional B3 v4.0")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -217,7 +227,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL
+# ABA 1: VISÃO GLOBAL (NOTÍCIAS DIÁRIAS)
 # ==========================================
 with aba1:
     st.markdown("""
@@ -251,15 +261,35 @@ with aba1:
     with ig5:
         st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
 
+    st.divider()
+    st.subheader("📰 Notícias Diárias do Mercado Global (Atualização Automática)")
+    
+    # RSS Feed de Economia Global (Yahoo Finance World)
+    noticias_globais = buscar_noticias_rss("https://finance.yahoo.com/news/rssindex", limite=3)
+    
+    if noticias_globais:
+        ng1, ng2, ng3 = st.columns(3)
+        cols_g = [ng1, ng2, ng3]
+        for idx, item in enumerate(noticias_globais):
+            with cols_g[idx]:
+                st.markdown(f"""
+                    <div class="news-card">
+                        <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
+                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Yahoo Finance</div>
+                    </div>
+                """, unsafe_allow_html=True)
+    else:
+        st.info("Carregando notícias globais em tempo real...")
+
 # ==========================================
-# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS ILUSTRADAS
+# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS DIÁRIAS
 # ==========================================
 with aba2:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">🇧🇷 Mercado Brasileiro & Notícias</div>
-                <div class="hero-subtitle">Indicadores macroeconômicos da B3 e fatos relevantes ilustrados</div>
+                <div class="hero-subtitle">Indicadores macroeconômicos da B3 e fatos relevantes atualizados diariamente</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -276,42 +306,24 @@ with aba2:
         st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
         
     st.divider()
-    st.subheader("📰 Notícias em Destaque do Mercado Nacional")
+    st.subheader("📰 Notícias Diárias do Mercado Nacional (Atualização Automática)")
     
-    n_col1, n_col2, n_col3 = st.columns(3)
-    noticias_br = [
-        {
-            "titulo": "Ibovespa opera em alta impulsionado por ações de commodities e bancos",
-            "data": "Hoje, 11:30",
-            "fonte": "B3 / InfoMoney",
-            "imagem": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=500&q=80"
-        },
-        {
-            "titulo": "Copom mantém diretrizes para controle inflacionário no médio prazo",
-            "data": "Ontem, 18:00",
-            "fonte": "Banco Central do Brasil",
-            "imagem": "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=500&q=80"
-        },
-        {
-            "titulo": "Fundos imobiliários batem recorde de número de investidores ativos",
-            "data": "28/10/2026",
-            "fonte": "B3 Mercado",
-            "imagem": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=500&q=80"
-        }
-    ]
+    # RSS Feed de Notícias do Brasil / Exame / InfoMoney
+    noticias_nacionais = buscar_noticias_rss("https://exame.com/invest/feed/", limite=3)
     
-    for idx, col in enumerate([n_col1, n_col2, n_col3]):
-        n = noticias_br[idx]
-        with col:
-            st.markdown(f"""
-                <div class="news-card">
-                    <img src="{n['imagem']}" style="width: 100%; height: 130px; object-fit: cover;">
-                    <div class="news-content">
-                        <div class="news-title">{n['titulo']}</div>
-                        <div class="news-date">📅 {n['data']} &nbsp;|&nbsp; 🏢 {n['fonte']}</div>
+    if noticias_nacionais:
+        nn1, nn2, nn3 = st.columns(3)
+        cols_n = [nn1, nn2, nn3]
+        for idx, item in enumerate(noticias_nacionais):
+            with cols_n[idx]:
+                st.markdown(f"""
+                    <div class="news-card">
+                        <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
+                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Exame Invest</div>
                     </div>
-                </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+    else:
+        st.info("Carregando notícias do mercado nacional...")
 
 # ==========================================
 # ABA 3: ANÁLISE TÉCNICA & IA
@@ -392,14 +404,14 @@ with aba3:
                 st.warning("API Key do Gemini não configurada.")
 
 # ==========================================
-# ABA 4: ADICIONAR À CARTEIRA
+# ABA 4: ADICIONAR À CARTEIRA + INDICADORES NA PARTE INFERIOR
 # ==========================================
 with aba4:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">➕ Adicionar Ativo à Carteira</div>
-                <div class="hero-subtitle">Cadastre suas posições com digitação de ticker e salve diretamente no Supabase</div>
+                <div class="hero-title">➕ Adicionar Ativo à Carteira & Pré-visualização</div>
+                <div class="hero-subtitle">Consulte indicadores em tempo real na parte inferior e salve no Supabase</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -407,7 +419,7 @@ with aba4:
     with st.form("form_carteira"):
         col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
-            ticker_cad = st.text_input("Ticker do Ativo (ex: PETR4.SA ou HGLG11.SA):", value="PETR4.SA").strip().upper()
+            ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4 ou HGLG11):", value="PETR4").strip().upper()
         with col_f2:
             qtd_cad = st.number_input("Quantidade de Cotas/Ações:", min_value=1, value=100, step=1)
         with col_f3:
@@ -416,19 +428,57 @@ with aba4:
         salvar_btn = st.form_submit_button("Salvar no Banco de Dados (Supabase)", type="primary")
         
         if salvar_btn:
+            ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
             if supabase:
                 try:
                     novo_registro = {
-                        "ticker": ticker_cad,
+                        "ticker": ticker_final,
                         "quantidade": int(qtd_cad),
                         "preco_medio": float(pm_cad)
                     }
                     supabase.table("carteira_usuarios").insert(novo_registro).execute()
-                    st.success(f"Ativo {ticker_cad} adicionado e salvo com sucesso no Supabase!")
+                    st.success(f"Ativo {ticker_final} adicionado e salvo com sucesso no Supabase!")
                 except Exception as e:
                     st.error(f"Erro ao salvar no Supabase: {e}")
             else:
                 st.warning("Conexão com o Supabase não configurada.")
+
+    st.divider()
+    st.subheader("🔍 Indicadores em Tempo Real do Ativo Selecionado")
+    
+    if ticker_cad_input:
+        ticker_preview = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
+        try:
+            t_obj = yf.Ticker(ticker_preview)
+            info = t_obj.info
+            
+            cotacao_atual = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
+            div_yield = info.get('dividendYield', 0.0)
+            if div_yield:
+                div_yield_str = f"{div_yield * 100:.2f}%"
+            else:
+                div_yield_str = "N/D"
+                
+            p_l = info.get('trailingPE', 'N/D')
+            val_mercado = info.get('marketCap', 0)
+            val_mercado_str = f"R$ {val_mercado:,.2f}" if val_mercado else "N/D"
+            min_52 = info.get('fiftyTwoWeekLow', 'N/D')
+            max_52 = info.get('fiftyTwoWeekHigh', 'N/D')
+            
+            ip1, ip2, ip3, ip4, ip5 = st.columns(5)
+            with ip1:
+                st.metric("Cotação Atual", f"R$ {cotacao_atual:.2f}" if cotacao_atual else "N/D")
+            with ip2:
+                st.metric("Dividend Yield (DY)", div_yield_str)
+            with ip3:
+                st.metric("Índice P/L", f"{p_l:.2f}" if isinstance(p_l, (int, float)) else p_l)
+            with ip4:
+                st.metric("Mínima 52 Semanas", f"R$ {min_52:.2f}" if isinstance(min_52, (int, float)) else min_52)
+            with ip5:
+                st.metric("Máxima 52 Semanas", f"R$ {max_52:.2f}" if isinstance(max_52, (int, float)) else max_52)
+                
+        except Exception as e:
+            st.info(f"Digite um ticker válido da B3 para visualizar os indicadores (ex: VALE3, ITUB4, WEGE3).")
 
 # ==========================================
 # ABA 5: GESTÃO DE CARTEIRA & PnL DETALHADO

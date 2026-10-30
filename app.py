@@ -440,8 +440,20 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 # ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
-    tickers_globais = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
-    renderizar_ticker_tape(tickers_globais)
+    tickers_globais = [
+    "AAPL",   # Apple
+    "MSFT",   # Microsoft
+    "GOOGL",  # Google
+    "AMZN",   # Amazon
+    "META",   # Meta
+    "NVDA",   # Nvidia
+    "TSLA"    # Tesla
+]
+
+renderizar_ticker_tape(
+    tickers_globais,
+    internacional=True
+)
 
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80');">

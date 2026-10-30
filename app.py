@@ -470,17 +470,24 @@ with aba1:
         st.markdown(
             f"""
             <style>
-                .stTabs [data-baseweb="tab-panel"]:has(#aba1-background-marker) {{
+                /* Aplica o fundo ao painel e ao bloco interno da primeira aba.
+                   O marcador existe somente dentro da aba Visão Global. */
+                .stTabs [data-baseweb="tab-panel"]:has(#aba1-background-marker),
+                .stTabs [data-baseweb="tab-panel"] div[data-testid="stVerticalBlock"]:has(#aba1-background-marker) {{
                     background-image:
                         linear-gradient(
-                            rgba(5, 12, 25, 0.76),
-                            rgba(5, 12, 25, 0.84)
+                            rgba(5, 12, 25, 0.72),
+                            rgba(5, 12, 25, 0.82)
                         ),
                         url("data:image/webp;base64,{imagem_fundo_base64}");
                     background-size: cover;
                     background-position: center top;
                     background-repeat: no-repeat;
+                    background-attachment: scroll;
                     border-radius: 14px;
+                }}
+
+                .stTabs [data-baseweb="tab-panel"]:has(#aba1-background-marker) {{
                     padding: 18px;
                 }}
             </style>

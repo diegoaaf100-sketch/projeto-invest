@@ -17,15 +17,9 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA ---
+# 1. Carrega o CSS de forma limpa (sem f-string, livre de erros de chaves)
 st.markdown("""
     <style>
-        .stApp {
-            background: linear-gradient(135deg, #0a1128 0%, #1c2541 50%, #0f172a 100%) !important;
-            color: #f8fafc;
-        }
-
-        /* --- BARRA ROLANTE ESTILO BLOOMBERG / TRADINGVIEW --- */
         .ticker-container {
             width: 100%;
             overflow: hidden;
@@ -37,17 +31,14 @@ st.markdown("""
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
             margin-bottom: 20px;
         }
-
         .ticker-wrapper {
             display: inline-block;
             white-space: nowrap;
             animation: marquee 30s linear infinite;
         }
-
         .ticker-wrapper:hover {
-            animation-play-state: paused; /* Pausa ao passar o mouse */
+            animation-play-state: paused;
         }
-
         .ticker-item {
             display: inline-flex;
             align-items: center;
@@ -59,35 +50,68 @@ st.markdown("""
             border-radius: 4px;
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
-
         .ticker-symbol {
             font-weight: 700;
             color: #38bdf8;
             margin-right: 8px;
         }
-
         .ticker-price {
             color: #f1f5f9;
             margin-right: 8px;
             font-weight: 500;
         }
-
         .ticker-pos {
             color: #4ade80;
             font-weight: 600;
         }
-
         .ticker-neg {
             color: #f87171;
             font-weight: 600;
         }
-
         @keyframes marquee {
             0% { transform: translateX(0%); }
             100% { transform: translateX(-50%); }
         }
     </style>
 """, unsafe_allow_html=True)
+
+
+# 2. Função de renderização focada apenas nos dados
+def renderizar_ticker_tape(lista_tickers):
+    itens_html = ""
+    for t in lista_tickers:
+        dados = obter_dados_ticker_seguro(t)
+        if dados and dados["preco"] > 0:
+            simbolo = dados["symbol"].replace(".SA", "")
+            
+            if "BRL" in t or ".SA" in t:
+                preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            else:
+                preco_str = f"${dados['preco']:,.2f}"
+                
+            var = dados["variacao"]
+            classe_css = "ticker-pos" if var >= 0 else "ticker-neg"
+            sinal = "+" if var >= 0 else ""
+            var_str = f"{sinal}{var:.2f}%"
+            
+            itens_html += f"""
+                <div class="ticker-item">
+                    <span class="ticker-symbol">{simbolo}</span>
+                    <span class="ticker-price">{preco_str}</span>
+                    <span class="{classe_css}">{var_str}</span>
+                </div>
+            """
+    
+    # A f-string aqui monta apenas a estrutura dos itens, sem conflito de CSS
+    ticker_html = f"""
+        <div class="ticker-container">
+            <div class="ticker-wrapper">
+                {itens_html}
+                {itens_html}
+            </div>
+        </div>
+    """
+    st.markdown(ticker_html, unsafe_allow_html=True)
 
 # --- GERADOR DE HTML PARA O TICKER TAPE (CORRIGIDO) ---
 def renderizar_ticker_tape(lista_tickers):

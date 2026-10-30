@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA ---
+# --- ESTILIZAÇÃO CSS CUSTOMIZADA (WEBSITE DESIGN / DEGRADÊ AZUL) ---
 st.markdown("""
     <style>
         .stApp {
@@ -148,8 +148,7 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO UNIVERSAL SEGURO DE BUSCA DE ATIVOS ---
-@st.cache_data(ttl=300)
+# --- FUNÇÃO UNIVERSAL DE BUSCA DE ATIVOS (SEM CACHE DE OBJETOS COMPLEXOS) ---
 def obter_dados_ticker_seguro(ticker_raw):
     t_clean = ticker_raw.strip().upper()
     if not t_clean.endswith(".SA") and not t_clean.startswith("^") and "=" not in t_clean:
@@ -160,14 +159,12 @@ def obter_dados_ticker_seguro(ticker_raw):
     try:
         t_obj = yf.Ticker(t_symbol)
         
-        # Tenta obter info
         info = {}
         try:
             info = t_obj.info or {}
         except Exception:
             info = {}
 
-        # Fallback de preço via Histórico
         hist = t_obj.history(period="5d")
         preco_atual = 0.0
         if not hist.empty:
@@ -189,11 +186,9 @@ def obter_dados_ticker_seguro(ticker_raw):
             "pe": pe,
             "pb": pb,
             "min52": min52,
-            "max52": max52,
-            "history": hist,
-            "object": t_obj
+            "max52": max52
         }
-    except Exception as e:
+    except Exception:
         return None
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
@@ -218,7 +213,7 @@ def buscar_cotacoes_atuais():
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
 
-# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS ---
+# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS COM IMAGENS ---
 @st.cache_data(ttl=1800)
 def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
     for url in urls:
@@ -275,7 +270,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v5.2 (Universal Ticker)")
+    st.caption("Terminal B3 v5.3 (Stable)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -440,8 +435,8 @@ with aba3:
                 
             st.divider()
             
-            # Histórico estendido para o gráfico
-            df_hist = dados_ativo["object"].history(period="2y")
+            # Histórico de 2 anos direto via yfinance para o gráfico
+            df_hist = yf.Ticker(dados_ativo['symbol']).history(period="2y")
             
             if not df_hist.empty:
                 df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
@@ -518,7 +513,7 @@ with aba3:
                 else:
                     st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
         else:
-            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`. Verifique se o código está correto (ex: PETR4, VALE3, HGLG11).")
+            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`. Verifique se o código está correto.")
 
 # ==========================================
 # ABA 4: ADICIONAR À CARTEIRA
@@ -581,14 +576,14 @@ with aba4:
             st.info("Digite um ticker válido da B3 para visualizar os indicadores.")
 
 # ==========================================
-# ABA 5: GESTÃO DE CARTEIRA & PnL
+# ABA 5: GESTÃO DE CARTEIRA & PnL COM EXCLUSÃO
 # ==========================================
 with aba5:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
-                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e rentabilidade dos ativos salvos</div>
+                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e exclusão direta de ativos</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -623,16 +618,41 @@ with aba5:
             st.metric("Lucro / Prejuízo Total (PnL)", f"R$ {tot_pnl:,.2f}", f"{tot_pnl_pct:.2f}%")
             
         st.divider()
-        st.subheader("📋 Detalhamento por Ativo")
+        st.subheader("📋 Gerenciamento e Exclusão de Ativos")
         
-        st.dataframe(df_cart[['ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']].style.format({
-            "preco_medio": "R$ {:.2f}",
-            "Cotacao_Atual": "R$ {:.2f}",
-            "Total_Investido": "R$ {:.2f}",
-            "Valor_Atual": "R$ {:.2f}",
-            "PnL_Reais": "R$ {:.2f}",
-            "PnL_Percent": "{:.2f}%"
-        }), width='stretch')
+        df_cart.insert(0, "Excluir", False)
+        
+        df_editado = st.data_editor(
+            df_cart[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
+            column_config={
+                "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir?", required=True),
+                "id": st.column_config.NumberColumn("ID", disabled=True),
+                "ticker": st.column_config.TextColumn("Ticker", disabled=True),
+                "quantidade": st.column_config.NumberColumn("Qtd", disabled=True),
+                "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
+                "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
+                "Total_Investido": st.column_config.NumberColumn("Total Investido", format="R$ %.2f", disabled=True),
+                "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
+                "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
+                "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
+            },
+            hide_index=True,
+            width='stretch',
+            key="editor_carteira"
+        )
+        
+        if st.button("🗑️ Remover Ativos Selecionados do Supabase", type="secondary"):
+            ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
+            if ids_para_remover and supabase:
+                try:
+                    for item_id in ids_para_remover:
+                        supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
+                    st.success("Ativo(s) removido(s) com sucesso! Atualizando...")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao excluir do Supabase: {e}")
+            else:
+                st.warning("Nenhum ativo foi selecionado para exclusão.")
     else:
         st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
 

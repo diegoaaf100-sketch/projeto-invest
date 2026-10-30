@@ -148,9 +148,22 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO UNIVERSAL DE BUSCA DE ATIVOS (SEM CACHE DE OBJETOS COMPLEXOS) ---
-def obter_dados_ticker_seguro(ticker_raw):
+# --- FUNÇÃO UNIVERSAL DE BUSCA DE ATIVOS (VARIÁVEL POR CLASSE) ---
+def obter_dados_ticker_seguro(ticker_raw, classe="Ações / FIIs (B3)"):
     t_clean = ticker_raw.strip().upper()
+    
+    # Se for Renda Fixa ou Tesouro Direto, tratamos o preço unitário ou valor investido diretamente
+    if classe in ["Tesouro Direto", "Renda Fixa (LCA/LCI/CDB)"]:
+        return {
+            "symbol": t_clean,
+            "preco": 0.0,
+            "dy_str": "Isento / CDI",
+            "pe": "N/A",
+            "pb": "N/A",
+            "min52": 0.0,
+            "max52": 0.0
+        }
+
     if not t_clean.endswith(".SA") and not t_clean.startswith("^") and "=" not in t_clean:
         t_symbol = f"{t_clean}.SA"
     else:
@@ -158,7 +171,6 @@ def obter_dados_ticker_seguro(ticker_raw):
 
     try:
         t_obj = yf.Ticker(t_symbol)
-        
         info = {}
         try:
             info = t_obj.info or {}
@@ -270,7 +282,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v5.3 (Stable)")
+    st.caption("Terminal B3 v5.4 (Multi-Asset)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -411,10 +423,10 @@ with aba3:
         </div>
     """, unsafe_allow_html=True)
     
-    ticker_input = st.text_input("Digite o ticker do ativo B3 (ex: PETR4, VALE3, WEGE3, HGLG11, MXRF11):", value="PETR4").strip().upper()
+    ticker_input = st.text_input("Digite o ticker do ativo B3 (ex: PETR4, VALE3, WEGE3, HGLG11):", value="PETR4").strip().upper()
     
     if ticker_input:
-        dados_ativo = obter_dados_ticker_seguro(ticker_input)
+        dados_ativo = obter_dados_ticker_seguro(ticker_input, "Ações / FIIs (B3)")
         
         if dados_ativo and dados_ativo["preco"] > 0:
             st.subheader(f"🔍 Indicadores Fundamentalistas & de Mercado - {dados_ativo['symbol']}")
@@ -435,7 +447,6 @@ with aba3:
                 
             st.divider()
             
-            # Histórico de 2 anos direto via yfinance para o gráfico
             df_hist = yf.Ticker(dados_ativo['symbol']).history(period="2y")
             
             if not df_hist.empty:
@@ -513,53 +524,78 @@ with aba3:
                 else:
                     st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
         else:
-            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`. Verifique se o código está correto.")
+            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`.")
 
 # ==========================================
-# ABA 4: ADICIONAR À CARTEIRA
+# ABA 4: ADICIONAR À CARTEIRA (COM TESOURO E RENDA FIXA)
 # ==========================================
 with aba4:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">➕ Adicionar Ativo à Carteira & Pré-visualização</div>
-                <div class="hero-subtitle">Consulte indicadores em tempo real na parte inferior e salve no Supabase</div>
+                <div class="hero-title">➕ Adicionar Ativos (Ações, Tesouro Direto, LCA/LCI)</div>
+                <div class="hero-subtitle">Cadastre qualquer classe de investimento na sua carteira sincronizada ao Supabase</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
     with st.form("form_carteira"):
+        tipo_ativo = st.selectbox(
+            "Classe do Ativo:", 
+            ["Ações / FIIs (B3)", "Tesouro Direto", "Renda Fixa (LCA/LCI/CDB)"]
+        )
+        
         col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
-            ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4 ou HGLG11):", value="PETR4").strip().upper()
+            if tipo_ativo == "Ações / FIIs (B3)":
+                ticker_cad_input = st.text_input("Ticker (ex: PETR4 ou HGLG11):", value="PETR4").strip().upper()
+            elif tipo_ativo == "Tesouro Direto":
+                ticker_cad_input = st.text_input("Título (ex: Tesouro IPCA+ 2035):", value="Tesouro IPCA+ 2035").strip()
+            else:
+                ticker_cad_input = st.text_input("Emissor / Descrição (ex: LCA Banco Inter 95% CDI):", value="LCA Banco Inter").strip()
+                
         with col_f2:
-            qtd_cad = st.number_input("Quantidade de Cotas/Ações:", min_value=1, value=100, step=1)
+            if tipo_ativo == "Ações / FIIs (B3)":
+                qtd_cad = st.number_input("Quantidade de Cotas:", min_value=1, value=100, step=1)
+                pm_cad = st.number_input("Preço Médio Unitário (R$):", min_value=0.01, value=35.00, step=0.50)
+            else:
+                qtd_cad = 1 # Para renda fixa e tesouro, consideramos o valor total investido como montante
+                pm_cad = st.number_input("Valor Total Investido (R$):", min_value=0.01, value=5000.00, step=100.00)
+                
         with col_f3:
-            pm_cad = st.number_input("Preço Médio de Aquisição (R$):", min_value=0.01, value=35.00, step=0.50)
-            
-        salvar_btn = st.form_submit_button("Salvar no Banco de Dados (Supabase)", type="primary")
+            st.markdown("<br>", unsafe_allow_html=True)
+            salvar_btn = st.form_submit_button("Salvar no Supabase", type="primary")
         
         if salvar_btn:
-            ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
+            if tipo_ativo == "Ações / FIIs (B3)":
+                ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
+                preco_medio_final = float(pm_cad)
+                quantidade_final = int(qtd_cad)
+            else:
+                ticker_final = f"[{tipo_ativo.upper()}] {ticker_cad_input}"
+                preco_medio_final = float(pm_cad)
+                quantidade_final = 1
+
             if supabase:
                 try:
                     novo_registro = {
                         "ticker": ticker_final,
-                        "quantidade": int(qtd_cad),
-                        "preco_medio": float(pm_cad)
+                        "quantidade": quantidade_final,
+                        "preco_medio": preco_medio_final
                     }
                     supabase.table("carteira_usuarios").insert(novo_registro).execute()
-                    st.success(f"Ativo {ticker_final} adicionado e salvo com sucesso no Supabase!")
+                    st.success(f"Ativo '{ticker_final}' adicionado com sucesso ao Supabase!")
                 except Exception as e:
                     st.error(f"Erro ao salvar no Supabase: {e}")
             else:
                 st.warning("Conexão com o Supabase não configurada.")
 
     st.divider()
-    st.subheader("🔍 Indicadores em Tempo Real do Ativo Selecionado")
+    st.subheader("🔍 Pré-visualização do Ativo")
     
-    if ticker_cad_input:
-        preview_data = obter_dados_ticker_seguro(ticker_cad_input)
+    if tipo_ativo == "Ações / FIIs (B3)" and 'ticker_cad_input' in locals() and ticker_cad_input:
+        preview_data = obter_dados_ticker_seguro(ticker_cad_input, tipo_ativo)
         if preview_data and preview_data["preco"] > 0:
             ip1, ip2, ip3, ip4, ip5 = st.columns(5)
             with ip1:
@@ -572,8 +608,8 @@ with aba4:
                 st.metric("Mínima 52 Semanas", f"R$ {preview_data['min52']:.2f}" if isinstance(preview_data['min52'], (int, float)) else preview_data['min52'])
             with ip5:
                 st.metric("Máxima 52 Semanas", f"R$ {preview_data['max52']:.2f}" if isinstance(preview_data['max52'], (int, float)) else preview_data['max52'])
-        else:
-            st.info("Digite um ticker válido da B3 para visualizar os indicadores.")
+    else:
+        st.info("Para Renda Fixa e Tesouro Direto, o valor investido é mantido fixo e atualizado diretamente na carteira.")
 
 # ==========================================
 # ABA 5: GESTÃO DE CARTEIRA & PnL COM EXCLUSÃO
@@ -583,7 +619,7 @@ with aba5:
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
-                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e exclusão direta de ativos</div>
+                <div class="hero-subtitle">Acompanhe ativos de Renda Variável, Tesouro e Renda Fixa com exclusão direta</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -594,8 +630,12 @@ with aba5:
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
             t = row['ticker']
-            d_asset = obter_dados_ticker_seguro(t)
-            preco = d_asset['preco'] if d_asset and d_asset['preco'] > 0 else row['preco_medio']
+            if "[TESOURO DIRETO]" in t or "[RENDA FIXA" in t:
+                # Renda fixa mantém o valor investido como valor atual (ou pode ser ajustado)
+                preco = row['preco_medio']
+            else:
+                d_asset = obter_dados_ticker_seguro(t, "Ações / FIIs (B3)")
+                preco = d_asset['preco'] if d_asset and d_asset['preco'] > 0 else row['preco_medio']
             cotacoes_atuais.append(preco)
             
         df_cart['Cotacao_Atual'] = cotacoes_atuais
@@ -627,12 +667,12 @@ with aba5:
             column_config={
                 "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir?", required=True),
                 "id": st.column_config.NumberColumn("ID", disabled=True),
-                "ticker": st.column_config.TextColumn("Ticker", disabled=True),
+                "ticker": st.column_config.TextColumn("Ativo / Título", disabled=True),
                 "quantidade": st.column_config.NumberColumn("Qtd", disabled=True),
-                "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
-                "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
+                "preco_medio": st.column_config.NumberColumn("Preço / Valor Aporte", format="R$ %.2f", disabled=True),
+                "Cotacao_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
                 "Total_Investido": st.column_config.NumberColumn("Total Investido", format="R$ %.2f", disabled=True),
-                "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
+                "Valor_Atual": st.column_config.NumberColumn("Total Atual", format="R$ %.2f", disabled=True),
                 "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
                 "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
             },

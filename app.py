@@ -391,7 +391,6 @@ with aba3:
                 
                 st.subheader("📊 Gráfico Técnico Profissional (Candlestick + Média Móvel + Volume)")
                 
-                # Criar subplots para Preço e Volume
                 fig = make_subplots(
                     rows=2, cols=1, 
                     shared_xaxes=True, 
@@ -462,14 +461,14 @@ with aba3:
                 )
                 with st.spinner("Analisando indicadores e gerando parecer estratégico..."):
                     try:
-                        resp = client_gemini.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                        # Atualizado para utilizar o modelo gemini-1.5-flash
+                        resp = client_gemini.models.generate_content(model='gemini-1.5-flash', contents=prompt)
                         st.success("Relatório gerado com sucesso!")
                         st.markdown(resp.text)
                     except Exception as ex:
                         st.error(f"Erro ao consultar o Gemini IA: {ex}")
             else:
                 st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
-
 # ==========================================
 # ABA 4: ADICIONAR À CARTEIRA
 # ==========================================

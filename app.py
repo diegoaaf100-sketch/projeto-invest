@@ -8,32 +8,135 @@ from google import genai
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Terminal Quantitativo B3 & IA",
+    page_title="Terminal Quantitativo B3",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA (LAYOUT PROFISSIONAL) ---
+# --- ESTILIZAÇÃO CSS CUSTOMIZADA (WEBSITE DESIGN / DEGRADÊ AZUL) ---
 st.markdown("""
     <style>
-        .main { background-color: #0e1117; }
-        .stMetric { background-color: #161b22; padding: 15px; border-radius: 10px; border: 1px solid #30363d; }
-        .news-container { background-color: #161b22; border-radius: 10px; border: 1px solid #30363d; overflow: hidden; margin-bottom: 15px; }
-        .news-content { padding: 15px; }
-        .news-title { font-weight: bold; color: #58a6ff; font-size: 1.05rem; margin-bottom: 5px; }
-        .news-date { font-size: 0.8rem; color: #8b949e; }
+        /* Fundo geral do app em degradê azul corporativo */
+        .stApp {
+            background: linear-gradient(135deg, #0a1128 0%, #1c2541 50%, #0f172a 100%) !important;
+            color: #f8fafc;
+        }
+
+        /* Cartão de Banner para o topo de cada aba */
+        .hero-header {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            border-radius: 12px;
+            background-size: cover;
+            background-position: center;
+            margin-bottom: 25px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        /* Overlay escuro/azul sobre as imagens de fundo das abas */
+        .hero-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(90deg, rgba(10, 17, 40, 0.9) 0%, rgba(28, 37, 65, 0.65) 100%);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .hero-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .hero-subtitle {
+            font-size: 0.95rem;
+            color: #38bdf8;
+            margin-top: 5px;
+        }
+
+        /* Estilização das Métricas (Estilo Glassmorphism) */
+        div[data-testid="stMetric"] {
+            background: rgba(30, 41, 59, 0.6) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            border-radius: 12px !important;
+            padding: 15px 20px !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Abas no estilo navegação de site */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 10px;
+            background-color: rgba(15, 23, 42, 0.8);
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .stTabs [data-baseweb="tab"] {
+            height: 45px;
+            background-color: transparent;
+            border-radius: 8px;
+            color: #94a3b8;
+            font-weight: 600;
+            padding: 0px 20px;
+        }
+
+        .stTabs [aria-selected="true"] {
+            background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Cards de notícias estilo Portal Web */
+        .news-card {
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+            margin-bottom: 15px;
+            transition: transform 0.2s;
+        }
+
+        .news-card:hover {
+            transform: translateY(-2px);
+            border-color: #0284c7;
+        }
+
+        .news-content {
+            padding: 12px 15px;
+        }
+
+        .news-title {
+            font-weight: 700;
+            color: #f1f5f9;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+        }
+
+        .news-date {
+            font-size: 0.75rem;
+            color: #38bdf8;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 # --- CONEXÃO COM O SUPABASE ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets.get("https://elharxmlbephzxqagbcl.supabase.co", os.getenv("https://elharxmlbephzxqagbcl.supabase.co", ""))
-    key = st.secrets.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", ""))
-    if not url or not key:
-        return None
-    return create_client(url, key)
+    url = st.secrets.get("https://elharxmlbephzxqagbcl.supabase.co", os.getenv("https://elharxmlbephzxqagbcl.supabase.co", ""))
+    key = st.secrets.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", ""))
+    if not url or not key:
+        return None
+    return create_client(url, key)
 
 supabase = init_supabase()
 
@@ -63,23 +166,23 @@ client_gemini = init_gemini()
 
 # --- BARRA LATERAL (SIDEBAR) ---
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bullish.png", width=64)
-    st.title("Terminal B3 Quant")
+    st.image("https://img.icons8.com/color/96/bullish.png", width=60)
+    st.title("Terminal Quant")
     st.markdown("---")
-    st.subheader("⚙️ Configurações & Status")
+    st.subheader("⚙️ Status do Sistema")
     
     status_sup = "🟢 Conectado" if supabase and not df_fundos.empty else "🔴 Desconectado / Vazio"
-    st.markdown(f"**Supabase:** {status_sup}")
+    st.markdown(f"**Base Supabase:** {status_sup}")
     
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
-    st.markdown(f"**Gemini IA:** {status_gem}")
+    st.markdown(f"**IA Gemini:** {status_gem}")
     
     st.markdown("---")
-    st.markdown("Plataforma institucional de análise quantitativa e gestão de portfólio.")
+    st.caption("Terminal Institucional B3 v2.5")
 
-# --- TÍTULO PRINCIPAL ---
-st.title("📊 Terminal Quantitativo & Inteligência de Mercado")
-st.markdown("Visão executiva integrada de ativos globais, base relacional e análises generativas.")
+# --- CABEÇALHO DO SITE ---
+st.title("📊 Terminal Quantitativo & Inteligência B3")
+st.markdown("Plataforma institucional de análise quantitativa, monitoramento global e inteligência artificial.")
 
 # --- ESTRUTURA DE 6 ABAS NO STREAMLIT ---
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
@@ -92,13 +195,20 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL (MERCADO INTERNACIONAL & NOTÍCIAS ILUSTRADAS)
+# ABA 1: VISÃO GLOBAL (COM HERO IMAGE E MÉTRICAS INTERNACIONAIS)
 # ==========================================
 with aba1:
-    st.header("🌐 Visão Global & Indicadores Internacionais")
-    st.markdown("Panorama macroeconômico global, índices de referência internacionais e fatos relevantes.")
+    # Banner Hero com imagem de fundo para a Aba 1
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">🌐 Visão Global de Mercado</div>
+                <div class="hero-subtitle">Indicadores macroeconômicos internacionais, métricas da B3 e notícias em tempo real</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
-    # 1. Indicadores do Mercado Internacional (Destaques Globais)
+    # Indicadores do Mercado Internacional
     st.subheader("🌍 Principais Indicadores Globais")
     ig1, ig2, ig3, ig4, ig5 = st.columns(5)
     with ig1:
@@ -110,12 +220,12 @@ with aba1:
     with ig4:
         st.metric(label="Ouro (Gold)", value="2.745 USD", delta="+0.32%")
     with ig5:
-        st.metric(label="Índice VIX (Medo)", value="18.40 pts", delta="-2.10%")
+        st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
         
     st.divider()
     
-    # 2. Métricas Nacionais de Destaque
-    st.subheader("🇧🇷 Indicadores & Base B3")
+    # Métricas Nacionais
+    st.subheader("🇧🇷 Panorama da Base B3")
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.metric(label="Total de Fundos Mapeados", value=f"{len(df_fundos):,}".replace(",", "."))
@@ -130,52 +240,48 @@ with aba1:
     
     st.divider()
     
-    # 3. Layout Dividido: Tabela Interativa & Notícias Ilustradas
-    col_tabela, col_noticias = st.columns([1.5, 1])
+    # Layout Dividido: Tabela e Notícias
+    col_tabela, col_noticias = st.columns([1.6, 1])
     
     with col_tabela:
-        st.subheader("📋 Base de Dados Consolidada (Supabase)")
+        st.subheader("📋 Base Relacional de Fundos (Supabase)")
         
         if 'segmento_estimado' in df_fundos.columns:
             segmentos_filtro = st.multiselect("Filtrar por Segmento:", options=df_fundos['segmento_estimado'].dropna().unique(), key="filtro_seg_global")
-            if segmentos_filtro:
-                df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)]
-            else:
-                df_filtrado = df_fundos
+            df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)] if segmentos_filtro else df_fundos
         else:
             df_filtrado = df_fundos
             
-        st.dataframe(df_filtrado, use_container_width=True, height=450)
+        st.dataframe(df_filtrado, use_container_width=True, height=420)
         
     with col_noticias:
         st.subheader("📰 Notícias & Fatos Relevantes")
-        st.markdown("Últimas atualizações do mercado financeiro global e local.")
         
         noticias_visuais = [
             {
-                "titulo": "BancosCentrais mantêm cautela diante da inflação global",
+                "titulo": "Bancos Centrais mantêm cautela diante da inflação global",
                 "data": "Hoje, 10:15",
-                "fonte": "Bloomberg / Reuters",
-                "imagem": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"
+                "fonte": "Bloomberg",
+                "imagem": "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=500&q=80"
             },
             {
                 "titulo": "Fundos imobiliários registram forte captação no trimestre",
                 "data": "Ontem, 17:00",
-                "fonte": "B3 Mercado",
-                "imagem": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=600&q=80"
+                "fonte": "B3 Info",
+                "imagem": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=500&q=80"
             },
             {
                 "titulo": "Commodities agrícolas pressionam balança comercial positiva",
                 "data": "28/10/2026",
                 "fonte": "AgroAnalysis",
-                "imagem": "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=600&q=80"
+                "imagem": "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=500&q=80"
             }
         ]
         
         for n in noticias_visuais:
             st.markdown(f"""
-                <div class="news-container">
-                    <img src="{n['imagem']}" style="width: 100%; height: 130px; object-fit: cover;">
+                <div class="news-card">
+                    <img src="{n['imagem']}" style="width: 100%; height: 110px; object-fit: cover;">
                     <div class="news-content">
                         <div class="news-title">{n['titulo']}</div>
                         <div class="news-date">📅 {n['data']} &nbsp;|&nbsp; 🏢 {n['fonte']}</div>
@@ -187,14 +293,20 @@ with aba1:
 # ABA 2: TESOURO DIRETO
 # ==========================================
 with aba2:
-    st.header("🏛️ Tesouro Direto & Renda Fixa")
-    st.markdown("Acompanhamento de títulos públicos federais, taxas atreladas à inflação, Selic e prefixados.")
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">🏛️ Tesouro Direto & Renda Fixa</div>
+                <div class="hero-subtitle">Monitoramento de títulos públicos federais, curvas de juros e indicadores de inflação</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns(3)
     with c1:
         st.metric("CDI Atual", "11.15% a.a.", "Meta Selic 11.25%")
     with c2:
-        st.metric("IPCA (12 Meses)", "4.45%", "Dentro da banda")
+        st.metric("IPCA (12 Meses)", "4.45%", "Dentro da meta")
     with c3:
         st.metric("IGP-M (Acumulado)", "3.80%", "Estável")
         
@@ -210,11 +322,17 @@ with aba2:
     st.table(dados_tesouro)
 
 # ==========================================
-# ABA 3: ANÁLISE TÉCNICA & IA (SUPABASE + GEMINI)
+# ABA 3: ANÁLISE TÉCNICA & IA
 # ==========================================
 with aba3:
-    st.header("🤖 Análise Técnica & Relatórios Inteligentes com IA")
-    st.markdown("Pesquise ativos na base do Supabase, visualize o histórico de cotações e gere análises aprofundadas com o Gemini.")
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">🤖 Análise Técnica & Inteligência Artificial</div>
+                <div class="hero-subtitle">Consulta enriquecida ao Supabase, gráficos em tempo real e relatórios dinâmicos do Gemini</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
     if not df_fundos.empty:
         col_s1, col_s2 = st.columns([1, 2])
@@ -247,7 +365,7 @@ with aba3:
                     dados_yf.columns = dados_yf.columns.get_level_values(0)
                 
                 fig = px.line(dados_yf, x=dados_yf.index, y="Close", title=f"Evolução Histórica de Preços - {ativo_escolhido}")
-                fig.update_layout(template="plotly_dark", plot_bgcolor="#0e1117", paper_bgcolor="#0e1117")
+                fig.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.warning(f"Não foram encontrados dados históricos para {ativo_escolhido} no período selecionado.")
@@ -291,8 +409,14 @@ with aba3:
 # ABA 4: GESTÃO DE CARTEIRA & PnL
 # ==========================================
 with aba4:
-    st.header("💼 Gestão de Carteira & PnL")
-    st.markdown("Controle de posições ativas, preço médio, lucro/prejuízo (PnL) realizado e não realizado.")
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">💼 Gestão de Carteira & PnL</div>
+                <div class="hero-subtitle">Controle de posições ativas, preço médio e cálculo de rentabilidade (PnL)</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
     carteira_exemplo = pd.DataFrame({
         "Ticker": ["HGLG11.SA", "KNCR11.SA", "VISC11.SA", "MXRF11.SA"],
@@ -320,8 +444,14 @@ with aba4:
 # ABA 5: ALOCAÇÃO & REBALANCEAMENTO
 # ==========================================
 with aba5:
-    st.header("⚖️ Alocação & Rebalanceamento de Ativos")
-    st.markdown("Definição de metas percentuais por classe e visualização de desvios de alocação.")
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">⚖️ Alocação & Rebalanceamento</div>
+                <div class="hero-subtitle">Acompanhamento das metas percentuais de investimento e desvios por setor</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
     alocacao_data = pd.DataFrame({
         "Segmento": ["Papel / CRI", "Logística", "Shoppings", "Fiagro"],
@@ -330,15 +460,21 @@ with aba5:
     })
     
     fig_aloc = px.bar(alocacao_data, x="Segmento", y=["Alocação Atual (%)", "Alocação Alvo (%)"], barmode="group", title="Comparativo: Alocação Atual vs Alvo")
-    fig_aloc.update_layout(template="plotly_dark", plot_bgcolor="#0e1117", paper_bgcolor="#0e1117")
+    fig_aloc.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig_aloc, use_container_width=True)
 
 # ==========================================
 # ABA 6: SIMULADOR
 # ==========================================
 with aba6:
-    st.header("🧮 Simulador de Investimentos & Juros Compostos")
-    st.markdown("Projete a evolução do seu patrimônio com aportes mensais e rentabilidade anual composta.")
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">🧮 Simulador de Investimentos</div>
+                <div class="hero-subtitle">Projeção matemática de acúmulo de capital a longo prazo com juros compostos</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
     
     col_sim1, col_sim2 = st.columns(2)
     with col_sim1:

@@ -455,7 +455,7 @@ renderizar_ticker_tape(
     internacional=True
 )
 
- with aba3:
+with aba3:
 
     st.markdown("""
         <div class="hero-header">

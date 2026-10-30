@@ -17,13 +17,11 @@ st.set_page_config(
 # --- ESTILIZAÇÃO CSS CUSTOMIZADA (WEBSITE DESIGN / DEGRADÊ AZUL) ---
 st.markdown("""
     <style>
-        /* Fundo geral do app em degradê azul corporativo */
         .stApp {
             background: linear-gradient(135deg, #0a1128 0%, #1c2541 50%, #0f172a 100%) !important;
             color: #f8fafc;
         }
 
-        /* Cartão de Banner para o topo de cada aba */
         .hero-header {
             position: relative;
             width: 100%;
@@ -37,7 +35,6 @@ st.markdown("""
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         }
 
-        /* Overlay escuro/azul sobre as imagens de fundo das abas */
         .hero-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -62,7 +59,6 @@ st.markdown("""
             margin-top: 5px;
         }
 
-        /* Estilização das Métricas (Estilo Glassmorphism) */
         div[data-testid="stMetric"] {
             background: rgba(30, 41, 59, 0.6) !important;
             backdrop-filter: blur(10px);
@@ -72,7 +68,6 @@ st.markdown("""
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
-        /* Abas no estilo navegação de site */
         .stTabs [data-baseweb="tab-list"] {
             gap: 10px;
             background-color: rgba(15, 23, 42, 0.8);
@@ -96,7 +91,6 @@ st.markdown("""
             box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
         }
 
-        /* Cards de notícias estilo Portal Web */
         .news-card {
             background: rgba(30, 41, 59, 0.5);
             border-radius: 10px;
@@ -149,12 +143,35 @@ def carregar_fundos_b3():
         response = supabase.table("fundos_b3").select("*").execute()
         return pd.DataFrame(response.data)
     except Exception as e:
-        st.error(f"Erro ao carregar dados do Supabase: {e}")
         return pd.DataFrame()
 
 df_fundos = carregar_fundos_b3()
 
-# --- CONFIGURAÇÃO DO CLIENTE GEMINI ---
+# --- CARREGAR CARTEIRA DO SUPABASE ---
+def carregar_carteira_supabase():
+    if not supabase:
+        return pd.DataFrame()
+    try:
+        response = supabase.table("carteira_usuarios").select("*").execute()
+        return pd.DataFrame(response.data)
+    except:
+        return pd.DataFrame()
+
+# --- COTAÇÕES GLOBAIS ---
+@st.cache_data(ttl=300)
+def buscar_cotacoes_atuais():
+    try:
+        dolar = yf.Ticker("USDBRL=X").history(period="1d")
+        btc = yf.Ticker("BTC-BRL").history(period="1d")
+        val_dolar = f"R$ {dolar['Close'].iloc[-1]:.2f}" if not dolar.empty else "R$ 5,80"
+        val_btc = f"R$ {btc['Close'].iloc[-1]:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if not btc.empty else "R$ 350.000"
+        return val_dolar, val_btc
+    except:
+        return "R$ 5,80", "R$ 350.000"
+
+cot_dolar, cot_btc = buscar_cotacoes_atuais()
+
+# --- CLIENTE GEMINI ---
 @st.cache_resource
 def init_gemini():
     api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
@@ -164,51 +181,54 @@ def init_gemini():
 
 client_gemini = init_gemini()
 
-# --- BARRA LATERAL (SIDEBAR) ---
+# --- SIDEBAR ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/bullish.png", width=60)
     st.title("Terminal Quant")
     st.markdown("---")
-    st.subheader("⚙️ Status do Sistema")
-    
-    status_sup = "🟢 Conectado" if supabase and not df_fundos.empty else "🔴 Desconectado / Vazio"
+    status_sup = "🟢 Conectado" if supabase else "🔴 Desconectado"
     st.markdown(f"**Base Supabase:** {status_sup}")
-    
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
-    
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v2.5")
+    st.caption("Terminal Institucional B3 v3.0")
 
-# --- CABEÇALHO DO SITE ---
+# --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
-st.markdown("Plataforma institucional de análise quantitativa, monitoramento global e inteligência artificial.")
+st.markdown("Plataforma institucional de análise quantitativa, gestão de carteiras e inteligência artificial.")
 
-# --- ESTRUTURA DE 6 ABAS NO STREAMLIT ---
+# --- ABAS ---
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
     "1. Visão Global", 
-    "2. Tesouro Direto", 
+    "2. Mercado Brasileiro & Notícias", 
     "3. Análise Técnica & IA", 
-    "4. Gestão de Carteira & PnL", 
-    "5. Alocação & Rebalanceamento", 
+    "4. Adicionar à Carteira", 
+    "5. Gestão de Carteira & PnL", 
     "6. Simulador"
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL (COM HERO IMAGE E MÉTRICAS INTERNACIONAIS)
+# ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
-    # Banner Hero com imagem de fundo para a Aba 1
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">🌐 Visão Global de Mercado</div>
-                <div class="hero-subtitle">Indicadores macroeconômicos internacionais, métricas da B3 e notícias em tempo real</div>
+                <div class="hero-subtitle">Câmbio, criptoativos e principais índices internacionais em tempo real</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    # Indicadores do Mercado Internacional
+    st.subheader("💱 Câmbio & Criptoativos (BRL)")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.metric(label="Dólar Comercial (USD/BRL)", value=cot_dolar, delta="+0.35%")
+    with c2:
+        st.metric(label="Bitcoin (BTC/BRL)", value=cot_btc, delta="+1.85%")
+        
+    st.divider()
+
     st.subheader("🌍 Principais Indicadores Globais")
     ig1, ig2, ig3, ig4, ig5 = st.columns(5)
     with ig1:
@@ -221,67 +241,62 @@ with aba1:
         st.metric(label="Ouro (Gold)", value="2.745 USD", delta="+0.32%")
     with ig5:
         st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
+
+# ==========================================
+# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS ILUSTRADAS
+# ==========================================
+with aba2:
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80');">
+            <div class="hero-overlay">
+                <div class="hero-title">🇧🇷 Mercado Brasileiro & Notícias</div>
+                <div class="hero-subtitle">Indicadores macroeconômicos da B3 e fatos relevantes ilustrados</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.subheader("📊 Indicativos Principais do Mercado Brasileiro")
+    ib1, ib2, ib3, ib4 = st.columns(4)
+    with ib1:
+        st.metric(label="Ibovespa (IBOV)", value="131.250 pts", delta="+0.92%")
+    with ib2:
+        st.metric(label="Taxa Selic Meta", value="11.25% a.a.", delta="+0.25%")
+    with ib3:
+        st.metric(label="IPCA (Acumulado 12m)", value="4.45%", "Dentro da meta")
+    with ib4:
+        st.metric(label="CDI Diário", value="11.15% a.a.", "Estável")
         
     st.divider()
+    st.subheader("📰 Notícias em Destaque do Mercado Nacional")
     
-    # Métricas Nacionais
-    st.subheader("🇧🇷 Panorama da Base B3")
-    m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric(label="Total de Fundos Mapeados", value=f"{len(df_fundos):,}".replace(",", "."))
-    with m2:
-        seg_count = df_fundos['segmento_estimado'].nunique() if 'segmento_estimado' in df_fundos.columns else 0
-        st.metric(label="Segmentos de Atuação", value=seg_count)
-    with m3:
-        gest_count = df_fundos['gestora_grupo'].nunique() if 'gestora_grupo' in df_fundos.columns else 0
-        st.metric(label="Gestoras Cadastradas", value=gest_count)
-    with m4:
-        st.metric(label="Taxa Selic Referência", value="11.25% a.a.", delta="+0.25%")
+    n_col1, n_col2, n_col3 = st.columns(3)
+    noticias_br = [
+        {
+            "titulo": "Ibovespa opera em alta impulsionado por ações de commodities e bancos",
+            "data": "Hoje, 11:30",
+            "fonte": "B3 / InfoMoney",
+            "imagem": "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=500&q=80"
+        },
+        {
+            "titulo": "Copom mantém diretrizes para controle inflacionário no médio prazo",
+            "data": "Ontem, 18:00",
+            "fonte": "Banco Central do Brasil",
+            "imagem": "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=500&q=80"
+        },
+        {
+            "titulo": "Fundos imobiliários batem recorde de número de investidores ativos",
+            "data": "28/10/2026",
+            "fonte": "B3 Mercado",
+            "imagem": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=500&q=80"
+        }
+    ]
     
-    st.divider()
-    
-    # Layout Dividido: Tabela e Notícias
-    col_tabela, col_noticias = st.columns([1.6, 1])
-    
-    with col_tabela:
-        st.subheader("📋 Base Relacional de Fundos (Supabase)")
-        
-        if 'segmento_estimado' in df_fundos.columns:
-            segmentos_filtro = st.multiselect("Filtrar por Segmento:", options=df_fundos['segmento_estimado'].dropna().unique(), key="filtro_seg_global")
-            df_filtrado = df_fundos[df_fundos['segmento_estimado'].isin(segmentos_filtro)] if segmentos_filtro else df_fundos
-        else:
-            df_filtrado = df_fundos
-            
-        st.dataframe(df_filtrado, use_container_width=True, height=420)
-        
-    with col_noticias:
-        st.subheader("📰 Notícias & Fatos Relevantes")
-        
-        noticias_visuais = [
-            {
-                "titulo": "Bancos Centrais mantêm cautela diante da inflação global",
-                "data": "Hoje, 10:15",
-                "fonte": "Bloomberg",
-                "imagem": "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=500&q=80"
-            },
-            {
-                "titulo": "Fundos imobiliários registram forte captação no trimestre",
-                "data": "Ontem, 17:00",
-                "fonte": "B3 Info",
-                "imagem": "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=500&q=80"
-            },
-            {
-                "titulo": "Commodities agrícolas pressionam balança comercial positiva",
-                "data": "28/10/2026",
-                "fonte": "AgroAnalysis",
-                "imagem": "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=500&q=80"
-            }
-        ]
-        
-        for n in noticias_visuais:
+    for idx, col in enumerate([n_col1, n_col2, n_col3]):
+        n = noticias_br[idx]
+        with col:
             st.markdown(f"""
                 <div class="news-card">
-                    <img src="{n['imagem']}" style="width: 100%; height: 110px; object-fit: cover;">
+                    <img src="{n['imagem']}" style="width: 100%; height: 130px; object-fit: cover;">
                     <div class="news-content">
                         <div class="news-title">{n['titulo']}</div>
                         <div class="news-date">📅 {n['data']} &nbsp;|&nbsp; 🏢 {n['fonte']}</div>
@@ -290,178 +305,184 @@ with aba1:
             """, unsafe_allow_html=True)
 
 # ==========================================
-# ABA 2: TESOURO DIRETO
-# ==========================================
-with aba2:
-    st.markdown("""
-        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?auto=format&fit=crop&w=1200&q=80');">
-            <div class="hero-overlay">
-                <div class="hero-title">🏛️ Tesouro Direto & Renda Fixa</div>
-                <div class="hero-subtitle">Monitoramento de títulos públicos federais, curvas de juros e indicadores de inflação</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric("CDI Atual", "11.15% a.a.", "Meta Selic 11.25%")
-    with c2:
-        st.metric("IPCA (12 Meses)", "4.45%", "Dentro da meta")
-    with c3:
-        st.metric("IGP-M (Acumulado)", "3.80%", "Estável")
-        
-    st.divider()
-    st.subheader("Títulos Públicos Federais em Destaque")
-    
-    dados_tesouro = pd.DataFrame({
-        "Título": ["Tesouro IPCA+ 2035", "Tesouro Prefixado 2027", "Tesouro Selic 2029", "Tesouro IPCA+ 2045"],
-        "Rentabilidade Anual": ["IPCA + 6.15%", "11.20% a.a.", "Selic + 0.05%", "IPCA + 6.30%"],
-        "Vencimento": ["15/05/2035", "01/01/2027", "01/03/2029", "15/08/2045"],
-        "Liquidez": ["Diária (D+1)", "Diária (D+1)", "Diária (D+1)", "Diária (D+1)"]
-    })
-    st.table(dados_tesouro)
-
-# ==========================================
-# ABA 3: ANÁLISE TÉCNICA & IA
+# ABA 3: ANÁLISE TÉCNICA & IA (FILTRO POR DIGITAÇÃO + GRÁFICO 2 ANOS)
 # ==========================================
 with aba3:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">🤖 Análise Técnica & Inteligência Artificial</div>
-                <div class="hero-subtitle">Consulta enriquecida ao Supabase, gráficos em tempo real e relatórios dinâmicos do Gemini</div>
+                <div class="hero-title">📈 Análise Técnica & Gráfico de 2 Anos</div>
+                <div class="hero-subtitle">Digite o código da ação ou ativo brasileiro para obter indicadores, gráficos e relatórios da IA</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    if not df_fundos.empty:
-        col_s1, col_s2 = st.columns([1, 2])
+    # Campo de digitação de ticker
+    ticker_input = st.text_input("Digite o código do ativo (ex: PETR4, VALE3, HGLG11, ITUB4):", value="PETR4").strip().upper()
+    
+    if ticker_input:
+        ticker_formatado = f"{ticker_input}.SA" if not ticker_input.endswith(".SA") else ticker_input
         
-        with col_s1:
-            tickers_lista = df_fundos['ticker_b3'].dropna().unique().tolist()
-            ativo_escolhido = st.selectbox("Selecione o Ativo para Análise:", tickers_lista, key="ativo_tec")
-            
-            info_ativo = df_fundos[df_fundos['ticker_b3'] == ativo_escolhido].iloc[0]
-            
-            st.markdown(f"**Fundo:** {info_ativo.get('fundo', 'N/A')}")
-            st.markdown(f"**Razão Social:** {info_ativo.get('razao_social', 'N/A')}")
-            st.markdown(f"**Segmento:** {info_ativo.get('segmento_estimado', 'N/A')}")
-            st.markdown(f"**Gestora:** {info_ativo.get('gestora_grupo', 'N/A')}")
-            st.markdown(f"**Tipo de Ativo:** {info_ativo.get('tipo_ativo', 'N/A')}")
-            
-        with col_s2:
-            st.subheader("📄 Resumo Detalhado (Supabase)")
-            st.info(info_ativo.get('resumo_detalhado', 'Resumo detalhado não disponível para este ativo.'))
-        
+        # Verifica se existe no Supabase
+        info_ativo = None
+        if not df_fundos.empty:
+            match = df_fundos[df_fundos['ticker_b3'].str.upper() == ticker_formatado]
+            if not match.empty:
+                info_ativo = match.iloc[0]
+                
+        col_info1, col_info2 = st.columns([1, 2])
+        with col_info1:
+            st.subheader("📋 Dados do Ativo")
+            if info_ativo is not None:
+                st.markdown(f"**Nome/Fundo:** {info_ativo.get('fundo', 'N/A')}")
+                st.markdown(f"**Segmento:** {info_ativo.get('segmento_estimado', 'N/A')}")
+                st.markdown(f"**Gestora:** {info_ativo.get('gestora_grupo', 'N/A')}")
+                st.markdown(f"**Tipo:** {info_ativo.get('tipo_ativo', 'N/A')}")
+            else:
+                st.info(f"Ativo pesquisado diretamente via Yahoo Finance: `{ticker_formatado}`")
+                
+        with col_info2:
+            st.subheader("📄 Resumo / Contexto")
+            if info_ativo is not None:
+                st.success(info_ativo.get('resumo_detalhado', 'Sem resumo disponível.'))
+            else:
+                st.warning("Ativo padrão de mercado monitorado em tempo real.")
+                
         st.divider()
-        st.subheader("📈 Histórico de Cotações (Yahoo Finance)")
-        
-        periodo = st.selectbox("Período do Gráfico:", ["6mo", "1y", "2y", "5y"], index=1, key="periodo_yf_aba3")
+        st.subheader(f"📊 Gráfico Histórico de 2 Anos - {ticker_formatado}")
         
         try:
-            dados_yf = yf.download(ativo_escolhido, period=periodo, progress=False)
-            if not dados_yf.empty:
-                if isinstance(dados_yf.columns, pd.MultiIndex):
-                    dados_yf.columns = dados_yf.columns.get_level_values(0)
+            dados_2y = yf.download(ticker_formatado, period="2y", progress=False)
+            if not dados_2y.empty:
+                if isinstance(dados_2y.columns, pd.MultiIndex):
+                    dados_2y.columns = dados_2y.columns.get_level_values(0)
                 
-                fig = px.line(dados_yf, x=dados_yf.index, y="Close", title=f"Evolução Histórica de Preços - {ativo_escolhido}")
+                fig = px.line(dados_2y, x=dados_2y.index, y="Close", title=f"Evolução de Preços (Últimos 2 Anos) - {ticker_formatado}")
                 fig.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning(f"Não foram encontrados dados históricos para {ativo_escolhido} no período selecionado.")
+                st.error(f"Não foram encontrados dados históricos para {ticker_formatado}.")
         except Exception as e:
-            st.error(f"Erro ao buscar cotações no yfinance: {e}")
+            st.error(f"Erro ao carregar dados do yfinance: {e}")
             
         st.divider()
-        st.subheader("🧠 Relatório Dinâmico com Gemini")
-        
-        if st.button("Gerar Análise de Mercado com IA", type="primary"):
+        st.subheader("🧠 Relatório de Decisão com Gemini IA")
+        if st.button("Gerar Análise para Tomada de Decisão", type="primary"):
             if client_gemini:
-                resumo_base = info_ativo.get('resumo_detalhado', '')
                 prompt = (
-                    f"Atue como um analista financeiro quantitativo sênior especializado no mercado brasileiro. "
-                    f"Com base nas informações consolidadas do fundo {ativo_escolhido}: {resumo_base}, "
-                    f"forneça uma análise aprofundada de perspectivas de mercado, riscos associados ao segmento e tese de investimento resumida em tópicos claros."
+                    f"Atue como um analista financeiro sênior da B3. "
+                    f"Forneça uma análise técnica e fundamentalista resumida para o ativo {ticker_formatado}, "
+                    f"destacando pontos fortes, riscos e recomendação estratégica para tomada de decisões."
                 )
-                
-                with st.spinner("Consultando o Gemini (com tratamento de alta demanda)..."):
-                    resposta_ia = None
-                    for tentativa in range(3):
-                        try:
-                            response = client_gemini.models.generate_content(
-                                model='gemini-2.5-flash',
-                                contents=prompt
-                            )
-                            resposta_ia = response.text
-                            break
-                        except Exception as e:
-                            if tentativa == 2:
-                                resposta_ia = f"Erro ao conectar com o Gemini após 3 tentativas: {e}"
-                            
-                    st.success("Relatório gerado com sucesso!")
-                    st.markdown(resposta_ia)
+                with st.spinner("Consultando o Gemini..."):
+                    try:
+                        resp = client_gemini.models.generate_content(model='gemini-2.5-flash', contents=prompt)
+                        st.success("Análise gerada com sucesso!")
+                        st.markdown(resp.text)
+                    except Exception as ex:
+                        st.error(f"Erro ao gerar relatório: {ex}")
             else:
-                st.warning("API Key do Gemini não configurada nos segredos (`st.secrets`).")
-    else:
-        st.warning("Aguardando carregamento da tabela `fundos_b3` no Supabase.")
+                st.warning("API Key do Gemini não configurada.")
 
 # ==========================================
-# ABA 4: GESTÃO DE CARTEIRA & PnL
+# ABA 4: ADICIONAR À CARTEIRA (SUPABASE)
 # ==========================================
 with aba4:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">💼 Gestão de Carteira & PnL</div>
-                <div class="hero-subtitle">Controle de posições ativas, preço médio e cálculo de rentabilidade (PnL)</div>
+                <div class="hero-title">➕ Adicionar Ativo à Carteira</div>
+                <div class="hero-subtitle">Cadastre suas posições com digitação de ticker e salve diretamente no Supabase</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    carteira_exemplo = pd.DataFrame({
-        "Ticker": ["HGLG11.SA", "KNCR11.SA", "VISC11.SA", "MXRF11.SA"],
-        "Quantidade": [100, 150, 80, 500],
-        "Preço Médio (R$)": [162.50, 104.20, 118.00, 10.20],
-        "Cotação Atual (R$)": [165.00, 105.10, 119.50, 10.35]
-    })
-    
-    if not carteira_exemplo.empty:
-        carteira_exemplo['Total Investido'] = carteira_exemplo['Quantidade'] * carteira_exemplo['Preço Médio (R$)']
-        carteira_exemplo['Valor Atual'] = carteira_exemplo['Quantidade'] * carteira_exemplo['Cotação Atual (R$)']
-        carteira_exemplo['PnL (R$)'] = carteira_exemplo['Valor Atual'] - carteira_exemplo['Total Investido']
-        carteira_exemplo['PnL (%)'] = (carteira_exemplo['PnL (R$)'] / carteira_exemplo['Total Investido']) * 100
+    with st.form("form_carteira"):
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            ticker_cad = st.text_input("Ticker do Ativo (ex: PETR4.SA ou HGLG11.SA):", value="PETR4.SA").strip().upper()
+        with col_f2:
+            qtd_cad = st.number_input("Quantidade de Cotas/Ações:", min_value=1, value=100, step=1)
+        with col_f3:
+            pm_cad = st.number_input("Preço Médio de Aquisição (R$):", min_value=0.01, value=35.00, step=0.50)
+            
+        salvar_btn = st.form_submit_button("Salvar no Banco de Dados (Supabase)", type="primary")
         
-        st.dataframe(carteira_exemplo.style.format({
-            "Preço Médio (R$)": "R$ {:.2f}",
-            "Cotação Atual (R$)": "R$ {:.2f}",
-            "Total Investido": "R$ {:.2f}",
-            "Valor Atual": "R$ {:.2f}",
-            "PnL (R$)": "R$ {:.2f}",
-            "PnL (%)": "{:.2f}%"
-        }), use_container_width=True)
+        if salvar_btn:
+            if supabase:
+                try:
+                    novo_registro = {
+                        "ticker": ticker_cad,
+                        "quantidade": int(qtd_cad),
+                        "preco_medio": float(pm_cad)
+                    }
+                    supabase.table("carteira_usuarios").insert(novo_registro).execute()
+                    st.success(f"Ativo {ticker_cad} adicionado e salvo com sucesso no Supabase!")
+                except Exception as e:
+                    st.error(f"Erro ao salvar no Supabase: {e}")
+            else:
+                st.warning("Conexão com o Supabase não configurada.")
 
 # ==========================================
-# ABA 5: ALOCAÇÃO & REBALANCEAMENTO
+# ABA 5: GESTÃO DE CARTEIRA & PnL DETALHADO
 # ==========================================
 with aba5:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">⚖️ Alocação & Rebalanceamento</div>
-                <div class="hero-subtitle">Acompanhamento das metas percentuais de investimento e desvios por setor</div>
+                <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
+                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e rentabilidade dos ativos salvos</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    alocacao_data = pd.DataFrame({
-        "Segmento": ["Papel / CRI", "Logística", "Shoppings", "Fiagro"],
-        "Alocação Atual (%)": [45.0, 30.0, 15.0, 10.0],
-        "Alocação Alvo (%)": [40.0, 30.0, 20.0, 10.0]
-    })
+    df_cart = carregar_carteira_supabase()
     
-    fig_aloc = px.bar(alocacao_data, x="Segmento", y=["Alocação Atual (%)", "Alocação Alvo (%)"], barmode="group", title="Comparativo: Alocação Atual vs Alvo")
-    fig_aloc.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
-    st.plotly_chart(fig_aloc, use_container_width=True)
+    if not df_cart.empty:
+        # Busca cotação atual para cada ticker salvo
+         cotacoes_atuais = []
+         for idx, row in df_cart.iterrows():
+             t = row['ticker']
+             try:
+                 hist = yf.Ticker(t).history(period="1d")
+                 preco = hist['Close'].iloc[-1] if not hist.empty else row['preco_medio']
+             except:
+                 preco = row['preco_medio']
+             cotacoes_atuais.append(preco)
+             
+        df_cart['Cotacao_Atual'] = cotacoes_atuais
+        df_cart['Total_Investido'] = df_cart['quantidade'] * df_cart['preco_medio']
+        df_cart['Valor_Atual'] = df_cart['quantidade'] * df_cart['Cotacao_Atual']
+        df_cart['PnL_Reais'] = df_cart['Valor_Atual'] - df_cart['Total_Investido']
+        df_cart['PnL_Percent'] = (df_cart['PnL_Reais'] / df_cart['Total_Investido']) * 100
+        
+        # Exibe métricas gerais da carteira
+        tot_inv = df_cart['Total_Investido'].sum()
+        tot_val = df_cart['Valor_Atual'].sum()
+        tot_pnl = df_cart['PnL_Reais'].sum()
+        tot_pnl_pct = (tot_pnl / tot_inv) * 100 if tot_inv > 0 else 0
+        
+        mc1, mc2, mc3 = st.columns(3)
+        with mc1:
+            st.metric("Patrimônio Total Investido", f"R$ {tot_inv:,.2f}")
+        with mc2:
+            st.metric("Valor Atual de Mercado", f"R$ {tot_val:,.2f}")
+        with mc3:
+            st.metric("Lucro / Prejuízo Total (PnL)", f"R$ {tot_pnl:,.2f}", f"{tot_pnl_pct:.2f}%")
+            
+        st.divider()
+        st.subheader("📋 Detalhamento por Ativo")
+        
+        st.dataframe(df_cart[['ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']].style.format({
+            "preco_medio": "R$ {:.2f}",
+            "Cotacao_Atual": "R$ {:.2f}",
+            "Total_Investido": "R$ {:.2f}",
+            "Valor_Atual": "R$ {:.2f}",
+            "PnL_Reais": "R$ {:.2f}",
+            "PnL_Percent": "{:.2f}%"
+        }), use_container_width=True)
+    else:
+        st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
 
 # ==========================================
 # ABA 6: SIMULADOR

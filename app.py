@@ -2,6 +2,8 @@ import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import yfinance as yf
 from supabase import create_client
 from google import genai
@@ -98,14 +100,8 @@ st.markdown("""
             border: 1px solid rgba(255, 255, 255, 0.08);
             overflow: hidden;
             margin-bottom: 15px;
-            transition: transform 0.2s;
             padding: 15px;
             height: 100%;
-        }
-
-        .news-card:hover {
-            transform: translateY(-2px);
-            border-color: #0284c7;
         }
 
         .news-title {
@@ -173,20 +169,23 @@ def buscar_cotacoes_atuais():
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
 
-# --- FUNÇÃO DE BUSCA DE NOTÍCIAS DIÁRIAS (RSS FEED) ---
-@st.cache_data(ttl=3600)
-def buscar_noticias_rss(url_rss, limite=3):
-    try:
-        feed = feedparser.parse(url_rss)
-        noticias = []
-        for entry in feed.entries[:limite]:
-            titulo = entry.get("title", "Sem título")
-            link = entry.get("link", "#")
-            data = entry.get("published", "Atualizado hoje")
-            noticias.append({"titulo": titulo, "link": link, "data": data})
-        return noticias
-    except Exception:
-        return []
+# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS (COM FALLBACKS SEGUROS) ---
+@st.cache_data(ttl=1800)
+def buscar_noticias_rss(urls, limite=3):
+    for url in urls:
+        try:
+            feed = feedparser.parse(url)
+            if feed.entries:
+                noticias = []
+                for entry in feed.entries[:limite]:
+                    titulo = entry.get("title", "Sem título")
+                    link = entry.get("link", "#")
+                    data = entry.get("published", "Hoje")
+                    noticias.append({"titulo": titulo, "link": link, "data": data})
+                return noticias
+        except Exception:
+            continue
+    return []
 
 # --- CLIENTE GEMINI ---
 @st.cache_resource
@@ -210,7 +209,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v4.0")
+    st.caption("Terminal Institucional B3 v4.5")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -220,14 +219,14 @@ st.markdown("Plataforma institucional de análise quantitativa, gestão de carte
 aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
     "1. Visão Global", 
     "2. Mercado Brasileiro & Notícias", 
-    "3. Análise Técnica & IA", 
+    "3. Análise Profissional & IA", 
     "4. Adicionar à Carteira", 
     "5. Gestão de Carteira & PnL", 
     "6. Simulador"
 ])
 
 # ==========================================
-# ABA 1: VISÃO GLOBAL (NOTÍCIAS DIÁRIAS)
+# ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
     st.markdown("""
@@ -262,10 +261,15 @@ with aba1:
         st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
 
     st.divider()
-    st.subheader("📰 Notícias Diárias do Mercado Global (Atualização Automática)")
+    st.subheader("📰 Notícias Diárias do Mercado Global")
     
-    # RSS Feed de Economia Global (Yahoo Finance World)
-    noticias_globais = buscar_noticias_rss("https://finance.yahoo.com/news/rssindex", limite=3)
+    # Lista de feeds globais para garantir carregamento contínuo
+    urls_globais = [
+        "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+        "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance",
+        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"
+    ]
+    noticias_globais = buscar_noticias_rss(urls_globais, limite=3)
     
     if noticias_globais:
         ng1, ng2, ng3 = st.columns(3)
@@ -275,11 +279,11 @@ with aba1:
                 st.markdown(f"""
                     <div class="news-card">
                         <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
-                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Yahoo Finance</div>
+                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Mercado Global</div>
                     </div>
                 """, unsafe_allow_html=True)
     else:
-        st.info("Carregando notícias globais em tempo real...")
+        st.info("Buscando notícias do mercado internacional...")
 
 # ==========================================
 # ABA 2: MERCADO BRASILEIRO & NOTÍCIAS DIÁRIAS
@@ -306,10 +310,13 @@ with aba2:
         st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
         
     st.divider()
-    st.subheader("📰 Notícias Diárias do Mercado Nacional (Atualização Automática)")
+    st.subheader("📰 Notícias Diárias do Mercado Nacional")
     
-    # RSS Feed de Notícias do Brasil / Exame / InfoMoney
-    noticias_nacionais = buscar_noticias_rss("https://exame.com/invest/feed/", limite=3)
+    urls_nacionais = [
+        "https://exame.com/invest/feed/",
+        "https://www.infomoney.com.br/feed/"
+    ]
+    noticias_nacionais = buscar_noticias_rss(urls_nacionais, limite=3)
     
     if noticias_nacionais:
         nn1, nn2, nn3 = st.columns(3)
@@ -319,92 +326,152 @@ with aba2:
                 st.markdown(f"""
                     <div class="news-card">
                         <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
-                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Exame Invest</div>
+                        <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
                     </div>
                 """, unsafe_allow_html=True)
     else:
-        st.info("Carregando notícias do mercado nacional...")
+        st.info("Buscando notícias do mercado nacional...")
 
 # ==========================================
-# ABA 3: ANÁLISE TÉCNICA & IA
+# ABA 3: ANÁLISE PROFISSIONAL, INDICATIVOS & IA
 # ==========================================
 with aba3:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">📈 Análise Técnica & Gráfico de 2 Anos</div>
-                <div class="hero-subtitle">Digite o código da ação ou ativo brasileiro para obter indicadores, gráficos e relatórios da IA</div>
+                <div class="hero-title">📈 Terminal Profissional de Análise & Decisões</div>
+                <div class="hero-subtitle">Gráfico Candlestick com Médias Móveis, Múltiplos Fundamentalistas e IA Gemini</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    ticker_input = st.text_input("Digite o código do ativo (ex: PETR4, VALE3, HGLG11, ITUB4):", value="PETR4").strip().upper()
+    ticker_input = st.text_input("Digite o ticker do ativo B3 (ex: PETR4, VALE3, WEGE3, HGLG11):", value="PETR4").strip().upper()
     
     if ticker_input:
         ticker_formatado = f"{ticker_input}.SA" if not ticker_input.endswith(".SA") else ticker_input
         
-        info_ativo = None
-        if not df_fundos.empty:
-            match = df_fundos[df_fundos['ticker_b3'].str.upper() == ticker_formatado]
-            if not match.empty:
-                info_ativo = match.iloc[0]
-                
-        col_info1, col_info2 = st.columns([1, 2])
-        with col_info1:
-            st.subheader("📋 Dados do Ativo")
-            if info_ativo is not None:
-                st.markdown(f"**Nome/Fundo:** {info_ativo.get('fundo', 'N/A')}")
-                st.markdown(f"**Segmento:** {info_ativo.get('segmento_estimado', 'N/A')}")
-                st.markdown(f"**Gestora:** {info_ativo.get('gestora_grupo', 'N/A')}")
-                st.markdown(f"**Tipo:** {info_ativo.get('tipo_ativo', 'N/A')}")
-            else:
-                st.info(f"Ativo pesquisado diretamente via Yahoo Finance: `{ticker_formatado}`")
-                
-        with col_info2:
-            st.subheader("📄 Resumo / Contexto")
-            if info_ativo is not None:
-                st.success(info_ativo.get('resumo_detalhado', 'Sem resumo disponível.'))
-            else:
-                st.warning("Ativo padrão de mercado monitorado em tempo real.")
-                
-        st.divider()
-        st.subheader(f"📊 Gráfico Histórico de 2 Anos - {ticker_formatado}")
-        
         try:
-            dados_2y = yf.download(ticker_formatado, period="2y", progress=False)
-            if not dados_2y.empty:
-                if isinstance(dados_2y.columns, pd.MultiIndex):
-                    dados_2y.columns = dados_2y.columns.get_level_values(0)
+            asset_obj = yf.Ticker(ticker_formatado)
+            info = asset_obj.info
+            
+            # Painel Superior de Indicadores do Ativo
+            cp = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
+            dy = info.get('dividendYield', 0.0)
+            dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
+            pe = info.get('trailingPE', 'N/D')
+            pb = info.get('priceToBook', 'N/D')
+            min52 = info.get('fiftyTwoWeekLow', 'N/D')
+            max52 = info.get('fiftyTwoWeekHigh', 'N/D')
+            
+            st.subheader(f"🔍 Indicadores Fundamentalistas & de Mercado - {ticker_formatado}")
+            
+            m1, m2, m3, m4, m5, m6 = st.columns(6)
+            with m1:
+                st.metric("Preço Atual", f"R$ {cp:.2f}" if isinstance(cp, (int, float)) else "N/D")
+            with m2:
+                st.metric("Dividend Yield", dy_str)
+            with m3:
+                st.metric("P/L", f"{pe:.2f}" if isinstance(pe, (int, float)) else pe)
+            with m4:
+                st.metric("P/VP", f"{pb:.2f}" if isinstance(pb, (int, float)) else pb)
+            with m5:
+                st.metric("Mínima 52S", f"R$ {min52:.2f}" if isinstance(min52, (int, float)) else min52)
+            with m6:
+                st.metric("Máxima 52S", f"R$ {max52:.2f}" if isinstance(max52, (int, float)) else max52)
                 
-                fig = px.line(dados_2y, x=dados_2y.index, y="Close", title=f"Evolução de Preços (Últimos 2 Anos) - {ticker_formatado}")
-                fig.update_layout(template="plotly_dark", plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
+            st.divider()
+            
+            # Download de histórico de 2 anos para o gráfico profissional
+            df_hist = asset_obj.history(period="2y")
+            
+            if not df_hist.empty:
+                # Cálculo de Médias Móveis Técnicas
+                df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
+                df_hist['MMA200'] = df_hist['Close'].rolling(window=200).mean()
+                
+                st.subheader("📊 Gráfico Técnico Profissional (Candlestick + Média Móvel + Volume)")
+                
+                # Criar subplots para Preço e Volume
+                fig = make_subplots(
+                    rows=2, cols=1, 
+                    shared_xaxes=True, 
+                    vertical_spacing=0.03, 
+                    row_heights=[0.75, 0.25]
+                )
+                
+                # Candlesticks
+                fig.add_trace(
+                    go.Candlestick(
+                        x=df_hist.index,
+                        open=df_hist['Open'],
+                        high=df_hist['High'],
+                        low=df_hist['Low'],
+                        close=df_hist['Close'],
+                        name="Candles"
+                    ),
+                    row=1, col=1
+                )
+                
+                # Média Móvel 21
+                fig.add_trace(
+                    go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21 (Curto Prazo)', line=dict(color='#0284c7', width=1.5)),
+                    row=1, col=1
+                )
+                
+                # Média Móvel 200
+                fig.add_trace(
+                    go.Scatter(x=df_hist.index, y=df_hist['MMA200'], mode='lines', name='MMA 200 (Longo Prazo)', line=dict(color='#f59e0b', width=1.5)),
+                    row=1, col=1
+                )
+                
+                # Volume de Negociação
+                fig.add_trace(
+                    go.Bar(x=df_hist.index, y=df_hist['Volume'], name="Volume", marker_color='rgba(37, 99, 235, 0.5)'),
+                    row=2, col=1
+                )
+                
+                fig.update_layout(
+                    template="plotly_dark",
+                    height=550,
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    xaxis_rangeslider_visible=False,
+                    legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="right", x=1)
+                )
+                
                 st.plotly_chart(fig, width='stretch')
             else:
-                st.error(f"Não foram encontrados dados históricos para {ticker_formatado}.")
+                st.error("Não foram encontrados dados históricos para este ticker.")
+                
         except Exception as e:
-            st.error(f"Erro ao carregar dados do yfinance: {e}")
+            st.error(f"Erro ao buscar informações do ativo `{ticker_formatado}`: {e}")
             
         st.divider()
-        st.subheader("🧠 Relatório de Decisão com Gemini IA")
-        if st.button("Gerar Análise para Tomada de Decisão", type="primary"):
+        st.subheader("🧠 Relatório de Inteligência & Recomendação Estratégica (Gemini IA)")
+        
+        if st.button("Gerar Parecer de Decisão com IA", type="primary"):
             if client_gemini:
                 prompt = (
-                    f"Atue como um analista financeiro sênior da B3. "
-                    f"Forneça uma análise técnica e fundamentalista resumida para o ativo {ticker_formatado}, "
-                    f"destacando pontos fortes, riscos e recomendação estratégica para tomada de decisões."
+                    f"Atue como um analista financeiro sênior certificado (CNPI). "
+                    f"Faça uma avaliação detalhada e profissional para o ativo {ticker_formatado} B3 com base nos seguintes dados: "
+                    f"Cotação: {cp}, P/L: {pe}, P/VP: {pb}, Dividend Yield: {dy_str}. "
+                    f"Estruture a resposta em:\n"
+                    f"1. **Análise de Múltiplos e Tendência**\n"
+                    f"2. **Matriz SWOT (Forças, Oportunidades, Fraquezas e Ameaças)**\n"
+                    f"3. **Veredito para Tomada de Decisão (Compra, Neutro ou Venda)** e perfil de investidor indicado."
                 )
-                with st.spinner("Consultando o Gemini..."):
+                with st.spinner("Analisando indicadores e gerando parecer estratégico..."):
                     try:
                         resp = client_gemini.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-                        st.success("Análise gerada com sucesso!")
+                        st.success("Relatório gerado com sucesso!")
                         st.markdown(resp.text)
                     except Exception as ex:
-                        st.error(f"Erro ao gerar relatório: {ex}")
+                        st.error(f"Erro ao consultar o Gemini IA: {ex}")
             else:
-                st.warning("API Key do Gemini não configurada.")
+                st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
 
 # ==========================================
-# ABA 4: ADICIONAR À CARTEIRA + INDICADORES NA PARTE INFERIOR
+# ABA 4: ADICIONAR À CARTEIRA
 # ==========================================
 with aba4:
     st.markdown("""
@@ -454,14 +521,8 @@ with aba4:
             
             cotacao_atual = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
             div_yield = info.get('dividendYield', 0.0)
-            if div_yield:
-                div_yield_str = f"{div_yield * 100:.2f}%"
-            else:
-                div_yield_str = "N/D"
-                
+            div_yield_str = f"{div_yield * 100:.2f}%" if div_yield else "N/D"
             p_l = info.get('trailingPE', 'N/D')
-            val_mercado = info.get('marketCap', 0)
-            val_mercado_str = f"R$ {val_mercado:,.2f}" if val_mercado else "N/D"
             min_52 = info.get('fiftyTwoWeekLow', 'N/D')
             max_52 = info.get('fiftyTwoWeekHigh', 'N/D')
             
@@ -477,18 +538,18 @@ with aba4:
             with ip5:
                 st.metric("Máxima 52 Semanas", f"R$ {max_52:.2f}" if isinstance(max_52, (int, float)) else max_52)
                 
-        except Exception as e:
-            st.info(f"Digite um ticker válido da B3 para visualizar os indicadores (ex: VALE3, ITUB4, WEGE3).")
+        except Exception:
+            st.info("Digite um ticker válido para visualizar os indicadores.")
 
 # ==========================================
-# ABA 5: GESTÃO DE CARTEIRA & PnL DETALHADO
+# ABA 5: GESTÃO DE CARTEIRA, PnL & EXCLUSÃO
 # ==========================================
 with aba5:
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
-                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e rentabilidade dos ativos salvos</div>
+                <div class="hero-subtitle">Acompanhe seus investimentos e remova posições diretamente do banco de dados</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -496,6 +557,7 @@ with aba5:
     df_cart = carregar_carteira_supabase()
     
     if not df_cart.empty:
+        # Busca cotação atual para cada ticker salvo
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
             t = row['ticker']
@@ -512,6 +574,7 @@ with aba5:
         df_cart['PnL_Reais'] = df_cart['Valor_Atual'] - df_cart['Total_Investido']
         df_cart['PnL_Percent'] = (df_cart['PnL_Reais'] / df_cart['Total_Investido']) * 100
         
+        # Métricas gerais
         tot_inv = df_cart['Total_Investido'].sum()
         tot_val = df_cart['Valor_Atual'].sum()
         tot_pnl = df_cart['PnL_Reais'].sum()
@@ -526,16 +589,46 @@ with aba5:
             st.metric("Lucro / Prejuízo Total (PnL)", f"R$ {tot_pnl:,.2f}", f"{tot_pnl_pct:.2f}%")
             
         st.divider()
-        st.subheader("📋 Detalhamento por Ativo")
+        st.subheader("📋 Gerenciamento e Exclusão de Ativos")
+        st.caption("Marque a caixa na coluna 'Excluir' do ativo desejado e clique no botão abaixo para removê-lo da carteira.")
         
-        st.dataframe(df_cart[['ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']].style.format({
-            "preco_medio": "R$ {:.2f}",
-            "Cotacao_Atual": "R$ {:.2f}",
-            "Total_Investido": "R$ {:.2f}",
-            "Valor_Atual": "R$ {:.2f}",
-            "PnL_Reais": "R$ {:.2f}",
-            "PnL_Percent": "{:.2f}%"
-        }), width='stretch')
+        # Adiciona coluna booleana de seleção para exclusão
+        df_cart.insert(0, "Excluir", False)
+        
+        # Editor de dados interativo no Streamlit
+        df_editado = st.data_editor(
+            df_cart[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
+            column_config={
+                "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir?", required=True),
+                "id": st.column_config.NumberColumn("ID", disabled=True),
+                "ticker": st.column_config.TextColumn("Ticker", disabled=True),
+                "quantidade": st.column_config.NumberColumn("Qtd", disabled=True),
+                "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
+                "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
+                "Total_Investido": st.column_config.NumberColumn("Total Investido", format="R$ %.2f", disabled=True),
+                "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
+                "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
+                "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
+            },
+            hide_index=True,
+            width='stretch',
+            key="editor_carteira"
+        )
+        
+        # Botão para processar a exclusão dos itens marcados
+        if st.button("🗑️ Remover Ativos Selecionados do Supabase", type="secondary"):
+            ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
+            
+            if ids_para_remover and supabase:
+                try:
+                    for item_id in ids_para_remover:
+                        supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
+                    st.success(f"Ativo(s) removido(s) com sucesso! Atualizando...")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao excluir do Supabase: {e}")
+            else:
+                st.warning("Nenhum ativo foi selecionado para exclusão.")
     else:
         st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
 

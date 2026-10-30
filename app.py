@@ -243,7 +243,7 @@ with aba1:
         st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
 
 # ==========================================
-# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS ILUSTRADAS
+# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
 with aba2:
     st.markdown("""
@@ -262,9 +262,9 @@ with aba2:
     with ib2:
         st.metric(label="Taxa Selic Meta", value="11.25% a.a.", delta="+0.25%")
     with ib3:
-        st.metric(label="IPCA (Acumulado 12m)", value="4.45%", "Dentro da meta")
+        st.metric(label="IPCA (Acumulado 12m)", value="4.45%", delta="Dentro da meta")
     with ib4:
-        st.metric(label="CDI Diário", value="11.15% a.a.", "Estável")
+        st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
         
     st.divider()
     st.subheader("📰 Notícias em Destaque do Mercado Nacional")
@@ -303,7 +303,6 @@ with aba2:
                     </div>
                 </div>
             """, unsafe_allow_html=True)
-
 # ==========================================
 # ABA 3: ANÁLISE TÉCNICA & IA (FILTRO POR DIGITAÇÃO + GRÁFICO 2 ANOS)
 # ==========================================

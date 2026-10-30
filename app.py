@@ -459,7 +459,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 # ==========================================
 with aba1:
     # Carrega a imagem local e aplica diretamente no painel e no banner da aba 1.
-    imagem_fundo_path = Path(__file__).parent / "fundo_aba1.webp"
+    imagem_fundo_path = Path(__file__).parent / "fundo_aba1_mercado.jpg"
     imagem_fundo_base64 = ""
 
     if imagem_fundo_path.exists():
@@ -471,12 +471,13 @@ with aba1:
             f"""
             <style>
                 /* Fundo da área de conteúdo da primeira aba */
-                .stTabs [role="tabpanel"]:first-of-type {{
+                .stTabs [role="tabpanel"]:first-of-type,
+                .stTabs [data-baseweb="tab-panel"]:first-of-type {{
                     background-image:
-                        linear-gradient(rgba(5, 12, 25, 0.84), rgba(5, 12, 25, 0.88)),
-                        url("data:image/webp;base64,{imagem_fundo_base64}");
+                        linear-gradient(rgba(5, 12, 25, 0.68), rgba(5, 12, 25, 0.76)),
+                        url("data:image/jpeg;base64,{imagem_fundo_base64}");
                     background-size: cover;
-                    background-position: center top;
+                    background-position: center center;
                     background-repeat: no-repeat;
                     background-attachment: scroll;
                     border-radius: 14px;
@@ -488,7 +489,7 @@ with aba1:
         )
     else:
         st.warning(
-            "Imagem de fundo não encontrada. Confira se fundo_aba1.webp "
+            "Imagem de fundo não encontrada. Confira se fundo_aba1_mercado.jpg "
             "está na mesma pasta do app.py no GitHub."
         )
 
@@ -496,13 +497,13 @@ with aba1:
     renderizar_ticker_tape(tickers_globais)
 
     if imagem_fundo_base64:
-        imagem_banner = f"data:image/webp;base64,{imagem_fundo_base64}"
+        imagem_banner = f"data:image/jpeg;base64,{imagem_fundo_base64}"
     else:
         imagem_banner = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80"
 
     st.markdown(f"""
-        <div class="hero-header" style="background-image: linear-gradient(90deg, rgba(5, 12, 25, 0.82), rgba(5, 12, 25, 0.55)), url('{imagem_banner}');">
-            <div class="hero-overlay" style="background: linear-gradient(90deg, rgba(5, 12, 25, 0.45), rgba(5, 12, 25, 0.12));">
+        <div class="hero-header" style="background-image: linear-gradient(90deg, rgba(5, 12, 25, 0.48), rgba(5, 12, 25, 0.22)), url('{imagem_banner}');">
+            <div class="hero-overlay" style="background: linear-gradient(90deg, rgba(5, 12, 25, 0.28), rgba(5, 12, 25, 0.08));">
                 <div class="hero-title">🌐 Visão Global de Mercado</div>
                 <div class="hero-subtitle">Câmbio, criptoativos e principais índices internacionais em tempo real</div>
             </div>

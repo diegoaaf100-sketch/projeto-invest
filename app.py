@@ -254,14 +254,20 @@ def obter_dados_ticker_seguro(ticker_raw):
     except Exception:
         return None
 
-# --- GERADOR DE HTML PARA O TICKER TAPE (ROLAGEM INFINITA) ---
+# --- GERADOR DE HTML PARA O TICKER TAPE (ROLAGEM INFINITA CORRIGIDA) ---
 def renderizar_ticker_tape(lista_tickers):
     itens_html = ""
     for t in lista_tickers:
         dados = obter_dados_ticker_seguro(t)
         if dados and dados["preco"] > 0:
             simbolo = dados["symbol"].replace(".SA", "")
-            preco_str = f"R$ {dados['preco']:.2f}" if "BRL" in t or ".SA" in t or "BTC" in t else f"${dados['preco']:.2f}"
+            
+            # Define se exibe em Reais (R$) ou Dólares ($)
+            if "BRL" in t or ".SA" in t:
+                preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+            else:
+                preco_str = f"${dados['preco']:,.2f}"
+                
             var = dados["variacao"]
             classe_css = "ticker-pos" if var >= 0 else "ticker-neg"
             sinal = "+" if var >= 0 else ""
@@ -275,7 +281,6 @@ def renderizar_ticker_tape(lista_tickers):
                 </div>
             """
     
-    # Duplicamos os itens para garantir o loop contínuo e suave na animação CSS
     ticker_html = f"""
         <div class="ticker-container">
             <div class="ticker-wrapper">

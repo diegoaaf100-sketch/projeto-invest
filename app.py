@@ -123,14 +123,18 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CONEXÃO COM O SUPABASE ---
+# --- CONEXÃO COM O SUPABASE (BLINDADA) ---
 @st.cache_resource
 def init_supabase():
-    url = st.secrets.get("https://elharxmlbephzxqagbcl.supabase.co", os.getenv("https://elharxmlbephzxqagbcl.supabase.co", ""))
-    key = st.secrets.get("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", os.getenv("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVsaGFyeG1sYmVwaHp4cWFnYmNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMxNzI3ODksImV4cCI6MjEwODc0ODc4OX0.mMIAVD7mRTtzNW6_uLq0kMrnlyPeWQCXVtpOhKu1jNQ", ""))
+    url = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
+    key = st.secrets.get("SUPABASE_KEY", os.getenv("SUPABASE_KEY", ""))
+    
     if not url or not key:
         return None
-    return create_client(url, key)
+    try:
+        return create_client(url, key)
+    except Exception:
+        return None
 
 supabase = init_supabase()
 
@@ -186,12 +190,17 @@ with st.sidebar:
     st.image("https://img.icons8.com/color/96/bullish.png", width=60)
     st.title("Terminal Quant")
     st.markdown("---")
-    status_sup = "🟢 Conectado" if supabase else "🔴 Desconectado"
-    st.markdown(f"**Base Supabase:** {status_sup}")
+    
+    if supabase:
+        st.markdown("**Base Supabase:** 🟢 Conectado")
+    else:
+        st.markdown("**Base Supabase:** 🔴 Não configurado")
+        st.caption("Configure SUPABASE_URL e SUPABASE_KEY no arquivo `.streamlit/secrets.toml`")
+        
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal Institucional B3 v3.1")
+    st.caption("Terminal Institucional B3 v3.2")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")

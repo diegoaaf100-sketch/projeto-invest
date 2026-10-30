@@ -23,7 +23,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS CUSTOMIZADA (TICKER TAPE ROLANTE, COMPACTO E COM ÍCONES) ---
+# --- ESTILIZAÇÃO CSS CUSTOMIZADA (TICKER TAPE IDÊNTICO À B3 / ESTILO PROFISSIONAL) ---
 st.markdown("""
     <style>
         .stApp {
@@ -31,72 +31,75 @@ st.markdown("""
             color: #f8fafc;
         }
 
-        /* --- BARRA ROLANTE ESTILO TRADINGVIEW / BLOOMBERG --- */
-        .ticker-container {
+        /* --- CONTAINER DO TICKER TAPE (ESTILO B3 / TRADINGVIEW) --- */
+        .b3-ticker-container {
             width: 100%;
             overflow: hidden;
-            background: rgba(15, 23, 42, 0.95);
-            border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+            background: #0b132b;
+            border-bottom: 2px solid rgba(56, 189, 248, 0.2);
             border-top: 1px solid rgba(56, 189, 248, 0.2);
-            padding: 6px 0;
+            padding: 8px 0;
             white-space: nowrap;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
+            box-shadow: inset 0 2px 6px rgba(0,0,0,0.4);
+            margin-bottom: 25px;
         }
 
-        .ticker-wrapper {
+        .b3-ticker-wrapper {
             display: inline-block;
             white-space: nowrap;
-            animation: marquee 35s linear infinite;
+            animation: b3-marquee 40s linear infinite;
         }
 
-        .ticker-wrapper:hover {
+        .b3-ticker-wrapper:hover {
             animation-play-state: paused;
         }
 
-        .ticker-item {
+        .b3-ticker-item {
             display: inline-flex;
             align-items: center;
-            margin-right: 25px;
+            margin-right: 30px;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 0.8rem;
-            background: rgba(30, 41, 59, 0.7);
-            padding: 4px 10px;
-            border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 0.85rem;
+            background: rgba(30, 41, 59, 0.6);
+            padding: 5px 12px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .ticker-icon {
-            width: 16px;
-            height: 16px;
+        .b3-ticker-logo {
+            width: 18px;
+            height: 18px;
             object-fit: contain;
-            margin-right: 6px;
+            margin-right: 8px;
             border-radius: 50%;
+            background: #ffffff;
+            padding: 1px;
         }
 
-        .ticker-symbol {
+        .b3-ticker-symbol {
             font-weight: 700;
             color: #38bdf8;
-            margin-right: 6px;
+            margin-right: 8px;
+            letter-spacing: 0.5px;
         }
 
-        .ticker-price {
+        .b3-ticker-price {
             color: #f1f5f9;
-            margin-right: 6px;
+            margin-right: 8px;
             font-weight: 500;
         }
 
-        .ticker-pos {
+        .b3-ticker-pos {
             color: #4ade80;
             font-weight: 600;
         }
 
-        .ticker-neg {
+        .b3-ticker-neg {
             color: #f87171;
             font-weight: 600;
         }
 
-        @keyframes marquee {
+        @keyframes b3-marquee {
             0% { transform: translateX(0%); }
             100% { transform: translateX(-50%); }
         }
@@ -274,7 +277,7 @@ def obter_dados_ticker_seguro(ticker_raw):
     except Exception:
         return {"symbol": t_symbol, "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0}
 
-# --- MAPEAMENTO DE ÍCONES PARA OS ATIVOS ---
+# --- MAPEAMENTO DE ÍCONES CORPORATIVOS ---
 def obter_icone_ativo(simbolo):
     icones = {
         "AAPL": "https://img.icons8.com/color/48/mac-os.png",
@@ -297,12 +300,14 @@ def obter_icone_ativo(simbolo):
         "RENT3": "https://img.icons8.com/color/48/car--v1.png",
         "BBAS3": "https://img.icons8.com/color/48/safe.png",
         "HGLG11": "https://img.icons8.com/color/48/commercial-development.png",
-        "MXRF11": "https://img.icons8.com/color/48/real-estate.png"
+        "MXRF11": "https://img.icons8.com/color/48/real-estate.png",
+        "VIVA3": "https://img.icons8.com/color/48/shopping-bag.png",
+        "CEAB3": "https://img.icons8.com/color/48/t-shirt.png"
     }
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
 
-# --- RENDERIZADOR DO TICKER TAPE COM ROLAGEM INFINITA E ÍCONES ---
+# --- RENDERIZADOR DO TICKER TAPE COM ROLAGEM CONTÍNUA E ÍCONES ---
 def renderizar_ticker_tape(lista_tickers):
     itens_html = ""
     for t in lista_tickers:
@@ -317,22 +322,24 @@ def renderizar_ticker_tape(lista_tickers):
                 preco_str = f"${dados['preco']:,.2f}"
                 
             var = dados["variacao"]
-            classe_css = "ticker-pos" if var >= 0 else "ticker-neg"
+            classe_css = "b3-ticker-pos" if var >= 0 else "b3-ticker-neg"
             sinal = "+" if var >= 0 else ""
-            var_str = f"{sinal}{var:.2f}%"
+            var_str = f"({sinal}{var:.2f}%)"
             
+            # Formato idêntico ao padrão institucional da B3 (Ícone + Ticker + Preço + Variação)
             itens_html += f"""
-                <div class="ticker-item">
-                    <img src="{icone_url}" class="ticker-icon">
-                    <span class="ticker-symbol">{simbolo}</span>
-                    <span class="ticker-price">{preco_str}</span>
+                <div class="b3-ticker-item">
+                    <img src="{icone_url}" class="b3-ticker-logo">
+                    <span class="b3-ticker-symbol">{simbolo}</span>
+                    <span class="b3-ticker-price">{preco_str}</span>
                     <span class="{classe_css}">{var_str}</span>
                 </div>
             """
     
+    # Duplicamos os itens para garantir o efeito de looping contínuo infinito sem saltos
     ticker_html = f"""
-        <div class="ticker-container">
-            <div class="ticker-wrapper">
+        <div class="b3-ticker-container">
+            <div class="b3-ticker-wrapper">
                 {itens_html}
                 {itens_html}
             </div>
@@ -419,7 +426,7 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v6.1 (Ticker Pro)")
+    st.caption("Terminal B3 v6.2 (B3 Ticker Pro)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
@@ -439,7 +446,7 @@ aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
 # ABA 1: VISÃO GLOBAL
 # ==========================================
 with aba1:
-    # Barra global rica em ativos e ícones
+    # Barra global contínua com vários ativos e ícones
     tickers_globais = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "NVDA", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
     renderizar_ticker_tape(tickers_globais)
 
@@ -505,8 +512,8 @@ with aba1:
 # ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
 with aba2:
-    # Barra nacional rica em ativos da B3 e ícones
-    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11"]
+    # Barra nacional contínua com vários ativos e ícones
+    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
     renderizar_ticker_tape(tickers_br)
 
     st.markdown("""

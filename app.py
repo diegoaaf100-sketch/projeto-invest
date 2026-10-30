@@ -439,16 +439,16 @@ with aba5:
     
     if not df_cart.empty:
         # Busca cotação atual para cada ticker salvo
-         cotacoes_atuais = []
-         for idx, row in df_cart.iterrows():
-             t = row['ticker']
-             try:
-                 hist = yf.Ticker(t).history(period="1d")
-                 preco = hist['Close'].iloc[-1] if not hist.empty else row['preco_medio']
-             except:
-                 preco = row['preco_medio']
-             cotacoes_atuais.append(preco)
-             
+        cotacoes_atuais = []
+        for idx, row in df_cart.iterrows():
+            t = row['ticker']
+            try:
+                hist = yf.Ticker(t).history(period="1d")
+                preco = hist['Close'].iloc[-1] if not hist.empty else row['preco_medio']
+            except:
+                preco = row['preco_medio']
+            cotacoes_atuais.append(preco)
+            
         df_cart['Cotacao_Atual'] = cotacoes_atuais
         df_cart['Total_Investido'] = df_cart['quantidade'] * df_cart['preco_medio']
         df_cart['Valor_Atual'] = df_cart['quantidade'] * df_cart['Cotacao_Atual']
@@ -482,7 +482,6 @@ with aba5:
         }), use_container_width=True)
     else:
         st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
-
 # ==========================================
 # ABA 6: SIMULADOR
 # ==========================================

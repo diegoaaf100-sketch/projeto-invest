@@ -455,11 +455,14 @@ renderizar_ticker_tape(
     internacional=True
 )
 
+ with aba3:
+
     st.markdown("""
-        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80');">
+        <div class="hero-header">
             <div class="hero-overlay">
-                <div class="hero-title">🌐 Visão Global de Mercado</div>
-                <div class="hero-subtitle">Câmbio, criptoativos e principais índices internacionais em tempo real</div>
+                <div class="hero-title">
+                    📈 Terminal Profissional de Análise
+                </div>
             </div>
         </div>
     """, unsafe_allow_html=True)

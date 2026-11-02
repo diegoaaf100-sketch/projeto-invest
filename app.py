@@ -1,6 +1,10 @@
 import os
 import warnings
 import base64
+import re
+import html
+import requests
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # Silencia avisos de depreciação de bibliotecas externas
@@ -20,10 +24,10 @@ import feedparser
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Terminal Quantitativo B3 & Global",
+    page_title="DION | Inteligência Financeira",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # --- DESIGN SYSTEM & CSS CUSTOMIZADO (SaaS PREMIUM) ---
@@ -36,7 +40,7 @@ st.markdown("""
         }
 
         .stApp {
-            background: radial-gradient(circle at top right, #0f172a 0%, #070d19 50%, #020617 100%) !important;
+            background: radial-gradient(circle at top right, #102018 0%, #080D0A 50%, #050807 100%) !important;
             color: #f8fafc;
         }
 
@@ -77,7 +81,7 @@ st.markdown("""
 
         .hero-subtitle {
             font-size: 0.92rem;
-            color: #38bdf8;
+            color: #00E676;
             margin-top: 6px;
             font-weight: 500;
         }
@@ -105,7 +109,7 @@ st.markdown("""
 
         div[data-testid="stMetricLabel"] {
             font-size: 0.82rem !important;
-            color: #94a3b8 !important;
+            color: #9AA8A0 !important;
             font-weight: 600 !important;
             text-transform: uppercase;
         }
@@ -123,8 +127,8 @@ st.markdown("""
 
         .news-card:hover {
             transform: translateY(-4px);
-            border-color: #38bdf8;
-            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
+            border-color: #00E676;
+            box-shadow: 0 10px 25px rgba(0, 230, 118, 0.15);
         }
 
         .news-img {
@@ -147,13 +151,13 @@ st.markdown("""
 
         .news-date {
             font-size: 0.75rem;
-            color: #38bdf8;
+            color: #00E676;
             font-weight: 500;
         }
 
         button[data-baseweb="tab"] {
             background-color: transparent !important;
-            color: #94a3b8 !important;
+            color: #9AA8A0 !important;
             font-weight: 600 !important;
             font-size: 0.95rem !important;
             border-radius: 8px !important;
@@ -161,9 +165,9 @@ st.markdown("""
         }
 
         button[aria-selected="true"] {
-            background-color: rgba(56, 189, 248, 0.1) !important;
-            color: #38bdf8 !important;
-            border-bottom: 2px solid #38bdf8 !important;
+            background-color: rgba(0, 230, 118, 0.1) !important;
+            color: #00E676 !important;
+            border-bottom: 2px solid #00E676 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -191,6 +195,79 @@ def init_claude():
     return Anthropic(api_key=api_key)
 
 client_claude = init_claude()
+
+# --- TRADUÇÃO E HISTÓRICO CORPORATIVO ---
+TRADUCOES_SETOR = {
+    "technology": "Tecnologia", "financial services": "Serviços financeiros",
+    "financial": "Financeiro", "energy": "Energia", "healthcare": "Saúde",
+    "health care": "Saúde", "consumer defensive": "Consumo não cíclico",
+    "consumer cyclical": "Consumo cíclico", "industrials": "Bens industriais",
+    "basic materials": "Materiais básicos", "real estate": "Imobiliário",
+    "utilities": "Serviços públicos", "communication services": "Serviços de comunicação"
+}
+TRADUCOES_TIPO = {"EQUITY":"Ação", "ETF":"Fundo de índice (ETF)", "MUTUALFUND":"Fundo de investimento",
+                  "CRYPTOCURRENCY":"Criptomoeda", "INDEX":"Índice de mercado", "CURRENCY":"Moeda", "FUTURE":"Contrato futuro"}
+
+def traduzir_texto_pt(texto):
+    texto = str(texto or "").strip()
+    if not texto:
+        return ""
+    if client_claude:
+        try:
+            msg = client_claude.messages.create(
+                model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-latest"), max_tokens=900,
+                messages=[{"role":"user", "content":"Traduza integralmente para português do Brasil. Preserve nomes, datas e fatos; não acrescente informações. Retorne apenas a tradução:\n\n" + texto[:9000]}]
+            )
+            return msg.content[0].text.strip()
+        except Exception:
+            pass
+    try:
+        r = requests.get("https://translate.googleapis.com/translate_a/single",
+            params={"client":"gtx", "sl":"auto", "tl":"pt", "dt":"t", "q":texto[:4500]}, timeout=12,
+            headers={"User-Agent":"Mozilla/5.0"})
+        r.raise_for_status()
+        return "".join(x[0] for x in r.json()[0] if x and x[0])
+    except Exception:
+        return ""
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def buscar_historico_publico(nome, ticker):
+    headers = {"User-Agent":"DIONFinancialTerminal/1.0"}
+    for idioma in ["pt", "en"]:
+        api = f"https://{idioma}.wikipedia.org/w/api.php"
+        for termo in [nome, str(ticker).replace(".SA", "")]:
+            try:
+                busca = requests.get(api, params={"action":"query", "list":"search", "srsearch":termo, "format":"json", "srlimit":5}, headers=headers, timeout=10).json()
+                resultados = busca.get("query", {}).get("search", [])
+                if not resultados:
+                    continue
+                pagina = resultados[0]["title"]
+                resumo_json = requests.get(api, params={"action":"query", "prop":"extracts|info", "exintro":1, "explaintext":1, "inprop":"url", "titles":pagina, "format":"json"}, headers=headers, timeout=10).json()
+                item = next(iter(resumo_json.get("query", {}).get("pages", {}).values()))
+                resumo = item.get("extract", "").strip()
+                if len(resumo) < 100:
+                    continue
+                url = item.get("fullurl", f"https://{idioma}.wikipedia.org/wiki/{pagina.replace(' ', '_')}")
+                historico = ""
+                try:
+                    secoes = requests.get(api, params={"action":"parse", "page":pagina, "prop":"sections", "format":"json"}, headers=headers, timeout=10).json().get("parse", {}).get("sections", [])
+                    alvo = next((x for x in secoes if any(k in x.get("line", "").lower() for k in (["história", "histórico", "history"] if idioma == "pt" else ["history"]))), None)
+                    if alvo:
+                        raw = requests.get(api, params={"action":"parse", "page":pagina, "prop":"wikitext", "section":alvo["index"], "format":"json"}, headers=headers, timeout=10).json().get("parse", {}).get("wikitext", {}).get("*", "")
+                        historico = re.sub(r"\{\{.*?\}\}", " ", raw, flags=re.S)
+                        historico = re.sub(r"\[\[([^|\]]*\|)?([^\]]+)\]\]", r"\2", historico)
+                        historico = re.sub(r"'{2,5}|<[^>]+>", "", historico)
+                        historico = re.sub(r"\s+", " ", historico).strip()[:7000]
+                except Exception:
+                    pass
+                if idioma == "en":
+                    resumo = traduzir_texto_pt(resumo)
+                    historico = traduzir_texto_pt(historico) if historico else ""
+                if resumo:
+                    return {"resumo":resumo, "historico":historico, "url":url, "idioma":"Português" if idioma == "pt" else "Inglês traduzido"}
+            except Exception:
+                continue
+    return None
 
 # --- MOTOR DE BUSCA UNIVERSAL ---
 def normalizar_ticker_universal(ticker_raw):
@@ -232,28 +309,19 @@ def obter_dados_ticker_seguro(ticker_raw):
         min52 = info.get('fiftyTwoWeekLow', 'N/D')
         max52 = info.get('fiftyTwoWeekHigh', 'N/D')
         nome_longo = info.get('longName', info.get('shortName', t_symbol))
-        categoria = info.get('quoteType', 'AÇÕES / B3')
+        categoria_raw = info.get('quoteType', 'AÇÕES / B3')
+        categoria = TRADUCOES_TIPO.get(str(categoria_raw).upper(), categoria_raw)
         
         descricao_original = info.get('longBusinessSummary', '')
-        setor = info.get('sector', 'Não informado')
-        industria = info.get('industry', 'Não informada')
+        setor_raw = info.get('sector', 'Não informado')
+        setor = TRADUCOES_SETOR.get(str(setor_raw).lower(), setor_raw)
+        industria_raw = info.get('industry', 'Não informada')
+        industria = TRADUCOES_SETOR.get(str(industria_raw).lower(), traduzir_texto_pt(industria_raw) or industria_raw)
 
-        # Tradução inteligente para o português via Claude IA se houver descrição original
-        descricao_final = descricao_original
-        if descricao_original and len(descricao_original) > 20:
-            if client_claude:
-                try:
-                    prompt_trad = f"Traduza o seguinte resumo corporativo financeiro para o português do Brasil de forma fluida e profissional:\n\n{descricao_original}"
-                    msg_trad = client_claude.messages.create(
-                        model="claude-3-haiku-20240307",
-                        max_tokens=400,
-                        messages=[{"role": "user", "content": prompt_trad}]
-                    )
-                    descricao_final = msg_trad.content[0].text
-                except Exception:
-                    descricao_final = descricao_original
-        else:
-            descricao_final = f"O ativo {nome_longo} ({t_symbol}) opera no setor de {setor} (indústria: {industria}). Ativo monitorado pelo terminal quantitativo para análise de alocação e gerenciamento de portfólio."
+        # Tradução para português: Claude quando configurado e serviço alternativo como fallback.
+        descricao_final = traduzir_texto_pt(descricao_original) if descricao_original and len(descricao_original) > 20 else ""
+        if not descricao_final:
+            descricao_final = "A fonte consultada não disponibilizou uma descrição institucional em português para este ativo. Não foram criadas informações substitutas."
 
         return {
             "symbol": t_symbol,
@@ -268,7 +336,10 @@ def obter_dados_ticker_seguro(ticker_raw):
             "max52": max52,
             "descricao": descricao_final,
             "setor": setor,
-            "industria": industria
+            "industria": industria,
+            "website": info.get("website", ""),
+            "pais": traduzir_texto_pt(info.get("country", "Não informado")) or info.get("country", "Não informado"),
+            "funcionarios": info.get("fullTimeEmployees")
         }
     except Exception:
         return {
@@ -320,14 +391,14 @@ def renderizar_ticker_tape(lista_tickers):
     <html>
     <head>
         <style>
-            html, body {{ margin: 0; padding: 0; width: 100%; background-color: #020617; overflow: hidden; }}
-            .ticker-container {{ width: 100%; overflow: hidden; background: #020617; border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 0; white-space: nowrap; box-sizing: border-box; }}
+            html, body {{ margin: 0; padding: 0; width: 100%; background-color: #050807; overflow: hidden; }}
+            .ticker-container {{ width: 100%; overflow: hidden; background: #050807; border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 0; white-space: nowrap; box-sizing: border-box; }}
             .ticker-wrapper {{ display: inline-flex; white-space: nowrap; animation: marquee 30s linear infinite; width: max-content; }}
             .ticker-wrapper:hover {{ animation-play-state: paused; }}
             .ticker-item {{ display: inline-flex; align-items: center; margin-right: 35px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 0.82rem; flex-shrink: 0; }}
             .ticker-logo {{ width: 18px; height: 18px; margin-right: 8px; border-radius: 50%; background: #fff; padding: 1px; object-fit: contain; }}
             .ticker-symbol {{ font-weight: 700; color: #ffffff; margin-right: 8px; }}
-            .ticker-price {{ color: #cbd5e1; margin-right: 8px; font-weight: 500; }}
+            .ticker-price {{ color: #C8D8CE; margin-right: 8px; font-weight: 500; }}
             .ticker-var {{ font-weight: 600; }}
             @keyframes marquee {{ 0% {{ transform: translateX(0); }} 100% {{ transform: translateX(-50%); }} }}
         </style>
@@ -354,8 +425,8 @@ def carregar_carteira_supabase():
 def buscar_cotacoes_atuais():
     dolar_data = obter_dados_ticker_seguro("USDBRL=X")
     btc_data = obter_dados_ticker_seguro("BTC-BRL")
-    val_dolar = f"R$ {dolar_data['preco']:.2f}" if dolar_data and dolar_data['preco'] > 0 else "R$ 5,80"
-    val_btc = f"R$ {btc_data['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if btc_data and btc_data['preco'] > 0 else "R$ 350.000"
+    val_dolar = f"R$ {dolar_data['preco']:.2f}" if dolar_data and dolar_data['preco'] > 0 else "Indisponível"
+    val_btc = f"R$ {btc_data['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if btc_data and btc_data['preco'] > 0 else "Indisponível"
     return val_dolar, val_btc
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
@@ -368,7 +439,8 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
             if feed.entries:
                 noticias = []
                 for entry in feed.entries[:limite]:
-                    titulo = entry.get("title", "Sem título")
+                    titulo_original = entry.get("title", "Sem título")
+                    titulo = traduzir_texto_pt(titulo_original) or titulo_original
                     link = entry.get("link", "#")
                     data = entry.get("published", "Hoje")
                     img_url = img_fallback_default
@@ -384,15 +456,14 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
 
 # --- PAINEL LATERAL ---
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bullish.png", width=55)
-    st.markdown("## **Terminal Quant**")
-    st.caption("Gestão Institucional de Ativos")
+    st.markdown("## **DION**")
+    st.caption("INTELIGÊNCIA FINANCEIRA · B3 & GLOBAL")
     st.markdown("---")
     st.markdown("### ⚡ **Status dos Motores**")
     st.markdown(f"**Supabase DB:** {'🟢 Conectado' if supabase else '🔴 Offline'}")
-    st.markdown(f"**Claude 3.5 Sonnet:** {'🟢 Ativo' if client_claude else '🟡 Indisponível'}")
+    st.markdown(f"**Claude IA:** {'🟢 Ativo' if client_claude else '🟡 Tradução alternativa'}")
     st.markdown("---")
-    st.caption("Terminal Pro Brasil & Global v11.1")
+    st.caption("DION · Terminal Financeiro")
 
 # --- NAVEGAÇÃO SUPERIOR ---
 opcoes_menu = [
@@ -406,13 +477,11 @@ opcoes_menu = [
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-st.markdown("<h2 style='margin-bottom:0;'>📊 Terminal Quantitativo & Inteligência de Mercado</h2>", unsafe_allow_html=True)
-st.session_state["aba_ativa"] = st.selectbox(
-    "Menu de Navegação",
-    opcoes_menu,
+st.markdown("<div style='display:flex;align-items:center;gap:12px;margin:4px 0 12px'><div style='width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#075D36,#00E676);display:flex;align-items:center;justify-content:center;color:#04140B;font-size:24px;font-weight:900'>D</div><div><div style='font-size:27px;font-weight:850;letter-spacing:2px;color:#F5FFF8'>DION</div><div style='font-size:10px;letter-spacing:2px;color:#00E676'>INTELIGÊNCIA FINANCEIRA · B3 & GLOBAL</div></div></div>", unsafe_allow_html=True)
+st.session_state["aba_ativa"] = st.radio(
+    "Menu de Navegação", opcoes_menu,
     index=opcoes_menu.index(st.session_state["aba_ativa"]),
-    key="seletor_principal",
-    label_visibility="collapsed"
+    key="seletor_principal", horizontal=True, label_visibility="collapsed"
 )
 
 st.divider()
@@ -435,20 +504,23 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
     
     st.subheader("💱 Câmbio & Criptoativos")
     c1, c2 = st.columns(2)
-    with c1: st.metric(label="Dólar Comercial (USD/BRL)", value=cot_dolar, delta="+0.35%")
-    with c2: st.metric(label="Bitcoin (BTC/BRL)", value=cot_btc, delta="+1.85%")
+    with c1: st.metric(label="Dólar Comercial (USD/BRL)", value=cot_dolar, delta=f"{dolar_data['variacao']:+.2f}%" if dolar_data and dolar_data.get('variacao') is not None else None)
+    with c2: st.metric(label="Bitcoin (BTC/BRL)", value=cot_btc, delta=f"{btc_data['variacao']:+.2f}%" if btc_data and btc_data.get('variacao') is not None else None)
         
     st.divider()
     st.subheader("🌍 Principais Indicadores Globais")
-    ig1, ig2, ig3, ig4, ig5 = st.columns(5)
-    with ig1: st.metric(label="S&P 500", value="5.842 pts", delta="+0.45%")
-    with ig2: st.metric(label="Nasdaq 100", value="18.320 pts", delta="+0.78%")
-    with ig3: st.metric(label="Petróleo Brent", value="74.50 USD", delta="-1.12%")
-    with ig4: st.metric(label="Ouro", value="2.745 USD", delta="+0.32%")
-    with ig5: st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
+    indicadores_globais = [("S&P 500", "^GSPC"), ("Nasdaq 100", "^NDX"), ("Petróleo Brent", "BZ=F"), ("Ouro", "GC=F"), ("VIX", "^VIX")]
+    cols_ind = st.columns(5)
+    for col, (nome_ind, ticker_ind) in zip(cols_ind, indicadores_globais):
+        d_ind = obter_dados_ticker_seguro(ticker_ind)
+        with col:
+            if d_ind["preco"] and d_ind["preco"] > 0:
+                st.metric(nome_ind, f"{d_ind['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."), delta=f"{d_ind['variacao']:+.2f}%" if d_ind['variacao'] is not None else None)
+            else:
+                st.metric(nome_ind, "Indisponível")
 
     st.divider()
-    st.subheader("📰 Notícias Diárias Globais")
+    st.subheader("📰 Notícias Internacionais")
     urls_globais = ["https://feeds.content.dowjones.io/public/rss/mw_topstories", "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance"]
     noticias_globais = buscar_noticias_rss_com_imagens(urls_globais, "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80", limite=3)
     
@@ -483,14 +555,30 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
     """, unsafe_allow_html=True)
     
     st.subheader("📊 Macroeconomia Nacional")
+    ibov = obter_dados_ticker_seguro("^BVSP")
     ib1, ib2, ib3, ib4 = st.columns(4)
-    with ib1: st.metric(label="Ibovespa (IBOV)", value="131.250 pts", delta="+0.92%")
-    with ib2: st.metric(label="Taxa Selic", value="11.25% a.a.", delta="+0.25%")
-    with ib3: st.metric(label="IPCA (12m)", value="4.45%", delta="Meta")
-    with ib4: st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
+    with ib1:
+        st.metric("Ibovespa (IBOV)", f"{ibov['preco']:,.0f} pts".replace(",", ".") if ibov["preco"] else "Indisponível", delta=f"{ibov['variacao']:+.2f}%" if ibov["variacao"] is not None else None)
+    def bcb_ultimo(codigo, dias=60):
+        try:
+            fim = datetime.now().strftime("%d/%m/%Y")
+            inicio = (datetime.now() - timedelta(days=dias)).strftime("%d/%m/%Y")
+            url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados"
+            r = requests.get(url, params={"formato":"json", "dataInicial":inicio, "dataFinal":fim}, timeout=10)
+            r.raise_for_status(); dados = r.json()
+            return float(dados[-1]["valor"].replace(",", ".")) if dados else None
+        except Exception:
+            return None
+    selic_atual = bcb_ultimo(432, 90)
+    ipca_atual = bcb_ultimo(433, 90)
+    cdi_atual = bcb_ultimo(12, 30)
+    with ib2: st.metric("Selic (último registro)", f"{selic_atual:.2f}%" if selic_atual is not None else "Indisponível")
+    with ib3: st.metric("IPCA (último registro)", f"{ipca_atual:.2f}%" if ipca_atual is not None else "Indisponível")
+    with ib4: st.metric("CDI (último registro)", f"{cdi_atual:.2f}%" if cdi_atual is not None else "Indisponível")
+    st.caption("Indicadores consultados em fontes externas; a série exibida corresponde ao último registro retornado e pode não ser uma taxa anualizada.")
 
     st.divider()
-    st.subheader("📰 Notícias Diárias do Mercado Nacional")
+    st.subheader("📰 Notícias do Mercado Nacional")
     urls_nacionais = ["https://exame.com/invest/feed/", "https://www.infomoney.com.br/feed/"]
     noticias_nacionais = buscar_noticias_rss_com_imagens(urls_nacionais, "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80", limite=3)
     
@@ -530,16 +618,38 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
             if dados_ativo and dados_ativo["preco"] > 0:
                 st.subheader(f"🔍 {dados_ativo['nome']} ({dados_ativo['symbol']})")
                 
-                # --- HISTÓRICO E PERFIL DO ATIVO (TRADUZIDO EM PORTUGUÊS) ---
-                with st.expander("📖 Sobre a Empresa / Ativo (Histórico, Setor e Perfil)", expanded=False):
+                # --- HISTÓRICO, ORIGEM, EVOLUÇÃO E PERFIL ---
+                with st.expander("🏛️ Sobre a Empresa / Ativo — Histórico, Setor e Perfil", expanded=True):
                     col_info1, col_info2 = st.columns([2, 1])
                     with col_info1:
-                        st.markdown(f"**Resumo de Atuação:**")
-                        st.write(dados_ativo['descricao'])
+                        st.markdown("#### Perfil e atuação")
+                        st.write(dados_ativo.get('descricao') or "Descrição institucional não disponível em português.")
+                        st.markdown("#### Origem, fundação e evolução")
+                        with st.spinner("Pesquisando histórico público do ativo..."):
+                            historico_publico = buscar_historico_publico(dados_ativo['nome'], dados_ativo['symbol'])
+                        if historico_publico:
+                            if historico_publico.get("resumo"):
+                                st.write(historico_publico["resumo"])
+                            if historico_publico.get("historico"):
+                                st.markdown("**Seção histórica localizada na fonte:**")
+                                st.write(historico_publico["historico"])
+                            else:
+                                st.info("A fonte consultada apresentou um resumo, mas não disponibilizou uma seção histórica separada.")
+                            st.caption(f"Fonte consultada: Wikipedia · {historico_publico['idioma']}")
+                            st.markdown(f"[Consultar a fonte original]({historico_publico['url']})")
+                        else:
+                            st.info("Não foi localizado histórico corporativo verificável. Isso pode ocorrer com ETFs, FIIs, índices, criptomoedas e outros ativos sem biografia empresarial própria.")
                     with col_info2:
+                        st.markdown("#### Classificação do ativo")
                         st.markdown(f"**Setor:** `{dados_ativo['setor']}`")
                         st.markdown(f"**Indústria:** `{dados_ativo['industria']}`")
                         st.markdown(f"**Classe:** `{dados_ativo['categoria']}`")
+                        st.markdown(f"**País:** `{dados_ativo.get('pais', 'Não informado')}`")
+                        if dados_ativo.get('website'):
+                            st.markdown(f"[Site institucional]({dados_ativo['website']})")
+                        if dados_ativo.get('funcionarios'):
+                            st.markdown(f"**Funcionários:** {int(dados_ativo['funcionarios']):,}".replace(',', '.'))
+                    st.caption("O histórico depende da existência de fontes públicas. Informações indisponíveis não são inventadas.")
 
                 st.divider()
 
@@ -559,11 +669,11 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
                     df_hist['MMA200'] = df_hist['Close'].rolling(window=200).mean()
                     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
                     fig.add_trace(go.Candlestick(x=df_hist.index, open=df_hist['Open'], high=df_hist['High'], low=df_hist['Low'], close=df_hist['Close'], name="Candles"), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21', line=dict(color='#0284c7', width=1.5)), row=1, col=1)
+                    fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21', line=dict(color='#00C96B', width=1.5)), row=1, col=1)
                     fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA200'], mode='lines', name='MMA 200', line=dict(color='#f59e0b', width=1.5)), row=1, col=1)
                     fig.add_trace(go.Bar(x=df_hist.index, y=df_hist['Volume'], name="Volume", marker_color='rgba(37, 99, 235, 0.5)'), row=2, col=1)
                     fig.update_layout(template="plotly_dark", height=480, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", xaxis_rangeslider_visible=False)
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width="stretch")
 
     else:
         st.subheader("📋 Ficha Técnica de Renda Fixa")
@@ -656,7 +766,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
                     "preco_medio": st.column_config.NumberColumn("Custo Médio", format="R$ %.2f"),
                     "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f")
                 },
-                hide_index=True, use_container_width=True, key="editor_carteira_v3"
+                hide_index=True, width="stretch", key="editor_carteira_v3"
             )
 
             if st.button("🗑️ Excluir Ativos Selecionados", type="secondary"):
@@ -681,11 +791,11 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
                 col_cat = 'categoria_ativo' if 'categoria_ativo' in df_cart.columns else 'ticker'
                 fig_alloc = px.pie(df_cart, names=col_cat, values='Valor_Atual', title="Alocação por Classe / Categoria", hole=0.4)
                 fig_alloc.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig_alloc, use_container_width=True)
+                st.plotly_chart(fig_alloc, width="stretch")
             with c_bar:
                 fig_bar = px.bar(df_cart, x='ticker', y='Valor_Atual', title="Patrimônio Alocado por Ativo (R$)")
                 fig_bar.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)")
-                st.plotly_chart(fig_bar, use_container_width=True)
+                st.plotly_chart(fig_bar, width="stretch")
 
     with aba3:
         st.markdown("##### ➕ Formulário de Cadastro Completo de Ativos")

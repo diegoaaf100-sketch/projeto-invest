@@ -23,24 +23,21 @@ st.set_page_config(
     page_title="Terminal Quantitativo B3",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # --- ESTILIZAÇÃO CSS GLOBAL (NIVEL INSTITUCIONAL) ---
 st.markdown("""
     <style>
-        /* Fundo dark corporativo refinado */
         .stApp {
             background: linear-gradient(135deg, #070d19 0%, #0f172a 50%, #030712 100%) !important;
             color: #f8fafc;
         }
 
-        /* Oculta o cabeçalho nativo em branco do Streamlit para manter visual limpo */
         header[data-testid="stHeader"] {
             background-color: rgba(0, 0, 0, 0) !important;
         }
 
-        /* Banner Hero Estilizado */
         .hero-header {
             position: relative;
             width: 100%;
@@ -78,7 +75,6 @@ st.markdown("""
             margin-top: 4px;
         }
 
-        /* Cartões de Métricas Nativos Estilizados */
         div[data-testid="stMetric"] {
             background: rgba(15, 23, 42, 0.7) !important;
             backdrop-filter: blur(12px);
@@ -88,7 +84,6 @@ st.markdown("""
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
-        /* Cartões de Notícias */
         .news-card {
             background: rgba(15, 23, 42, 0.6);
             border-radius: 10px;
@@ -402,7 +397,25 @@ def init_gemini():
 
 client_gemini = init_gemini()
 
-# --- CABEÇALHO UNIFICADO E SELETOR PROFISSIONAL VISÍVEL NA PÁGINA ---
+# --- SIDEBAR (STATUS DO SISTEMA) ---
+with st.sidebar:
+    st.image("https://img.icons8.com/color/96/bullish.png", width=60)
+    st.title("Terminal Quant")
+    st.markdown("---")
+    
+    st.markdown("### 🔌 Status da Conexão")
+    if supabase:
+        st.markdown("**Supabase:** 🟢 Conectado")
+    else:
+        st.markdown("**Supabase:** 🔴 Não configurado")
+        
+    status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
+    st.markdown(f"**Gemini IA:** {status_gem}")
+    
+    st.markdown("---")
+    st.caption("Terminal B3 v7.1 (Clean Layout)")
+
+# --- CABEÇALHO E SELETOR PROFISSIONAL NA PÁGINA ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
 
 # Opções do menu principal
@@ -420,22 +433,13 @@ if "aba_ativa" not in st.session_state:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
 # SELETOR UNIFICADO VISÍVEL NA PARTE SUPERIOR DA PÁGINA
-col_nav1, col_nav2 = st.columns([3, 1])
-
-with col_nav1:
-    aba_selecionada = st.selectbox(
-        "Selecione a seção desejada:",
-        opcoes_menu,
-        index=opcoes_menu.index(st.session_state["aba_ativa"]),
-        key="seletor_principal",
-        label_visibility="collapsed"
-    )
-    st.session_state["aba_ativa"] = aba_selecionada
-
-with col_nav2:
-    status_supa = "🟢 Supabase" if supabase else "🔴 Supabase"
-    status_gem = "🟢 Gemini IA" if client_gemini else "🟡 Gemini IA"
-    st.caption(f"Status: **{status_supa}** | **{status_gem}**")
+st.session_state["aba_ativa"] = st.selectbox(
+    "Selecione a seção desejada:",
+    opcoes_menu,
+    index=opcoes_menu.index(st.session_state["aba_ativa"]),
+    key="seletor_principal",
+    label_visibility="collapsed"
+)
 
 st.divider()
 

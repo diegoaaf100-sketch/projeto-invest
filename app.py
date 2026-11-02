@@ -23,34 +23,41 @@ st.set_page_config(
     page_title="Terminal Quantitativo B3",
     page_icon="📈",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# --- ESTILIZAÇÃO CSS GLOBAL ---
+# --- ESTILIZAÇÃO CSS GLOBAL (NIVEL INSTITUCIONAL) ---
 st.markdown("""
     <style>
+        /* Fundo dark corporativo refinado */
         .stApp {
-            background: linear-gradient(135deg, #0a1128 0%, #1c2541 50%, #0f172a 100%) !important;
+            background: linear-gradient(135deg, #070d19 0%, #0f172a 50%, #030712 100%) !important;
             color: #f8fafc;
         }
 
+        /* Oculta o cabeçalho nativo em branco do Streamlit para manter visual limpo */
+        header[data-testid="stHeader"] {
+            background-color: rgba(0, 0, 0, 0) !important;
+        }
+
+        /* Banner Hero Estilizado */
         .hero-header {
             position: relative;
             width: 100%;
-            height: 180px;
+            height: 160px;
             border-radius: 12px;
             background-size: cover;
             background-position: center;
             margin-bottom: 25px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
         }
 
         .hero-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, rgba(10, 17, 40, 0.9) 0%, rgba(28, 37, 65, 0.65) 100%);
+            background: linear-gradient(90deg, rgba(7, 13, 25, 0.95) 0%, rgba(15, 23, 42, 0.6) 100%);
             padding: 25px;
             display: flex;
             flex-direction: column;
@@ -58,41 +65,44 @@ st.markdown("""
         }
 
         .hero-title {
-            font-size: 1.8rem;
+            font-size: 1.7rem;
             font-weight: 800;
             color: #ffffff;
             margin: 0;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            letter-spacing: -0.5px;
         }
 
         .hero-subtitle {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: #38bdf8;
-            margin-top: 5px;
+            margin-top: 4px;
         }
 
+        /* Cartões de Métricas Nativos Estilizados */
         div[data-testid="stMetric"] {
-            background: rgba(30, 41, 59, 0.6) !important;
-            backdrop-filter: blur(10px);
+            background: rgba(15, 23, 42, 0.7) !important;
+            backdrop-filter: blur(12px);
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
-            border-radius: 12px !important;
-            padding: 12px 15px !important;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            border-radius: 10px !important;
+            padding: 12px 16px !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         }
 
+        /* Cartões de Notícias */
         .news-card {
-            background: rgba(30, 41, 59, 0.5);
+            background: rgba(15, 23, 42, 0.6);
             border-radius: 10px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             overflow: hidden;
             margin-bottom: 15px;
-            transition: transform 0.2s;
+            transition: all 0.2s ease-in-out;
             height: 100%;
         }
 
         .news-card:hover {
-            transform: translateY(-2px);
-            border-color: #0284c7;
+            transform: translateY(-3px);
+            border-color: #38bdf8;
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.15);
         }
 
         .news-img {
@@ -108,7 +118,7 @@ st.markdown("""
         .news-title {
             font-weight: 700;
             color: #f1f5f9;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             margin-bottom: 6px;
             line-height: 1.3;
         }
@@ -218,7 +228,7 @@ def obter_icone_ativo(simbolo):
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
 
-# --- TICKER TAPE ESTILO INVESTIDOR10 (FLUIDO, COMPACTO E COM ROLAGEM GARANTIDA) ---
+# --- TICKER TAPE FLUIDO E COMPACTO ---
 def renderizar_ticker_tape(lista_tickers):
     itens_html = ""
     for t in lista_tickers:
@@ -255,15 +265,15 @@ def renderizar_ticker_tape(lista_tickers):
                 margin: 0;
                 padding: 0;
                 width: 100%;
-                background-color: #050b14;
+                background-color: #030712;
                 overflow: hidden;
             }}
             .ticker-container {{
                 width: 100%;
                 overflow: hidden;
-                background: #050b14;
-                border-top: 1px solid rgba(255, 255, 255, 0.12);
-                border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+                background: #030712;
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 padding: 6px 0;
                 white-space: nowrap;
                 box-sizing: border-box;
@@ -282,12 +292,12 @@ def renderizar_ticker_tape(lista_tickers):
                 align-items: center;
                 margin-right: 35px;
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                font-size: 0.85rem;
+                font-size: 0.82rem;
                 flex-shrink: 0;
             }}
             .ticker-logo {{
-                width: 18px;
-                height: 18px;
+                width: 16px;
+                height: 16px;
                 margin-right: 8px;
                 border-radius: 50%;
                 background: #fff;
@@ -323,7 +333,7 @@ def renderizar_ticker_tape(lista_tickers):
     </body>
     </html>
     """
-    components.html(full_component, height=42, scrolling=False)
+    components.html(full_component, height=38, scrolling=False)
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -392,43 +402,47 @@ def init_gemini():
 
 client_gemini = init_gemini()
 
-# --- SIDEBAR / MENU DE NAVEGAÇÃO UNIFICADO ---
-with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bullish.png", width=60)
-    st.title("Terminal Quant")
-    st.markdown("---")
-    
-    # MENU ÚNICO DE SELEÇÃO DE ABAS
-    menu_selecionado = st.radio(
-        "📍 Navegação Principal",
-        [
-            "1. Visão Global",
-            "2. Mercado Brasileiro & Notícias",
-            "3. Análise Profissional & IA",
-            "4. Adicionar à Carteira",
-            "5. Gestão de Carteira & PnL",
-            "6. Simulador"
-        ]
-    )
-    
-    st.markdown("---")
-    if supabase:
-        st.markdown("**Base Supabase:** 🟢 Conectado")
-    else:
-        st.markdown("**Base Supabase:** 🔴 Não configurado")
-    status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
-    st.markdown(f"**IA Gemini:** {status_gem}")
-    st.markdown("---")
-    st.caption("Terminal B3 v7.0 (Unified Menu)")
-
-# --- TÍTULO ---
+# --- CABEÇALHO UNIFICADO E SELETOR PROFISSIONAL VISÍVEL NA PÁGINA ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
-st.markdown("Plataforma institucional de análise quantitativa, gestão de carteiras e inteligência artificial.")
+
+# Opções do menu principal
+opcoes_menu = [
+    "🌐 1. Visão Global",
+    "🇧🇷 2. Mercado Brasileiro & Notícias",
+    "📈 3. Análise Profissional & IA",
+    "➕ 4. Adicionar à Carteira",
+    "💼 5. Gestão de Carteira & PnL",
+    "🧮 6. Simulador"
+]
+
+# Inicializa o estado da aba se não existir
+if "aba_ativa" not in st.session_state:
+    st.session_state["aba_ativa"] = opcoes_menu[0]
+
+# SELETOR UNIFICADO VISÍVEL NA PARTE SUPERIOR DA PÁGINA
+col_nav1, col_nav2 = st.columns([3, 1])
+
+with col_nav1:
+    aba_selecionada = st.selectbox(
+        "Selecione a seção desejada:",
+        opcoes_menu,
+        index=opcoes_menu.index(st.session_state["aba_ativa"]),
+        key="seletor_principal",
+        label_visibility="collapsed"
+    )
+    st.session_state["aba_ativa"] = aba_selecionada
+
+with col_nav2:
+    status_supa = "🟢 Supabase" if supabase else "🔴 Supabase"
+    status_gem = "🟢 Gemini IA" if client_gemini else "🟡 Gemini IA"
+    st.caption(f"Status: **{status_supa}** | **{status_gem}**")
+
+st.divider()
 
 # ==========================================
 # SEÇÃO 1: VISÃO GLOBAL
 # ==========================================
-if menu_selecionado == "1. Visão Global":
+if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
     imagem_fundo_path = Path(__file__).parent / "fundo_aba1_mercado.jpg"
     imagem_fundo_base64 = ""
 
@@ -436,24 +450,6 @@ if menu_selecionado == "1. Visão Global":
         imagem_fundo_base64 = base64.b64encode(
             imagem_fundo_path.read_bytes()
         ).decode("utf-8")
-
-        st.markdown(
-            f"""
-            <style>
-                .block-container {{
-                    background-image:
-                        linear-gradient(rgba(5, 12, 25, 0.68), rgba(5, 12, 25, 0.76)),
-                        url("data:image/jpeg;base64,{imagem_fundo_base64}");
-                    background-size: cover;
-                    background-position: center center;
-                    background-repeat: no-repeat;
-                    border-radius: 14px;
-                    padding: 14px;
-                }}
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
 
     tickers_globais = ["AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
     renderizar_ticker_tape(tickers_globais)
@@ -464,8 +460,8 @@ if menu_selecionado == "1. Visão Global":
         imagem_banner = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80"
 
     st.markdown(f"""
-        <div class="hero-header" style="background-image: linear-gradient(90deg, rgba(5, 12, 25, 0.48), rgba(5, 12, 25, 0.22)), url('{imagem_banner}');">
-            <div class="hero-overlay" style="background: linear-gradient(90deg, rgba(5, 12, 25, 0.28), rgba(5, 12, 25, 0.08));">
+        <div class="hero-header" style="background-image: linear-gradient(90deg, rgba(5, 12, 25, 0.5), rgba(5, 12, 25, 0.2)), url('{imagem_banner}');">
+            <div class="hero-overlay">
                 <div class="hero-title">🌐 Visão Global de Mercado</div>
                 <div class="hero-subtitle">Câmbio, criptoativos e principais índices internacionais em tempo real</div>
             </div>
@@ -524,7 +520,7 @@ if menu_selecionado == "1. Visão Global":
 # ==========================================
 # SEÇÃO 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
-elif menu_selecionado == "2. Mercado Brasileiro & Notícias":
+elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro & Notícias":
     tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
     renderizar_ticker_tape(tickers_br)
 
@@ -577,7 +573,7 @@ elif menu_selecionado == "2. Mercado Brasileiro & Notícias":
 # ==========================================
 # SEÇÃO 3: ANÁLISE PROFISSIONAL & IA
 # ==========================================
-elif menu_selecionado == "3. Análise Profissional & IA":
+elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -693,7 +689,7 @@ elif menu_selecionado == "3. Análise Profissional & IA":
 # ==========================================
 # SEÇÃO 4: ADICIONAR À CARTEIRA
 # ==========================================
-elif menu_selecionado == "4. Adicionar à Carteira":
+elif st.session_state["aba_ativa"] == "➕ 4. Adicionar à Carteira":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -753,7 +749,7 @@ elif menu_selecionado == "4. Adicionar à Carteira":
 # ==========================================
 # SEÇÃO 5: GESTÃO DE CARTEIRA & PnL
 # ==========================================
-elif menu_selecionado == "5. Gestão de Carteira & PnL":
+elif st.session_state["aba_ativa"] == "💼 5. Gestão de Carteira & PnL":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -829,12 +825,12 @@ elif menu_selecionado == "5. Gestão de Carteira & PnL":
             else:
                 st.warning("Nenhum ativo foi selecionado para exclusão.")
     else:
-        st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
+        st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Seção 4** para cadastrar seus ativos.")
 
 # ==========================================
 # SEÇÃO 6: SIMULADOR
 # ==========================================
-elif menu_selecionado == "6. Simulador":
+elif st.session_state["aba_ativa"] == "🧮 6. Simulador":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">

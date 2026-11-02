@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import yfinance as yf
 from supabase import create_client
-from google import genai
+from anthropic import Anthropic  # Substituído Google GenAI por Anthropic (Claude)
 import feedparser
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -387,15 +387,15 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
             continue
     return []
 
-# --- CLIENTE GEMINI ---
+# --- CLIENTE CLAUDE (ANTHROPIC) ---
 @st.cache_resource
-def init_gemini():
-    api_key = st.secrets.get("GEMINI_API_KEY", os.getenv("GEMINI_API_KEY", ""))
+def init_claude():
+    api_key = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
     if not api_key:
         return None
-    return genai.Client(api_key=api_key)
+    return Anthropic(api_key=api_key)
 
-client_gemini = init_gemini()
+client_claude = init_claude()
 
 # --- SIDEBAR (STATUS DO SISTEMA) ---
 with st.sidebar:
@@ -409,16 +409,15 @@ with st.sidebar:
     else:
         st.markdown("**Supabase:** 🔴 Não configurado")
         
-    status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
-    st.markdown(f"**Gemini IA:** {status_gem}")
+    status_claude = "🟢 Ativo" if client_claude else "🟡 Indisponível"
+    st.markdown(f"**Claude IA:** {status_claude}")
     
     st.markdown("---")
-    st.caption("Terminal B3 v7.2 (Merged Portfolio Menu)")
+    st.caption("Terminal B3 v8.0 (Claude Integration)")
 
 # --- CABEÇALHO E SELETOR PROFISSIONAL NA PÁGINA ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
 
-# Opções do menu principal sem a aba "Adicionar à Carteira"
 opcoes_menu = [
     "🌐 1. Visão Global",
     "🇧🇷 2. Mercado Brasileiro & Notícias",
@@ -427,11 +426,9 @@ opcoes_menu = [
     "🧮 5. Simulador"
 ]
 
-# Inicializa o estado da aba se não existir ou se estivesse na antiga opção
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-# SELETOR UNIFICADO VISÍVEL NA PARTE SUPERIOR DA PÁGINA
 st.session_state["aba_ativa"] = st.selectbox(
     "Selecione a seção desejada:",
     opcoes_menu,
@@ -574,14 +571,14 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro & Notícia
                 """, unsafe_allow_html=True)
 
 # ==========================================
-# SEÇÃO 3: ANÁLISE PROFISSIONAL & IA
+# SEÇÃO 3: ANÁLISE PROFISSIONAL & CLAUDE IA
 # ==========================================
 elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">📈 Terminal Profissional de Análise & Decisões</div>
-                <div class="hero-subtitle">Gráfico Candlestick com Médias Móveis, Múltiplos Fundamentalistas e IA Gemini</div>
+                <div class="hero-subtitle">Gráfico Candlestick com Médias Móveis, Múltiplos Fundamentalistas e Claude IA (Anthropic)</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -664,33 +661,38 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
                 st.plotly_chart(fig, width='stretch')
                 
             st.divider()
-            st.subheader("🧠 Relatório de Inteligência & Recomendação Estratégica (Gemini IA)")
+            st.subheader("🧠 Relatório de Inteligência & Recomendação Estratégica (Claude IA)")
             
-            if st.button("Gerar Parecer de Decisão com IA", type="primary"):
-                if client_gemini:
-                    prompt = (
+            if st.button("Gerar Parecer de Decisão com Claude IA", type="primary"):
+                if client_claude:
+                    prompt_texto = (
                         f"Atue como um analista financeiro sênior certificado (CNPI). "
-                        f"Faça uma avaliação detalhada e profissional para o ativo {dados_ativo['symbol']} B3 com base nos seguintes dados: "
+                        f"Faça uma avaliação detalhada e profissional para o ativo {dados_ativo['symbol']} com base nos seguintes dados: "
                         f"Cotação: {dados_ativo['preco']}, P/L: {dados_ativo['pe']}, P/VP: {dados_ativo['pb']}, Dividend Yield: {dados_ativo['dy_str']}. "
                         f"Estruture a resposta em:\n"
                         f"1. **Análise de Múltiplos e Tendência**\n"
                         f"2. **Matriz SWOT (Forças, Oportunidades, Fraquezas e Ameaças)**\n"
                         f"3. **Veredito para Tomada de Decisão (Compra, Neutro ou Venda)** e perfil de investidor indicado."
                     )
-                    with st.spinner("Analisando indicadores e gerando parecer estratégico..."):
+                    with st.spinner("Consultando o Claude 3.5 Sonnet para parecer estratégico..."):
                         try:
-                            resp = client_gemini.models.generate_content(model='gemini-1.5-flash', contents=prompt)
-                            st.success("Relatório gerado com sucesso!")
-                            st.markdown(resp.text)
+                            # Chamada oficial da API Anthropic (Claude)
+                            message = client_claude.messages.create(
+                                model="claude-3-5-sonnet-20241022",
+                                max_tokens=1500,
+                                messages=[{"role": "user", "content": prompt_texto}]
+                            )
+                            st.success("Relatório estratégico gerado com sucesso!")
+                            st.markdown(message.content[0].text)
                         except Exception as ex:
-                            st.error(f"Erro ao consultar o Gemini IA: {ex}")
+                            st.error(f"Erro ao consultar o Claude IA: {ex}")
                 else:
-                    st.warning("API Key do Gemini não configurada no `.streamlit/secrets.toml`.")
+                    st.warning("API Key da Anthropic não configurada no `.streamlit/secrets.toml` (utilize a chave `ANTHROPIC_API_KEY`).")
         else:
             st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`.")
 
 # ==========================================
-# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL (COM CADASTRO INTEGRADO)
+# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL
 # ==========================================
 elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     st.markdown("""
@@ -702,7 +704,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
         </div>
     """, unsafe_allow_html=True)
     
-    # RECURSO INTEGRADO: FORMULÁRIO DE ADIÇÃO DE ATIVOS
     with st.expander("➕ Adicionar Novo Ativo à Carteira", expanded=True):
         with st.form("form_carteira_integrado"):
             col_f1, col_f2, col_f3 = st.columns(3)
@@ -732,7 +733,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
                 else:
                     st.warning("Conexão com o Supabase não configurada.")
 
-        # Pré-visualização do ativo informado no formulário
         if ticker_cad_input:
             preview_data = obter_dados_ticker_seguro(ticker_cad_input)
             if preview_data and preview_data["preco"] > 0:
@@ -751,7 +751,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
 
     st.divider()
     
-    # EXIBIÇÃO E GESTÃO DA CARTEIRA EXISTENTE
     df_cart = carregar_carteira_supabase()
     
     if not df_cart.empty:

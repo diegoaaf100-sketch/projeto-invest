@@ -20,84 +20,119 @@ import feedparser
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="Terminal Quantitativo B3",
+    page_title="Terminal Quantitativo B3 & Global",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS GLOBAL ---
+# --- DESIGN SYSTEM & CSS CUSTOMIZADO (SaaS PREMIUM) ---
 st.markdown("""
     <style>
+        /* Importação de fontes modernas */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
+
+        html, body, [class*="css"] {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Fundo Dark Gradiente Profundo */
         .stApp {
-            background: linear-gradient(135deg, #070d19 0%, #0f172a 50%, #030712 100%) !important;
+            background: radial-gradient(circle at top right, #0f172a 0%, #070d19 50%, #020617 100%) !important;
             color: #f8fafc;
         }
 
+        /* Oculta o cabeçalho padrao do Streamlit */
         header[data-testid="stHeader"] {
             background-color: rgba(0, 0, 0, 0) !important;
         }
 
+        /* BANNER HERO INSTITUCIONAL */
         .hero-header {
             position: relative;
             width: 100%;
-            height: 160px;
-            border-radius: 12px;
+            height: 150px;
+            border-radius: 16px;
             background-size: cover;
             background-position: center;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             overflow: hidden;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .hero-overlay {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(90deg, rgba(7, 13, 25, 0.95) 0%, rgba(15, 23, 42, 0.6) 100%);
-            padding: 25px;
+            background: linear-gradient(90deg, rgba(7, 13, 25, 0.95) 0%, rgba(15, 23, 42, 0.4) 100%);
+            padding: 30px;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
 
         .hero-title {
-            font-size: 1.7rem;
+            font-size: 1.8rem;
             font-weight: 800;
             color: #ffffff;
-            margin: 0;
             letter-spacing: -0.5px;
+            margin: 0;
         }
 
         .hero-subtitle {
-            font-size: 0.9rem;
+            font-size: 0.92rem;
             color: #38bdf8;
-            margin-top: 4px;
+            margin-top: 6px;
+            font-weight: 500;
         }
 
+        /* CARDS DE MÉTRICAS / KPIS COM GLASSMORPHISM */
         div[data-testid="stMetric"] {
-            background: rgba(15, 23, 42, 0.7) !important;
-            backdrop-filter: blur(12px);
+            background: rgba(15, 23, 42, 0.65) !important;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.08) !important;
-            border-radius: 10px !important;
-            padding: 12px 16px !important;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            border-radius: 14px !important;
+            padding: 16px 20px !important;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s ease, border-color 0.2s ease;
         }
 
+        div[data-testid="stMetric"]:hover {
+            transform: translateY(-2px);
+            border-color: rgba(56, 189, 248, 0.4) !important;
+        }
+
+        div[data-testid="stMetricValue"] {
+            font-size: 1.5rem !important;
+            font-weight: 700 !important;
+            color: #ffffff !important;
+        }
+
+        div[data-testid="stMetricLabel"] {
+            font-size: 0.82rem !important;
+            color: #94a3b8 !important;
+            font-weight: 600 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* CARTÕES DE NOTÍCIAS */
         .news-card {
             background: rgba(15, 23, 42, 0.6);
-            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             overflow: hidden;
             margin-bottom: 15px;
-            transition: all 0.2s ease-in-out;
+            transition: all 0.25s ease-in-out;
             height: 100%;
         }
 
         .news-card:hover {
-            transform: translateY(-3px);
+            transform: translateY(-4px);
             border-color: #38bdf8;
-            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.15);
+            box-shadow: 0 10px 25px rgba(56, 189, 248, 0.15);
         }
 
         .news-img {
@@ -107,20 +142,37 @@ st.markdown("""
         }
 
         .news-content {
-            padding: 12px 15px;
+            padding: 14px;
         }
 
         .news-title {
             font-weight: 700;
-            color: #f1f5f9;
-            font-size: 0.9rem;
-            margin-bottom: 6px;
-            line-height: 1.3;
+            color: #f8fafc;
+            font-size: 0.88rem;
+            margin-bottom: 8px;
+            line-height: 1.35;
         }
 
         .news-date {
             font-size: 0.75rem;
             color: #38bdf8;
+            font-weight: 500;
+        }
+
+        /* ESTILIZAÇÃO DAS ABAS INTERNAS (st.tabs) */
+        button[data-baseweb="tab"] {
+            background-color: transparent !important;
+            color: #94a3b8 !important;
+            font-weight: 600 !important;
+            font-size: 0.95rem !important;
+            border-radius: 8px !important;
+            padding: 10px 20px !important;
+        }
+
+        button[aria-selected="true"] {
+            background-color: rgba(56, 189, 248, 0.1) !important;
+            color: #38bdf8 !important;
+            border-bottom: 2px solid #38bdf8 !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -141,33 +193,16 @@ supabase = init_supabase()
 
 # --- MOTOR MULTI-ATIVO DE BUSCA DE TICKERS ---
 def normalizar_ticker_universal(ticker_raw):
-    """
-    Identifica a classe de ativo e formata o símbolo correto para consulta no yfinance:
-    - Ações B3: PETR4 -> PETR4.SA
-    - FIIs / FIAGRO / FI-Infra / ETFs B3: HGLG11, BOVA11 -> HGLG11.SA
-    - BDRs B3: AAPL34 -> AAPL34.SA
-    - Cripto em USD ou BRL: BTC-USD, BTC-BRL, ETH-USD
-    - Moedas e Commodities: USDBRL=X, GC=F (Ouro), CL=F (Petróleo)
-    - Stocks e ETFs Globais: AAPL, MSFT, SPY, QQQ, IVV
-    """
     t_clean = ticker_raw.strip().upper()
-
-    # Símbolos com delimitadores de moedas/commodities/cripto já configurados
     if "=" in t_clean or "^" in t_clean or "-" in t_clean or t_clean.endswith(".SA"):
         return t_clean
-
-    # Ativos da B3 (Ações, FIIs, FIAGRO, BDRs, ETFs)
-    # Se terminar em número (ex: PETR3, PETR4, HGLG11, AAPL34, BOVA11)
     if any(t_clean.endswith(str(i)) for i in range(10)):
         return f"{t_clean}.SA"
-
-    # Ativos globais genéricos (Stocks/ETFs como AAPL, NVDA, SPY, QQQ)
     return t_clean
 
 @st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
     t_symbol = normalizar_ticker_universal(ticker_raw)
-
     try:
         t_obj = yf.Ticker(t_symbol)
         hist = t_obj.history(period="5d")
@@ -189,7 +224,6 @@ def obter_dados_ticker_seguro(ticker_raw):
         except Exception:
             pass
 
-        # Captura de múltiplos e indicadores universais
         dy = info.get('dividendYield', info.get('yield', 0.0))
         dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
         pe = info.get('trailingPE', info.get('forwardPE', 'N/D'))
@@ -213,16 +247,9 @@ def obter_dados_ticker_seguro(ticker_raw):
         }
     except Exception:
         return {
-            "symbol": t_symbol, 
-            "nome": t_symbol, 
-            "categoria": "N/D", 
-            "preco": 0.0, 
-            "variacao": 0.0, 
-            "dy_str": "N/D", 
-            "pe": "N/D", 
-            "pb": "N/D", 
-            "min52": 0.0, 
-            "max52": 0.0
+            "symbol": t_symbol, "nome": t_symbol, "categoria": "N/D", 
+            "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", 
+            "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0
         }
 
 # --- MAPEAMENTO DE ÍCONES CORPORATIVOS ---
@@ -243,7 +270,6 @@ def obter_icone_ativo(simbolo):
         "VALE3": "https://img.icons8.com/color/48/ore.png",
         "ITUB4": "https://img.icons8.com/color/48/bank-building.png",
         "BBDC4": "https://img.icons8.com/color/48/money-bag.png",
-        "ABEV3": "https://img.icons8.com/color/48/beer-bottle.png",
         "WEGE3": "https://img.icons8.com/color/48/engine.png",
         "HGLG11": "https://img.icons8.com/color/48/commercial-development.png",
         "MXRF11": "https://img.icons8.com/color/48/real-estate.png"
@@ -251,7 +277,7 @@ def obter_icone_ativo(simbolo):
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
 
-# --- TICKER TAPE FLUIDO E COMPACTO ---
+# --- TICKER TAPE FLUIDO ---
 def renderizar_ticker_tape(lista_tickers):
     itens_html = ""
     for t in lista_tickers:
@@ -259,12 +285,7 @@ def renderizar_ticker_tape(lista_tickers):
         if dados and dados["preco"] > 0:
             simbolo = dados["symbol"].replace(".SA", "")
             icone_url = obter_icone_ativo(simbolo)
-            
-            if "BRL" in t or ".SA" in t:
-                preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            else:
-                preco_str = f"${dados['preco']:,.2f}"
-                
+            preco_str = f"R$ {dados['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if "BRL" in t or ".SA" in t else f"${dados['preco']:,.2f}"
             var = dados["variacao"]
             cor_var = "#4ade80" if var >= 0 else "#f87171"
             sinal = "+" if var >= 0 else ""
@@ -284,79 +305,26 @@ def renderizar_ticker_tape(lista_tickers):
     <html>
     <head>
         <style>
-            html, body {{
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                background-color: #030712;
-                overflow: hidden;
-            }}
-            .ticker-container {{
-                width: 100%;
-                overflow: hidden;
-                background: #030712;
-                border-top: 1px solid rgba(255, 255, 255, 0.1);
-                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-                padding: 6px 0;
-                white-space: nowrap;
-                box-sizing: border-box;
-            }}
-            .ticker-wrapper {{
-                display: inline-flex;
-                white-space: nowrap;
-                animation: marquee 30s linear infinite;
-                width: max-content;
-            }}
-            .ticker-wrapper:hover {{
-                animation-play-state: paused;
-            }}
-            .ticker-item {{
-                display: inline-flex;
-                align-items: center;
-                margin-right: 35px;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-                font-size: 0.82rem;
-                flex-shrink: 0;
-            }}
-            .ticker-logo {{
-                width: 16px;
-                height: 16px;
-                margin-right: 8px;
-                border-radius: 50%;
-                background: #fff;
-                padding: 1px;
-                object-fit: contain;
-            }}
-            .ticker-symbol {{
-                font-weight: 700;
-                color: #ffffff;
-                margin-right: 8px;
-            }}
-            .ticker-price {{
-                color: #cbd5e1;
-                margin-right: 8px;
-                font-weight: 500;
-            }}
-            .ticker-var {{
-                font-weight: 600;
-            }}
-            @keyframes marquee {{
-                0% {{ transform: translateX(0); }}
-                100% {{ transform: translateX(-50%); }}
-            }}
+            html, body {{ margin: 0; padding: 0; width: 100%; background-color: #020617; overflow: hidden; }}
+            .ticker-container {{ width: 100%; overflow: hidden; background: #020617; border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 0; white-space: nowrap; box-sizing: border-box; }}
+            .ticker-wrapper {{ display: inline-flex; white-space: nowrap; animation: marquee 30s linear infinite; width: max-content; }}
+            .ticker-wrapper:hover {{ animation-play-state: paused; }}
+            .ticker-item {{ display: inline-flex; align-items: center; margin-right: 35px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 0.82rem; flex-shrink: 0; }}
+            .ticker-logo {{ width: 18px; height: 18px; margin-right: 8px; border-radius: 50%; background: #fff; padding: 1px; object-fit: contain; }}
+            .ticker-symbol {{ font-weight: 700; color: #ffffff; margin-right: 8px; }}
+            .ticker-price {{ color: #cbd5e1; margin-right: 8px; font-weight: 500; }}
+            .ticker-var {{ font-weight: 600; }}
+            @keyframes marquee {{ 0% {{ transform: translateX(0); }} 100% {{ transform: translateX(-50%); }} }}
         </style>
     </head>
     <body>
         <div class="ticker-container">
-            <div class="ticker-wrapper">
-                {itens_html}
-                {itens_html}
-            </div>
+            <div class="ticker-wrapper">{itens_html}{itens_html}</div>
         </div>
     </body>
     </html>
     """
-    components.html(full_component, height=38, scrolling=False)
+    components.html(full_component, height=42, scrolling=False)
 
 # --- CARREGAR CARTEIRA DO SUPABASE ---
 def carregar_carteira_supabase():
@@ -373,14 +341,13 @@ def carregar_carteira_supabase():
 def buscar_cotacoes_atuais():
     dolar_data = obter_dados_ticker_seguro("USDBRL=X")
     btc_data = obter_dados_ticker_seguro("BTC-BRL")
-    
     val_dolar = f"R$ {dolar_data['preco']:.2f}" if dolar_data and dolar_data['preco'] > 0 else "R$ 5,80"
     val_btc = f"R$ {btc_data['preco']:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".") if btc_data and btc_data['preco'] > 0 else "R$ 350.000"
     return val_dolar, val_btc
 
 cot_dolar, cot_btc = buscar_cotacoes_atuais()
 
-# --- BUSCA DE NOTÍCIAS DIÁRIAS VIA RSS COM IMAGENS ---
+# --- BUSCA DE NOTÍCIAS RSS ---
 @st.cache_data(ttl=1800)
 def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
     for url in urls:
@@ -392,30 +359,18 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
                     titulo = entry.get("title", "Sem título")
                     link = entry.get("link", "#")
                     data = entry.get("published", "Hoje")
-                    
                     img_url = img_fallback_default
                     if "media_content" in entry and len(entry.media_content) > 0:
                         img_url = entry.media_content[0].get("url", img_fallback_default)
                     elif "media_thumbnail" in entry and len(entry.media_thumbnail) > 0:
                         img_url = entry.media_thumbnail[0].get("url", img_fallback_default)
-                    elif "links" in entry:
-                        for l in entry.links:
-                            if l.get("type", "").startswith("image/"):
-                                img_url = l.get("href", img_fallback_default)
-                                break
-                                
-                    noticias.append({
-                        "titulo": titulo, 
-                        "link": link, 
-                        "data": data,
-                        "imagem": img_url
-                    })
+                    noticias.append({"titulo": titulo, "link": link, "data": data, "imagem": img_url})
                 return noticias
         except Exception:
             continue
     return []
 
-# --- CLIENTE CLAUDE (ANTHROPIC) ---
+# --- CLIENTE CLAUDE ---
 @st.cache_resource
 def init_claude():
     api_key = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
@@ -425,40 +380,38 @@ def init_claude():
 
 client_claude = init_claude()
 
-# --- SIDEBAR (STATUS DO SISTEMA) ---
+# --- PAINEL LATERAL (SIDEBAR DE CONTROLE) ---
 with st.sidebar:
-    st.image("https://img.icons8.com/color/96/bullish.png", width=60)
-    st.title("Terminal Quant")
+    st.image("https://img.icons8.com/color/96/bullish.png", width=55)
+    st.markdown("## **Terminal Quant**")
+    st.caption("Inteligência Financeira Institucional")
     st.markdown("---")
     
-    st.markdown("### 🔌 Status da Conexão")
-    if supabase:
-        st.markdown("**Supabase:** 🟢 Conectado")
-    else:
-        st.markdown("**Supabase:** 🔴 Não configurado")
-        
-    status_claude = "🟢 Ativo" if client_claude else "🟡 Indisponível"
-    st.markdown(f"**Claude IA:** {status_claude}")
+    st.markdown("### ⚡ **Status dos Motores**")
+    st.markdown(f"**Supabase DB:** {'🟢 Conectado' if supabase else '🔴 Offline'}")
+    st.markdown(f"**Claude 3.5 Sonnet:** {'🟢 Ativo' if client_claude else '🟡 Indisponível'}")
     
     st.markdown("---")
-    st.caption("Terminal Multi-Ativos (B3 & Global)")
+    st.markdown("### ⚙️ **Preferências de Exibição**")
+    st.checkbox("Atualização em Tempo Real", value=True)
+    st.caption("Terminal B3 & Global v9.0 Pro")
 
-# --- CABEÇALHO E SELETOR PROFISSIONAL NA PÁGINA ---
-st.title("📊 Terminal Quantitativo & Inteligência de Mercado")
-
+# --- NAVEGAÇÃO SUPERIOR ESTILIZADA (SITES SAAS) ---
 opcoes_menu = [
     "🌐 1. Visão Global",
-    "🇧🇷 2. Mercado Brasileiro & Notícias",
+    "🇧🇷 2. Mercado Brasileiro",
     "📈 3. Análise Profissional & IA",
-    "💼 4. Gestão de Carteira & PnL",
+    "💼 4. Gestão de Carteira",
     "🧮 5. Simulador"
 ]
 
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
+# Componente de Seleção Superior Estilizado
+st.markdown("<h2 style='margin-bottom:0;'>📊 Terminal Quantitativo & Inteligência de Mercado</h2>", unsafe_allow_html=True)
 st.session_state["aba_ativa"] = st.selectbox(
-    "Selecione a seção desejada:",
+    "Menu de Navegação",
     opcoes_menu,
     index=opcoes_menu.index(st.session_state["aba_ativa"]),
     key="seletor_principal",
@@ -471,32 +424,19 @@ st.divider()
 # SEÇÃO 1: VISÃO GLOBAL
 # ==========================================
 if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
-    imagem_fundo_path = Path(__file__).parent / "fundo_aba1_mercado.jpg"
-    imagem_fundo_base64 = ""
-
-    if imagem_fundo_path.exists():
-        imagem_fundo_base64 = base64.b64encode(
-            imagem_fundo_path.read_bytes()
-        ).decode("utf-8")
-
     tickers_globais = ["AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
     renderizar_ticker_tape(tickers_globais)
 
-    if imagem_fundo_base64:
-        imagem_banner = f"data:image/jpeg;base64,{imagem_fundo_base64}"
-    else:
-        imagem_banner = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80"
-
-    st.markdown(f"""
-        <div class="hero-header" style="background-image: linear-gradient(90deg, rgba(5, 12, 25, 0.5), rgba(5, 12, 25, 0.2)), url('{imagem_banner}');">
+    st.markdown("""
+        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">🌐 Visão Global de Mercado</div>
-                <div class="hero-subtitle">Câmbio, criptoativos e principais índices internacionais em tempo real</div>
+                <div class="hero-subtitle">Câmbio, criptoativos e índices das principais bolsas globais</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    st.subheader("💱 Câmbio & Criptoativos (BRL)")
+    st.subheader("💱 Câmbio & Criptoativos")
     c1, c2 = st.columns(2)
     with c1:
         st.metric(label="Dólar Comercial (USD/BRL)", value=cot_dolar, delta="+0.35%")
@@ -507,135 +447,83 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
 
     st.subheader("🌍 Principais Indicadores Globais")
     ig1, ig2, ig3, ig4, ig5 = st.columns(5)
-    with ig1:
-        st.metric(label="S&P 500 (EUA)", value="5.842 pts", delta="+0.45%")
-    with ig2:
-        st.metric(label="Nasdaq 100", value="18.320 pts", delta="+0.78%")
-    with ig3:
-        st.metric(label="Petróleo Brent", value="74.50 USD", delta="-1.12%")
-    with ig4:
-        st.metric(label="Ouro (Gold)", value="2.745 USD", delta="+0.32%")
-    with ig5:
-        st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
+    with ig1: st.metric(label="S&P 500", value="5.842 pts", delta="+0.45%")
+    with ig2: st.metric(label="Nasdaq 100", value="18.320 pts", delta="+0.78%")
+    with ig3: st.metric(label="Petróleo Brent", value="74.50 USD", delta="-1.12%")
+    with ig4: st.metric(label="Ouro", value="2.745 USD", delta="+0.32%")
+    with ig5: st.metric(label="VIX (Volatilidade)", value="18.40 pts", delta="-2.10%")
 
     st.divider()
-    st.subheader("📰 Notícias Diárias do Mercado Global")
-    
-    urls_globais = [
-        "https://feeds.content.dowjones.io/public/rss/mw_topstories",
-        "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance",
-        "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml"
-    ]
-    img_fallback_global = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80"
-    
-    noticias_globais = buscar_noticias_rss_com_imagens(urls_globais, img_fallback_global, limite=3)
+    st.subheader("📰 Notícias Diárias Globais")
+    urls_globais = ["https://feeds.content.dowjones.io/public/rss/mw_topstories", "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance"]
+    noticias_globais = buscar_noticias_rss_com_imagens(urls_globais, "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80", limite=3)
     
     if noticias_globais:
-        ng1, ng2, ng3 = st.columns(3)
-        cols_g = [ng1, ng2, ng3]
+        cols_g = st.columns(3)
         for idx, item in enumerate(noticias_globais):
             with cols_g[idx]:
                 st.markdown(f"""
                     <div class="news-card">
                         <img src="{item['imagem']}" class="news-img">
                         <div class="news-content">
-                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
-                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Mercado Global</div>
+                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f8fafc; text-decoration: none;">{item['titulo']}</a></div>
+                            <div class="news-date">📅 {item['data'][:16]}</div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
 # ==========================================
-# SEÇÃO 2: MERCADO BRASILEIRO & NOTÍCIAS
+# SEÇÃO 2: MERCADO BRASILEIRO
 # ==========================================
-elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro & Notícias":
-    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
+elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
+    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11"]
     renderizar_ticker_tape(tickers_br)
 
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">🇧🇷 Mercado Brasileiro & Notícias</div>
-                <div class="hero-subtitle">Indicadores macroeconômicos da B3 e fatos relevantes atualizados diariamente</div>
+                <div class="hero-title">🇧🇷 Mercado Brasileiro & B3</div>
+                <div class="hero-subtitle">Taxas de juros, inflação e principais ativos negociados no Brasil</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    st.subheader("📊 Indicativos Principais do Mercado Brasileiro")
+    st.subheader("📊 Macroeconomia Nacional")
     ib1, ib2, ib3, ib4 = st.columns(4)
-    with ib1:
-        st.metric(label="Ibovespa (IBOV)", value="131.250 pts", delta="+0.92%")
-    with ib2:
-        st.metric(label="Taxa Selic Meta", value="11.25% a.a.", delta="+0.25%")
-    with ib3:
-        st.metric(label="IPCA (Acumulado 12m)", value="4.45%", delta="Dentro da meta")
-    with ib4:
-        st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
-        
-    st.divider()
-    st.subheader("📰 Notícias Diárias do Mercado Nacional")
-    
-    urls_nacionais = [
-        "https://exame.com/invest/feed/",
-        "https://www.infomoney.com.br/feed/"
-    ]
-    img_fallback_nacional = "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80"
-    
-    noticias_nacionais = buscar_noticias_rss_com_imagens(urls_nacionais, img_fallback_nacional, limite=3)
-    
-    if noticias_nacionais:
-        nn1, nn2, nn3 = st.columns(3)
-        cols_n = [nn1, nn2, nn3]
-        for idx, item in enumerate(noticias_nacionais):
-            with cols_n[idx]:
-                st.markdown(f"""
-                    <div class="news-card">
-                        <img src="{item['imagem']}" class="news-img">
-                        <div class="news-content">
-                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f1f5f9; text-decoration: none;">{item['titulo']}</a></div>
-                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+    with ib1: st.metric(label="Ibovespa (IBOV)", value="131.250 pts", delta="+0.92%")
+    with ib2: st.metric(label="Taxa Selic", value="11.25% a.a.", delta="+0.25%")
+    with ib3: st.metric(label="IPCA (12m)", value="4.45%", delta="Meta")
+    with ib4: st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
 
 # ==========================================
-# SEÇÃO 3: ANÁLISE PROFISSIONAL MULTI-ATIVO & CLAUDE IA
+# SEÇÃO 3: ANÁLISE PROFISSIONAL & IA
 # ==========================================
 elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">📈 Terminal Profissional Multi-Ativos</div>
-                <div class="hero-subtitle">Suporte universal: Ações, FIIs, FIAGROs, ETFs, BDRs, Stocks Globais, Cripto e Commodities</div>
+                <div class="hero-subtitle">Análise avançada de Ações, FIIs, ETFs, BDRs e Cripto com inteligência Claude IA</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    ticker_input = st.text_input(
-        "Digite qualquer ticker (ex: PETR4, HGLG11, AAPL, BOVA11, IVVB11, BTC-USD, GC=F):", 
-        value="PETR4"
-    ).strip().upper()
+    ticker_input = st.text_input("Digite um Ticker (ex: PETR4, HGLG11, AAPL, BOVA11, BTC-USD):", value="PETR4").strip().upper()
     
     if ticker_input:
         dados_ativo = obter_dados_ticker_seguro(ticker_input)
         
         if dados_ativo and dados_ativo["preco"] > 0:
-            st.subheader(f"🔍 Indicadores do Ativo: {dados_ativo['nome']} ({dados_ativo['symbol']})")
+            st.subheader(f"🔍 {dados_ativo['nome']} ({dados_ativo['symbol']})")
             
             m1, m2, m3, m4, m5, m6 = st.columns(6)
-            with m1:
-                moeda_prefix = "R$" if ".SA" in dados_ativo['symbol'] or "BRL" in dados_ativo['symbol'] else "$"
-                st.metric("Preço Atual", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
-            with m2:
-                st.metric("Dividend Yield / Yield", dados_ativo['dy_str'])
-            with m3:
-                st.metric("P/L (P/E Ratio)", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
-            with m4:
-                st.metric("P/VP (P/B Ratio)", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
-            with m5:
-                st.metric("Mínima 52S", f"{moeda_prefix} {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
-            with m6:
-                st.metric("Máxima 52S", f"{moeda_prefix} {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
+            moeda_prefix = "R$" if ".SA" in dados_ativo['symbol'] or "BRL" in dados_ativo['symbol'] else "$"
+            with m1: st.metric("Cotação", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
+            with m2: st.metric("Dividend Yield", dados_ativo['dy_str'])
+            with m3: st.metric("P/L", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
+            with m4: st.metric("P/VP", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
+            with m5: st.metric("Mínima 52S", f"{moeda_prefix} {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
+            with m6: st.metric("Máxima 52S", f"{moeda_prefix} {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
                 
             st.divider()
             
@@ -645,92 +533,41 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
                 df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
                 df_hist['MMA200'] = df_hist['Close'].rolling(window=200).mean()
                 
-                st.subheader("📊 Gráfico Técnico (Candlestick + Médias Móveis + Volume)")
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
+                fig.add_trace(go.Candlestick(x=df_hist.index, open=df_hist['Open'], high=df_hist['High'], low=df_hist['Low'], close=df_hist['Close'], name="Candles"), row=1, col=1)
+                fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21', line=dict(color='#0284c7', width=1.5)), row=1, col=1)
+                fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA200'], mode='lines', name='MMA 200', line=dict(color='#f59e0b', width=1.5)), row=1, col=1)
+                fig.add_trace(go.Bar(x=df_hist.index, y=df_hist['Volume'], name="Volume", marker_color='rgba(37, 99, 235, 0.5)'), row=2, col=1)
                 
-                fig = make_subplots(
-                    rows=2, cols=1, 
-                    shared_xaxes=True, 
-                    vertical_spacing=0.03, 
-                    row_heights=[0.75, 0.25]
-                )
-                
-                fig.add_trace(
-                    go.Candlestick(
-                        x=df_hist.index,
-                        open=df_hist['Open'],
-                        high=df_hist['High'],
-                        low=df_hist['Low'],
-                        close=df_hist['Close'],
-                        name="Candles"
-                    ),
-                    row=1, col=1
-                )
-                
-                fig.add_trace(
-                    go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21 (Curto Prazo)', line=dict(color='#0284c7', width=1.5)),
-                    row=1, col=1
-                )
-                
-                fig.add_trace(
-                    go.Scatter(x=df_hist.index, y=df_hist['MMA200'], mode='lines', name='MMA 200 (Longo Prazo)', line=dict(color='#f59e0b', width=1.5)),
-                    row=1, col=1
-                )
-                
-                fig.add_trace(
-                    go.Bar(x=df_hist.index, y=df_hist['Volume'], name="Volume", marker_color='rgba(37, 99, 235, 0.5)'),
-                    row=2, col=1
-                )
-                
-                fig.update_layout(
-                    template="plotly_dark",
-                    height=550,
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    xaxis_rangeslider_visible=False,
-                    legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="right", x=1)
-                )
-                
+                fig.update_layout(template="plotly_dark", height=500, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", xaxis_rangeslider_visible=False)
                 st.plotly_chart(fig, use_container_width=True)
                 
             st.divider()
-            st.subheader("🧠 Relatório Estratégico com Claude IA")
             
-            if st.button("Gerar Análise Estratégica com Claude IA", type="primary"):
+            if st.button("Gerar Parecer Estratégico com Claude IA", type="primary"):
                 if client_claude:
-                    prompt_texto = (
-                        f"Atue como um analista financeiro certificado (CNPI / CFA). "
-                        f"Avalie o ativo {dados_ativo['nome']} ({dados_ativo['symbol']}) com base nos seguintes dados de mercado: "
-                        f"Cotação: {dados_ativo['preco']}, P/L: {dados_ativo['pe']}, P/VP: {dados_ativo['pb']}, Dividend Yield: {dados_ativo['dy_str']}. "
-                        f"Estruture a resposta em:\n"
-                        f"1. **Análise do Ativo e Classe**\n"
-                        f"2. **Matriz SWOT (Forças, Oportunidades, Fraquezas e Ameaças)**\n"
-                        f"3. **Recomendação Estratégica (Compra, Neutro ou Venda)** e perfil de investidor indicado."
-                    )
-                    with st.spinner("Consultando o Claude 3.5 Sonnet para avaliação de mercado..."):
+                    prompt_texto = f"Avalie o ativo {dados_ativo['nome']} ({dados_ativo['symbol']}) com cotação {dados_ativo['preco']}, P/L {dados_ativo['pe']}, P/VP {dados_ativo['pb']}, DY {dados_ativo['dy_str']}. Forneça Análise, SWOT e Veredito (Compra/Neutro/Venda)."
+                    with st.spinner("Analisando dados do mercado..."):
                         try:
                             message = client_claude.messages.create(
                                 model="claude-3-5-sonnet-20241022",
-                                max_tokens=1500,
+                                max_tokens=1200,
                                 messages=[{"role": "user", "content": prompt_texto}]
                             )
                             st.success("Relatório gerado com sucesso!")
                             st.markdown(message.content[0].text)
                         except Exception as ex:
                             st.error(f"Erro ao consultar o Claude IA: {ex}")
-                else:
-                    st.warning("API Key da Anthropic não configurada no `.streamlit/secrets.toml`.")
-        else:
-            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`. Verifique o código digitado.")
 
 # ==========================================
-# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL
+# SEÇÃO 4: GESTÃO DE CARTEIRA
 # ==========================================
-elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
+elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">💼 Gestão de Carteira & PnL Institucional</div>
-                <div class="hero-subtitle">Consolidado patrimonial, análise de alocação de ativos e gerenciamento em tempo real</div>
+                <div class="hero-title">💼 Gestão de Carteira & PnL</div>
+                <div class="hero-subtitle">Consolidado de ativos em custódia e rentabilidade em tempo real</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -738,173 +575,65 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     df_cart = carregar_carteira_supabase()
 
     if not df_cart.empty:
-        cotacoes_atuais = []
-        for idx, row in df_cart.iterrows():
-            t = row['ticker']
-            d_asset = obter_dados_ticker_seguro(t)
-            preco = d_asset['preco'] if d_asset and d_asset['preco'] > 0 else row['preco_medio']
-            cotacoes_atuais.append(preco)
-            
+        cotacoes_atuais = [obter_dados_ticker_seguro(row['ticker'])['preco'] or row['preco_medio'] for _, row in df_cart.iterrows()]
         df_cart['Cotacao_Atual'] = cotacoes_atuais
         df_cart['Total_Investido'] = df_cart['quantidade'] * df_cart['preco_medio']
         df_cart['Valor_Atual'] = df_cart['quantidade'] * df_cart['Cotacao_Atual']
         df_cart['PnL_Reais'] = df_cart['Valor_Atual'] - df_cart['Total_Investido']
         df_cart['PnL_Percent'] = (df_cart['PnL_Reais'] / df_cart['Total_Investido']) * 100
 
-        tot_inv = df_cart['Total_Investido'].sum()
-        tot_val = df_cart['Valor_Atual'].sum()
+        tot_inv, tot_val = df_cart['Total_Investido'].sum(), df_cart['Valor_Atual'].sum()
         tot_pnl = df_cart['PnL_Reais'].sum()
         tot_pnl_pct = (tot_pnl / tot_inv) * 100 if tot_inv > 0 else 0
     else:
         tot_inv, tot_val, tot_pnl, tot_pnl_pct = 0.0, 0.0, 0.0, 0.0
 
     st.subheader("📊 Resumo da Carteira")
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    with kpi1:
-        st.metric("Total Investido", f"R$ {tot_inv:,.2f}")
-    with kpi2:
-        st.metric("Valor de Mercado", f"R$ {tot_val:,.2f}")
-    with kpi3:
-        st.metric("Lucro / Prejuízo (PnL R$)", f"R$ {tot_pnl:,.2f}", delta=f"{tot_pnl_pct:.2f}%")
-    with kpi4:
-        total_ativos = len(df_cart) if not df_cart.empty else 0
-        st.metric("Ativos em Custódia", f"{total_ativos} Tickers")
+    k1, k2, k3, k4 = st.columns(4)
+    with k1: st.metric("Investido", f"R$ {tot_inv:,.2f}")
+    with k2: st.metric("Valor de Mercado", f"R$ {tot_val:,.2f}")
+    with k3: st.metric("PnL (R$)", f"R$ {tot_pnl:,.2f}", delta=f"{tot_pnl_pct:.2f}%")
+    with k4: st.metric("Total de Ativos", f"{len(df_cart) if not df_cart.empty else 0}")
 
     st.divider()
 
-    aba_tab1, aba_tab2, aba_tab3 = st.tabs([
-        "📋 Posição Custodiada & Edição", 
-        "📊 Alocação & Distribuição", 
-        "➕ Cadastrar Novo Ativo"
-    ])
+    aba1, aba2, aba3 = st.tabs(["📋 Posições Custodiadas", "📊 Gráficos de Alocação", "➕ Novo Aporte"])
 
-    with aba_tab1:
+    with aba1:
         if not df_cart.empty:
-            st.markdown("##### 🔍 Posições Detalhadas em Tempo Real")
-            df_cart_display = df_cart.copy()
-            df_cart_display.insert(0, "Excluir", False)
-
-            df_editado = st.data_editor(
-                df_cart_display[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
-                column_config={
-                    "Excluir": st.column_config.CheckboxColumn("🗑️ Sair", default=False),
-                    "id": st.column_config.NumberColumn("ID", disabled=True),
-                    "ticker": st.column_config.TextColumn("Ativo", disabled=True),
-                    "quantidade": st.column_config.NumberColumn("Qtd", format="%d", disabled=True),
-                    "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
-                    "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
-                    "Total_Investido": st.column_config.NumberColumn("Custo Total", format="R$ %.2f", disabled=True),
-                    "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
-                    "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
-                    "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
-                },
-                hide_index=True,
-                use_container_width=True,
-                key="editor_carteira_v2"
+            df_display = df_cart.copy()
+            df_display.insert(0, "Excluir", False)
+            st.data_editor(
+                df_display[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
+                column_config={"Excluir": st.column_config.CheckboxColumn("🗑️ Sair"), "preco_medio": st.column_config.NumberColumn(format="R$ %.2f"), "Cotacao_Atual": st.column_config.NumberColumn(format="R$ %.2f")},
+                hide_index=True, use_container_width=True
             )
-
-            col_del1, col_del2 = st.columns([1, 4])
-            with col_del1:
-                if st.button("🗑️ Excluir Selecionados", type="secondary"):
-                    ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
-                    if ids_para_remover and supabase:
-                        try:
-                            for item_id in ids_para_remover:
-                                supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
-                            st.success("Ativo(s) removido(s) com sucesso!")
-                            st.rerun()
-                        except Exception as e:
-                            st.error(f"Erro ao excluir do Supabase: {e}")
-                    else:
-                        st.warning("Selecione a caixa de exclusão na tabela.")
         else:
-            st.info("Sua carteira está vazia no momento. Cadastre um novo ativo na aba '➕ Cadastrar Novo Ativo'.")
+            st.info("Nenhum ativo cadastrado na carteira do Supabase.")
 
-    with aba_tab2:
+    with aba2:
         if not df_cart.empty:
-            col_chart1, col_chart2 = st.columns([1, 1])
-            
-            with col_chart1:
-                st.markdown("##### 🍩 Distribuição por Ativo (% do Patrimônio)")
-                fig_alloc = px.pie(
-                    df_cart, 
-                    names='ticker', 
-                    values='Valor_Atual', 
-                    hole=0.5,
-                    color_discrete_sequence=px.colors.qualitative.Dark24
-                )
-                fig_alloc.update_traces(textposition='inside', textinfo='percent+label')
-                fig_alloc.update_layout(
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    showlegend=False,
-                    margin=dict(t=20, b=20, l=20, r=20)
-                )
+            c_pie, c_bar = st.columns(2)
+            with c_pie:
+                fig_alloc = px.pie(df_cart, names='ticker', values='Valor_Atual', hole=0.4)
+                fig_alloc.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)")
                 st.plotly_chart(fig_alloc, use_container_width=True)
+            with c_bar:
+                fig_bar = px.bar(df_cart, x='ticker', y='PnL_Reais', color='PnL_Reais')
+                fig_bar.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)")
+                st.plotly_chart(fig_bar, use_container_width=True)
 
-            with col_chart2:
-                st.markdown("##### 📈 Lucro/Prejuízo por Ativo (R$)")
-                fig_pnl_bar = px.bar(
-                    df_cart,
-                    x='ticker',
-                    y='PnL_Reais',
-                    color='PnL_Reais',
-                    color_continuous_scale=['#f87171', '#4ade80']
-                )
-                fig_pnl_bar.update_layout(
-                    template="plotly_dark",
-                    paper_bgcolor="rgba(0,0,0,0)",
-                    plot_bgcolor="rgba(0,0,0,0)",
-                    coloraxis_showscale=False,
-                    xaxis_title="Ativo",
-                    yaxis_title="PnL (R$)"
-                )
-                st.plotly_chart(fig_pnl_bar, use_container_width=True)
-        else:
-            st.info("Sem dados disponíveis para gerar gráficos de alocação.")
-
-    with aba_tab3:
-        st.markdown("##### ➕ Registrar Aporte / Compra de Ativo")
-        with st.form("form_carteira_novo"):
-            col_f1, col_f2, col_f3 = st.columns(3)
-            with col_f1:
-                ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4, HGLG11, AAPL, BOVA11):", value="PETR4").strip().upper()
-            with col_f2:
-                qtd_cad = st.number_input("Quantidade de Ações/Cotas:", min_value=1, value=100, step=1)
-            with col_f3:
-                pm_cad = st.number_input("Preço Médio Pago (R$):", min_value=0.01, value=35.00, step=0.50)
-                
-            salvar_btn = st.form_submit_button("💾 Salvar Ativo no Supabase", type="primary")
-            
-            if salvar_btn:
-                ticker_final = normalizar_ticker_universal(ticker_cad_input)
-                if supabase:
-                    try:
-                        novo_registro = {
-                            "ticker": ticker_final,
-                            "quantidade": int(qtd_cad),
-                            "preco_medio": float(pm_cad)
-                        }
-                        supabase.table("carteira_usuarios").insert(novo_registro).execute()
-                        st.success(f"Ativo {ticker_final} gravado com sucesso!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar: {e}")
-                else:
-                    st.warning("Supabase não está conectado.")
-
-        if ticker_cad_input:
-            preview_data = obter_dados_ticker_seguro(ticker_cad_input)
-            if preview_data and preview_data["preco"] > 0:
-                st.caption("ℹ️ **Cotação em tempo real para conferência:**")
-                pv1, pv2, pv3 = st.columns(3)
-                with pv1:
-                    st.metric("Cotação Atual", f"R$ {preview_data['preco']:.2f}")
-                with pv2:
-                    st.metric("Dividend Yield", preview_data['dy_str'])
-                with pv3:
-                    st.metric("P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
+    with aba3:
+        with st.form("form_novo_ativo"):
+            f1, f2, f3 = st.columns(3)
+            with f1: ticker_cad = st.text_input("Ticker (ex: PETR4, HGLG11):", value="PETR4").strip().upper()
+            with f2: qtd_cad = st.number_input("Quantidade:", min_value=1, value=100)
+            with f3: pm_cad = st.number_input("Preço Médio (R$):", min_value=0.01, value=35.00)
+            if st.form_submit_button("Salvar na Carteira", type="primary") and supabase:
+                ticker_f = normalizar_ticker_universal(ticker_cad)
+                supabase.table("carteira_usuarios").insert({"ticker": ticker_f, "quantidade": int(qtd_cad), "preco_medio": float(pm_cad)}).execute()
+                st.success(f"{ticker_f} cadastrado com sucesso!")
+                st.rerun()
 
 # ==========================================
 # SEÇÃO 5: SIMULADOR
@@ -913,30 +642,27 @@ elif st.session_state["aba_ativa"] == "🧮 5. Simulador":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">🧮 Simulador de Investimentos</div>
-                <div class="hero-subtitle">Projeção matemática de acúmulo de capital a longo prazo com juros compostos</div>
+                <div class="hero-title">🧮 Simulador de Juros Compostos</div>
+                <div class="hero-subtitle">Projeções patrimoniais de longo prazo</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    col_sim1, col_sim2 = st.columns(2)
-    with col_sim1:
-        aporte_inicial = st.number_input("Aporte Inicial (R$):", value=10000.0, step=1000.0)
-        aporte_mensal = st.number_input("Aporte Mensal (R$):", value=1000.0, step=100.0)
-    with col_sim2:
-        taxa_anual = st.number_input("Rentabilidade Anual Estimada (%):", value=10.0, step=0.5)
-        anos = st.slider("Prazo (Anos):", 1, 30, 10)
+    cs1, cs2 = st.columns(2)
+    with cs1:
+        ap_init = st.number_input("Aporte Inicial (R$):", value=10000.0)
+        ap_mensal = st.number_input("Aporte Mensal (R$):", value=1000.0)
+    with cs2:
+        tx_anual = st.number_input("Rentabilidade Anual Estimada (%):", value=10.0)
+        anos_proj = st.slider("Prazo (Anos):", 1, 30, 10)
         
-    if st.button("Calcular Simulação Patrimonial", type="primary"):
-        meses = anos * 12
-        taxa_mensal = (1 + taxa_anual / 100) ** (1/12) - 1
-        
-        total = aporte_inicial
-        historico_patrimonio = [total]
-        
+    if st.button("Simular Projeção", type="primary"):
+        meses = anos_proj * 12
+        tx_mensal = (1 + tx_anual / 100) ** (1/12) - 1
+        tot = ap_init
+        hist = [tot]
         for _ in range(int(meses)):
-            total = (total + aporte_mensal) * (1 + taxa_mensal)
-            historico_patrimonio.append(total)
-            
-        st.success(f"Patrimônio Final Estimado após {anos} anos: **R$ {total:,.2f}**")
-        st.line_chart(historico_patrimonio)
+            tot = (tot + ap_mensal) * (1 + tx_mensal)
+            hist.append(tot)
+        st.success(f"Patrimônio Estimado: **R$ {tot:,.2f}**")
+        st.line_chart(hist)

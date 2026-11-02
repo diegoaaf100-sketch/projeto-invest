@@ -26,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- DESIGN SYSTEM & CSS CUSTOMIZADO ---
+# --- DESIGN SYSTEM & CSS CUSTOMIZADO (SaaS PREMIUM) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap');
@@ -168,7 +168,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- CONEXÃO COM SUPABASE ---
+# --- CONEXÃO COM O SUPABASE ---
 @st.cache_resource
 def init_supabase():
     url = st.secrets.get("SUPABASE_URL", os.getenv("SUPABASE_URL", ""))
@@ -182,7 +182,7 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- BUSCA DE DADOS UNIVERSAL ---
+# --- MOTOR DE BUSCA UNIVERSAL ---
 def normalizar_ticker_universal(ticker_raw):
     t_clean = ticker_raw.strip().upper()
     if "=" in t_clean or "^" in t_clean or "-" in t_clean or t_clean.endswith(".SA"):
@@ -223,6 +223,10 @@ def obter_dados_ticker_seguro(ticker_raw):
         max52 = info.get('fiftyTwoWeekHigh', 'N/D')
         nome_longo = info.get('longName', info.get('shortName', t_symbol))
         categoria = info.get('quoteType', 'AÇÕES / B3')
+        
+        descricao_negocio = info.get('longBusinessSummary', 'Resumo histórico não disponível para este ativo.')
+        setor = info.get('sector', 'Não informado')
+        industria = info.get('industry', 'Não informada')
 
         return {
             "symbol": t_symbol,
@@ -234,13 +238,17 @@ def obter_dados_ticker_seguro(ticker_raw):
             "pe": pe,
             "pb": pb,
             "min52": min52,
-            "max52": max52
+            "max52": max52,
+            "descricao": descricao_negocio,
+            "setor": setor,
+            "industria": industria
         }
     except Exception:
         return {
             "symbol": t_symbol, "nome": t_symbol, "categoria": "OUTROS", 
             "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", 
-            "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0
+            "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0,
+            "descricao": "Dados indisponíveis.", "setor": "N/D", "industria": "N/D"
         }
 
 def obter_icone_ativo(simbolo):
@@ -359,13 +367,13 @@ client_claude = init_claude()
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/bullish.png", width=55)
     st.markdown("## **Terminal Quant**")
-    st.caption("Gestão de Carteira & Renda Fixa")
+    st.caption("Gestão Institucional de Ativos")
     st.markdown("---")
     st.markdown("### ⚡ **Status dos Motores**")
     st.markdown(f"**Supabase DB:** {'🟢 Conectado' if supabase else '🔴 Offline'}")
     st.markdown(f"**Claude 3.5 Sonnet:** {'🟢 Ativo' if client_claude else '🟡 Indisponível'}")
     st.markdown("---")
-    st.caption("Versão Multi-Ativos Brasil v10.0")
+    st.caption("Terminal Pro Brasil & Global v11.0")
 
 # --- NAVEGAÇÃO SUPERIOR ---
 opcoes_menu = [
@@ -379,7 +387,7 @@ opcoes_menu = [
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-st.markdown("<h2 style='margin-bottom:0;'>📊 Terminal Quantitativo & Gestão de Investimentos</h2>", unsafe_allow_html=True)
+st.markdown("<h2 style='margin-bottom:0;'>📊 Terminal Quantitativo & Inteligência de Mercado</h2>", unsafe_allow_html=True)
 st.session_state["aba_ativa"] = st.selectbox(
     "Menu de Navegação",
     opcoes_menu,
@@ -489,7 +497,7 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">📈 Terminal Profissional de Ativos</div>
-                <div class="hero-subtitle">Suporte total a Renda Fixa (Tesouro, CDB, LCI, LCA, Poupança) e Renda Variável (Ações, FIIs, ETFs)</div>
+                <div class="hero-subtitle">Suporte total a Renda Fixa e Variável com histórico corporativo e indicadores fundamentalistas</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -502,6 +510,20 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
             dados_ativo = obter_dados_ticker_seguro(ticker_input)
             if dados_ativo and dados_ativo["preco"] > 0:
                 st.subheader(f"🔍 {dados_ativo['nome']} ({dados_ativo['symbol']})")
+                
+                # --- HISTÓRICO E PERFIL DO ATIVO ---
+                with st.expander("📖 Sobre a Empresa / Ativo (Histórico, Setor e Perfil)", expanded=False):
+                    col_info1, col_info2 = st.columns([2, 1])
+                    with col_info1:
+                        st.markdown(f"**Resumo de Atuação:**")
+                        st.write(dados_ativo['descricao'])
+                    with col_info2:
+                        st.markdown(f"**Setor:** `{dados_ativo['setor']}`")
+                        st.markdown(f"**Indústria:** `{dados_ativo['industria']}`")
+                        st.markdown(f"**Classe:** `{dados_ativo['categoria']}`")
+
+                st.divider()
+
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 moeda_prefix = "R$" if ".SA" in dados_ativo['symbol'] or "BRL" in dados_ativo['symbol'] else "$"
                 with m1: st.metric("Cotação", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
@@ -553,7 +575,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">💼 Gestão de Carteira Unificada</div>
-                <div class="hero-subtitle">Consolidado em tempo real de Renda Fixa (Bancos/Tesouro) e Renda Variável (B3/Global)</div>
+                <div class="hero-subtitle">Consolidado em tempo real de Renda Fixa e Renda Variável</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -561,7 +583,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
     df_cart = carregar_carteira_supabase()
 
     if not df_cart.empty:
-        # Substitui os valores nulos ou vazios por "Não se aplica"
         df_cart = df_cart.fillna("Não se aplica")
         df_cart.replace({None: "Não se aplica", "": "Não se aplica"}, inplace=True)
 
@@ -595,7 +616,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
 
     st.divider()
 
-    aba1, aba2, aba3 = st.tabs(["📋 Custódia Detalhada", "📊 Distribuição & Alocação", "➕ Cadastrar Ativo (Renda Fixa / Variável)"])
+    aba1, aba2, aba3 = st.tabs(["📋 Custódia Detalhada", "📊 Distribuição & Alocação", "➕ Cadastrar Ativo"])
 
     with aba1:
         if not df_cart.empty:
@@ -604,7 +625,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
             cols_exibicao = ['Excluir', 'id', 'ticker', 'banco_emissor', 'categoria_ativo', 'tipo_rentabilidade', 'prazo', 'quantidade', 'preco_medio', 'Valor_Atual', 'PnL_Reais']
             cols_presentes = [c for c in cols_exibicao if c in df_display.columns]
             
-            st.data_editor(
+            df_editado = st.data_editor(
                 df_display[cols_presentes],
                 column_config={
                     "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir"),
@@ -616,8 +637,21 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
                     "preco_medio": st.column_config.NumberColumn("Custo Médio", format="R$ %.2f"),
                     "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f")
                 },
-                hide_index=True, use_container_width=True
+                hide_index=True, use_container_width=True, key="editor_carteira_v3"
             )
+
+            if st.button("🗑️ Excluir Ativos Selecionados", type="secondary"):
+                ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
+                if ids_para_remover and supabase:
+                    try:
+                        for item_id in ids_para_remover:
+                            supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
+                        st.success("Ativo(s) removido(s) com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao excluir do Supabase: {e}")
+                else:
+                    st.warning("Selecione a caixa de exclusão na tabela.")
         else:
             st.info("Sua carteira está vazia no momento. Adicione títulos ou ações na aba '➕ Cadastrar Ativo'.")
 

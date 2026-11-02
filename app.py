@@ -80,29 +80,6 @@ st.markdown("""
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
-        .stTabs [data-baseweb="tab-list"] {
-            gap: 10px;
-            background-color: rgba(15, 23, 42, 0.8);
-            padding: 8px 12px;
-            border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            height: 45px;
-            background-color: transparent;
-            border-radius: 8px;
-            color: #94a3b8;
-            font-weight: 600;
-            padding: 0px 20px;
-        }
-
-        .stTabs [aria-selected="true"] {
-            background: linear-gradient(90deg, #0284c7 0%, #2563eb 100%) !important;
-            color: #ffffff !important;
-            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
-        }
-
         .news-card {
             background: rgba(30, 41, 59, 0.5);
             border-radius: 10px;
@@ -415,10 +392,25 @@ def init_gemini():
 
 client_gemini = init_gemini()
 
-# --- SIDEBAR ---
+# --- SIDEBAR / MENU DE NAVEGAÇÃO UNIFICADO ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/bullish.png", width=60)
     st.title("Terminal Quant")
+    st.markdown("---")
+    
+    # MENU ÚNICO DE SELEÇÃO DE ABAS
+    menu_selecionado = st.radio(
+        "📍 Navegação Principal",
+        [
+            "1. Visão Global",
+            "2. Mercado Brasileiro & Notícias",
+            "3. Análise Profissional & IA",
+            "4. Adicionar à Carteira",
+            "5. Gestão de Carteira & PnL",
+            "6. Simulador"
+        ]
+    )
+    
     st.markdown("---")
     if supabase:
         st.markdown("**Base Supabase:** 🟢 Conectado")
@@ -427,26 +419,16 @@ with st.sidebar:
     status_gem = "🟢 Ativo" if client_gemini else "🟡 Indisponível"
     st.markdown(f"**IA Gemini:** {status_gem}")
     st.markdown("---")
-    st.caption("Terminal B3 v6.6 (Pro Ticker)")
+    st.caption("Terminal B3 v7.0 (Unified Menu)")
 
 # --- TÍTULO ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
 st.markdown("Plataforma institucional de análise quantitativa, gestão de carteiras e inteligência artificial.")
 
-# --- ABAS ---
-aba1, aba2, aba3, aba4, aba5, aba6 = st.tabs([
-    "1. Visão Global", 
-    "2. Mercado Brasileiro & Notícias", 
-    "3. Análise Profissional & IA", 
-    "4. Adicionar à Carteira", 
-    "5. Gestão de Carteira & PnL", 
-    "6. Simulador"
-])
-
 # ==========================================
-# ABA 1: VISÃO GLOBAL
+# SEÇÃO 1: VISÃO GLOBAL
 # ==========================================
-with aba1:
+if menu_selecionado == "1. Visão Global":
     imagem_fundo_path = Path(__file__).parent / "fundo_aba1_mercado.jpg"
     imagem_fundo_base64 = ""
 
@@ -458,8 +440,7 @@ with aba1:
         st.markdown(
             f"""
             <style>
-                .stTabs [role="tabpanel"]:first-of-type,
-                .stTabs [data-baseweb="tab-panel"]:first-of-type {{
+                .block-container {{
                     background-image:
                         linear-gradient(rgba(5, 12, 25, 0.68), rgba(5, 12, 25, 0.76)),
                         url("data:image/jpeg;base64,{imagem_fundo_base64}");
@@ -541,9 +522,9 @@ with aba1:
                 """, unsafe_allow_html=True)
 
 # ==========================================
-# ABA 2: MERCADO BRASILEIRO & NOTÍCIAS
+# SEÇÃO 2: MERCADO BRASILEIRO & NOTÍCIAS
 # ==========================================
-with aba2:
+elif menu_selecionado == "2. Mercado Brasileiro & Notícias":
     tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
     renderizar_ticker_tape(tickers_br)
 
@@ -594,9 +575,9 @@ with aba2:
                 """, unsafe_allow_html=True)
 
 # ==========================================
-# ABA 3: ANÁLISE PROFISSIONAL & IA
+# SEÇÃO 3: ANÁLISE PROFISSIONAL & IA
 # ==========================================
-with aba3:
+elif menu_selecionado == "3. Análise Profissional & IA":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -710,9 +691,9 @@ with aba3:
             st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`.")
 
 # ==========================================
-# ABA 4: ADICIONAR À CARTEIRA
+# SEÇÃO 4: ADICIONAR À CARTEIRA
 # ==========================================
-with aba4:
+elif menu_selecionado == "4. Adicionar à Carteira":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -770,9 +751,9 @@ with aba4:
             st.info("Digite um ticker válido da B3 para visualizar os indicadores.")
 
 # ==========================================
-# ABA 5: GESTÃO DE CARTEIRA & PnL
+# SEÇÃO 5: GESTÃO DE CARTEIRA & PnL
 # ==========================================
-with aba5:
+elif menu_selecionado == "5. Gestão de Carteira & PnL":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -851,9 +832,9 @@ with aba5:
         st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Aba 4** para cadastrar seus ativos.")
 
 # ==========================================
-# ABA 6: SIMULADOR
+# SEÇÃO 6: SIMULADOR
 # ==========================================
-with aba6:
+elif menu_selecionado == "6. Simulador":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">

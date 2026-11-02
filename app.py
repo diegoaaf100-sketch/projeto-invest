@@ -413,23 +413,22 @@ with st.sidebar:
     st.markdown(f"**Gemini IA:** {status_gem}")
     
     st.markdown("---")
-    st.caption("Terminal B3 v7.1 (Clean Layout)")
+    st.caption("Terminal B3 v7.2 (Merged Portfolio Menu)")
 
 # --- CABEÇALHO E SELETOR PROFISSIONAL NA PÁGINA ---
 st.title("📊 Terminal Quantitativo & Inteligência B3")
 
-# Opções do menu principal
+# Opções do menu principal sem a aba "Adicionar à Carteira"
 opcoes_menu = [
     "🌐 1. Visão Global",
     "🇧🇷 2. Mercado Brasileiro & Notícias",
     "📈 3. Análise Profissional & IA",
-    "➕ 4. Adicionar à Carteira",
-    "💼 5. Gestão de Carteira & PnL",
-    "🧮 6. Simulador"
+    "💼 4. Gestão de Carteira & PnL",
+    "🧮 5. Simulador"
 ]
 
-# Inicializa o estado da aba se não existir
-if "aba_ativa" not in st.session_state:
+# Inicializa o estado da aba se não existir ou se estivesse na antiga opção
+if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
 # SELETOR UNIFICADO VISÍVEL NA PARTE SUPERIOR DA PÁGINA
@@ -691,78 +690,68 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
             st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`.")
 
 # ==========================================
-# SEÇÃO 4: ADICIONAR À CARTEIRA
+# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL (COM CADASTRO INTEGRADO)
 # ==========================================
-elif st.session_state["aba_ativa"] == "➕ 4. Adicionar à Carteira":
-    st.markdown("""
-        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=1200&q=80');">
-            <div class="hero-overlay">
-                <div class="hero-title">➕ Adicionar Ativo à Carteira</div>
-                <div class="hero-subtitle">Cadastre ações, FIIs e ETFs com pré-visualização em tempo real e salvamento no Supabase</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    with st.form("form_carteira"):
-        col_f1, col_f2, col_f3 = st.columns(3)
-        with col_f1:
-            ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4 ou HGLG11):", value="PETR4").strip().upper()
-        with col_f2:
-            qtd_cad = st.number_input("Quantidade de Cotas/Ações:", min_value=1, value=100, step=1)
-        with col_f3:
-            pm_cad = st.number_input("Preço Médio de Aquisição (R$):", min_value=0.01, value=35.00, step=0.50)
-            
-        salvar_btn = st.form_submit_button("Salvar na Carteira (Supabase)", type="primary")
-        
-        if salvar_btn:
-            ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
-            if supabase:
-                try:
-                    novo_registro = {
-                        "ticker": ticker_final,
-                        "quantidade": int(qtd_cad),
-                        "preco_medio": float(pm_cad)
-                    }
-                    supabase.table("carteira_usuarios").insert(novo_registro).execute()
-                    st.success(f"Ativo {ticker_final} adicionado e salvo com sucesso no Supabase!")
-                except Exception as e:
-                    st.error(f"Erro ao salvar no Supabase: {e}")
-            else:
-                st.warning("Conexão com o Supabase não configurada.")
-
-    st.divider()
-    st.subheader("🔍 Pré-visualização em Tempo Real")
-    
-    if ticker_cad_input:
-        preview_data = obter_dados_ticker_seguro(ticker_cad_input)
-        if preview_data and preview_data["preco"] > 0:
-            ip1, ip2, ip3, ip4, ip5 = st.columns(5)
-            with ip1:
-                st.metric("Cotação Atual", f"R$ {preview_data['preco']:.2f}")
-            with ip2:
-                st.metric("Dividend Yield (DY)", preview_data['dy_str'])
-            with ip3:
-                st.metric("Índice P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
-            with ip4:
-                st.metric("Mínima 52 Semanas", f"R$ {preview_data['min52']:.2f}" if isinstance(preview_data['min52'], (int, float)) else preview_data['min52'])
-            with ip5:
-                st.metric("Máxima 52 Semanas", f"R$ {preview_data['max52']:.2f}" if isinstance(preview_data['max52'], (int, float)) else preview_data['max52'])
-        else:
-            st.info("Digite um ticker válido da B3 para visualizar os indicadores.")
-
-# ==========================================
-# SEÇÃO 5: GESTÃO DE CARTEIRA & PnL
-# ==========================================
-elif st.session_state["aba_ativa"] == "💼 5. Gestão de Carteira & PnL":
+elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
-                <div class="hero-subtitle">Acompanhamento completo de ganhos, perdas e exclusão direta de ativos</div>
+                <div class="hero-subtitle">Adicione ativos, acompanhe rentabilidade em tempo real e gerencie posições</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
+    # RECURSO INTEGRADO: FORMULÁRIO DE ADIÇÃO DE ATIVOS
+    with st.expander("➕ Adicionar Novo Ativo à Carteira", expanded=True):
+        with st.form("form_carteira_integrado"):
+            col_f1, col_f2, col_f3 = st.columns(3)
+            with col_f1:
+                ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4 ou HGLG11):", value="PETR4").strip().upper()
+            with col_f2:
+                qtd_cad = st.number_input("Quantidade de Cotas/Ações:", min_value=1, value=100, step=1)
+            with col_f3:
+                pm_cad = st.number_input("Preço Médio de Aquisição (R$):", min_value=0.01, value=35.00, step=0.50)
+                
+            salvar_btn = st.form_submit_button("Salvar na Carteira (Supabase)", type="primary")
+            
+            if salvar_btn:
+                ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
+                if supabase:
+                    try:
+                        novo_registro = {
+                            "ticker": ticker_final,
+                            "quantidade": int(qtd_cad),
+                            "preco_medio": float(pm_cad)
+                        }
+                        supabase.table("carteira_usuarios").insert(novo_registro).execute()
+                        st.success(f"Ativo {ticker_final} adicionado e salvo com sucesso no Supabase!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar no Supabase: {e}")
+                else:
+                    st.warning("Conexão com o Supabase não configurada.")
+
+        # Pré-visualização do ativo informado no formulário
+        if ticker_cad_input:
+            preview_data = obter_dados_ticker_seguro(ticker_cad_input)
+            if preview_data and preview_data["preco"] > 0:
+                st.caption("🔍 **Pré-visualização das Métricas do Ativo:**")
+                ip1, ip2, ip3, ip4, ip5 = st.columns(5)
+                with ip1:
+                    st.metric("Cotação Atual", f"R$ {preview_data['preco']:.2f}")
+                with ip2:
+                    st.metric("Dividend Yield (DY)", preview_data['dy_str'])
+                with ip3:
+                    st.metric("Índice P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
+                with ip4:
+                    st.metric("Mínima 52S", f"R$ {preview_data['min52']:.2f}" if isinstance(preview_data['min52'], (int, float)) else preview_data['min52'])
+                with ip5:
+                    st.metric("Máxima 52S", f"R$ {preview_data['max52']:.2f}" if isinstance(preview_data['max52'], (int, float)) else preview_data['max52'])
+
+    st.divider()
+    
+    # EXIBIÇÃO E GESTÃO DA CARTEIRA EXISTENTE
     df_cart = carregar_carteira_supabase()
     
     if not df_cart.empty:
@@ -829,12 +818,12 @@ elif st.session_state["aba_ativa"] == "💼 5. Gestão de Carteira & PnL":
             else:
                 st.warning("Nenhum ativo foi selecionado para exclusão.")
     else:
-        st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize a **Seção 4** para cadastrar seus ativos.")
+        st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize o formulário acima para cadastrar seus primeiros ativos.")
 
 # ==========================================
-# SEÇÃO 6: SIMULADOR
+# SEÇÃO 5: SIMULADOR
 # ==========================================
-elif st.session_state["aba_ativa"] == "🧮 6. Simulador":
+elif st.session_state["aba_ativa"] == "🧮 5. Simulador":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">

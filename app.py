@@ -394,9 +394,9 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("### ⚙️ **Preferências de Exibição**")
     st.checkbox("Atualização em Tempo Real", value=True)
-    st.caption("Terminal B3 & Global v9.0 Pro")
+    st.caption("Terminal B3 & Global v9.1 Pro")
 
-# --- NAVEGAÇÃO SUPERIOR ESTILIZADA (SITES SAAS) ---
+# --- NAVEGAÇÃO SUPERIOR ESTILIZADA ---
 opcoes_menu = [
     "🌐 1. Visão Global",
     "🇧🇷 2. Mercado Brasileiro",
@@ -408,7 +408,6 @@ opcoes_menu = [
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-# Componente de Seleção Superior Estilizado
 st.markdown("<h2 style='margin-bottom:0;'>📊 Terminal Quantitativo & Inteligência de Mercado</h2>", unsafe_allow_html=True)
 st.session_state["aba_ativa"] = st.selectbox(
     "Menu de Navegação",
@@ -467,23 +466,23 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
                         <img src="{item['imagem']}" class="news-img">
                         <div class="news-content">
                             <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f8fafc; text-decoration: none;">{item['titulo']}</a></div>
-                            <div class="news-date">📅 {item['data'][:16]}</div>
+                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🌐 Mercado Global</div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
 # ==========================================
-# SEÇÃO 2: MERCADO BRASILEIRO
+# SEÇÃO 2: MERCADO BRASILEIRO & NOTÍCIAS NACIONAIS
 # ==========================================
 elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
-    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11"]
+    tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11", "VIVA3", "CEAB3"]
     renderizar_ticker_tape(tickers_br)
 
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">🇧🇷 Mercado Brasileiro & B3</div>
-                <div class="hero-subtitle">Taxas de juros, inflação e principais ativos negociados no Brasil</div>
+                <div class="hero-subtitle">Taxas de juros, inflação e notícias atualizadas diariamente em tempo real</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -494,6 +493,31 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
     with ib2: st.metric(label="Taxa Selic", value="11.25% a.a.", delta="+0.25%")
     with ib3: st.metric(label="IPCA (12m)", value="4.45%", delta="Meta")
     with ib4: st.metric(label="CDI Diário", value="11.15% a.a.", delta="Estável")
+
+    st.divider()
+    st.subheader("📰 Notícias Diárias do Mercado Nacional")
+    
+    urls_nacionais = [
+        "https://exame.com/invest/feed/",
+        "https://www.infomoney.com.br/feed/"
+    ]
+    img_fallback_nacional = "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80"
+    
+    noticias_nacionais = buscar_noticias_rss_com_imagens(urls_nacionais, img_fallback_nacional, limite=3)
+    
+    if noticias_nacionais:
+        cols_n = st.columns(3)
+        for idx, item in enumerate(noticias_nacionais):
+            with cols_n[idx]:
+                st.markdown(f"""
+                    <div class="news-card">
+                        <img src="{item['imagem']}" class="news-img">
+                        <div class="news-content">
+                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f8fafc; text-decoration: none;">{item['titulo']}</a></div>
+                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
 
 # ==========================================
 # SEÇÃO 3: ANÁLISE PROFISSIONAL & IA

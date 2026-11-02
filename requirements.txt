@@ -3,5 +3,5 @@ pandas
 plotly
 yfinance
 supabase
-google-genai
+anthropic
 feedparser

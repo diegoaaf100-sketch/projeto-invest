@@ -15,7 +15,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import yfinance as yf
 from supabase import create_client
-from anthropic import Anthropic  # Substituído Google GenAI por Anthropic (Claude)
+from anthropic import Anthropic
 import feedparser
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -26,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ESTILIZAÇÃO CSS GLOBAL (NIVEL INSTITUCIONAL) ---
+# --- ESTILIZAÇÃO CSS GLOBAL ---
 st.markdown("""
     <style>
         .stApp {
@@ -139,18 +139,34 @@ def init_supabase():
 
 supabase = init_supabase()
 
-# --- FUNÇÃO DE BUSCA SEGURA DE ATIVOS ---
+# --- MOTOR MULTI-ATIVO DE BUSCA DE TICKERS ---
+def normalizar_ticker_universal(ticker_raw):
+    """
+    Identifica a classe de ativo e formata o símbolo correto para consulta no yfinance:
+    - Ações B3: PETR4 -> PETR4.SA
+    - FIIs / FIAGRO / FI-Infra / ETFs B3: HGLG11, BOVA11 -> HGLG11.SA
+    - BDRs B3: AAPL34 -> AAPL34.SA
+    - Cripto em USD ou BRL: BTC-USD, BTC-BRL, ETH-USD
+    - Moedas e Commodities: USDBRL=X, GC=F (Ouro), CL=F (Petróleo)
+    - Stocks e ETFs Globais: AAPL, MSFT, SPY, QQQ, IVV
+    """
+    t_clean = ticker_raw.strip().upper()
+
+    # Símbolos com delimitadores de moedas/commodities/cripto já configurados
+    if "=" in t_clean or "^" in t_clean or "-" in t_clean or t_clean.endswith(".SA"):
+        return t_clean
+
+    # Ativos da B3 (Ações, FIIs, FIAGRO, BDRs, ETFs)
+    # Se terminar em número (ex: PETR3, PETR4, HGLG11, AAPL34, BOVA11)
+    if any(t_clean.endswith(str(i)) for i in range(10)):
+        return f"{t_clean}.SA"
+
+    # Ativos globais genéricos (Stocks/ETFs como AAPL, NVDA, SPY, QQQ)
+    return t_clean
+
 @st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
-    t_clean = ticker_raw.strip().upper()
-    tickers_internacionais = {"AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ"}
-
-    if t_clean in tickers_internacionais:
-        t_symbol = t_clean
-    elif not t_clean.endswith(".SA") and not t_clean.startswith("^") and "=" not in t_clean and "-" not in t_clean:
-        t_symbol = f"{t_clean}.SA"
-    else:
-        t_symbol = t_clean
+    t_symbol = normalizar_ticker_universal(ticker_raw)
 
     try:
         t_obj = yf.Ticker(t_symbol)
@@ -165,7 +181,7 @@ def obter_dados_ticker_seguro(ticker_raw):
             preco_atual = float(hist['Close'].iloc[-1])
         else:
             info = t_obj.info or {}
-            preco_atual = info.get('currentPrice', info.get('regularMarketPrice', 0.0))
+            preco_atual = info.get('currentPrice', info.get('regularMarketPrice', info.get('navPrice', 0.0)))
 
         info = {}
         try:
@@ -173,15 +189,20 @@ def obter_dados_ticker_seguro(ticker_raw):
         except Exception:
             pass
 
-        dy = info.get('dividendYield', 0.0)
+        # Captura de múltiplos e indicadores universais
+        dy = info.get('dividendYield', info.get('yield', 0.0))
         dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
-        pe = info.get('trailingPE', 'N/D')
+        pe = info.get('trailingPE', info.get('forwardPE', 'N/D'))
         pb = info.get('priceToBook', 'N/D')
         min52 = info.get('fiftyTwoWeekLow', 'N/D')
         max52 = info.get('fiftyTwoWeekHigh', 'N/D')
+        nome_longo = info.get('longName', info.get('shortName', t_symbol))
+        categoria = info.get('quoteType', 'ATIVO')
 
         return {
             "symbol": t_symbol,
+            "nome": nome_longo,
+            "categoria": categoria,
             "preco": preco_atual,
             "variacao": var_pct,
             "dy_str": dy_str,
@@ -191,7 +212,18 @@ def obter_dados_ticker_seguro(ticker_raw):
             "max52": max52
         }
     except Exception:
-        return {"symbol": t_symbol, "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0}
+        return {
+            "symbol": t_symbol, 
+            "nome": t_symbol, 
+            "categoria": "N/D", 
+            "preco": 0.0, 
+            "variacao": 0.0, 
+            "dy_str": "N/D", 
+            "pe": "N/D", 
+            "pb": "N/D", 
+            "min52": 0.0, 
+            "max52": 0.0
+        }
 
 # --- MAPEAMENTO DE ÍCONES CORPORATIVOS ---
 def obter_icone_ativo(simbolo):
@@ -213,12 +245,8 @@ def obter_icone_ativo(simbolo):
         "BBDC4": "https://img.icons8.com/color/48/money-bag.png",
         "ABEV3": "https://img.icons8.com/color/48/beer-bottle.png",
         "WEGE3": "https://img.icons8.com/color/48/engine.png",
-        "RENT3": "https://img.icons8.com/color/48/car--v1.png",
-        "BBAS3": "https://img.icons8.com/color/48/safe.png",
         "HGLG11": "https://img.icons8.com/color/48/commercial-development.png",
-        "MXRF11": "https://img.icons8.com/color/48/real-estate.png",
-        "VIVA3": "https://img.icons8.com/color/48/shopping-bag.png",
-        "CEAB3": "https://img.icons8.com/color/48/t-shirt.png"
+        "MXRF11": "https://img.icons8.com/color/48/real-estate.png"
     }
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
@@ -413,10 +441,10 @@ with st.sidebar:
     st.markdown(f"**Claude IA:** {status_claude}")
     
     st.markdown("---")
-    st.caption("Terminal B3 v8.0 (Claude Integration)")
+    st.caption("Terminal Multi-Ativos (B3 & Global)")
 
 # --- CABEÇALHO E SELETOR PROFISSIONAL NA PÁGINA ---
-st.title("📊 Terminal Quantitativo & Inteligência B3")
+st.title("📊 Terminal Quantitativo & Inteligência de Mercado")
 
 opcoes_menu = [
     "🌐 1. Visão Global",
@@ -571,39 +599,43 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro & Notícia
                 """, unsafe_allow_html=True)
 
 # ==========================================
-# SEÇÃO 3: ANÁLISE PROFISSIONAL & CLAUDE IA
+# SEÇÃO 3: ANÁLISE PROFISSIONAL MULTI-ATIVO & CLAUDE IA
 # ==========================================
 elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">📈 Terminal Profissional de Análise & Decisões</div>
-                <div class="hero-subtitle">Gráfico Candlestick com Médias Móveis, Múltiplos Fundamentalistas e Claude IA (Anthropic)</div>
+                <div class="hero-title">📈 Terminal Profissional Multi-Ativos</div>
+                <div class="hero-subtitle">Suporte universal: Ações, FIIs, FIAGROs, ETFs, BDRs, Stocks Globais, Cripto e Commodities</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    ticker_input = st.text_input("Digite o ticker do ativo B3 (ex: PETR4, VALE3, WEGE3, HGLG11):", value="PETR4").strip().upper()
+    ticker_input = st.text_input(
+        "Digite qualquer ticker (ex: PETR4, HGLG11, AAPL, BOVA11, IVVB11, BTC-USD, GC=F):", 
+        value="PETR4"
+    ).strip().upper()
     
     if ticker_input:
         dados_ativo = obter_dados_ticker_seguro(ticker_input)
         
         if dados_ativo and dados_ativo["preco"] > 0:
-            st.subheader(f"🔍 Indicadores Fundamentalistas & de Mercado - {dados_ativo['symbol']}")
+            st.subheader(f"🔍 Indicadores do Ativo: {dados_ativo['nome']} ({dados_ativo['symbol']})")
             
             m1, m2, m3, m4, m5, m6 = st.columns(6)
             with m1:
-                st.metric("Preço Atual", f"R$ {dados_ativo['preco']:.2f}")
+                moeda_prefix = "R$" if ".SA" in dados_ativo['symbol'] or "BRL" in dados_ativo['symbol'] else "$"
+                st.metric("Preço Atual", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
             with m2:
-                st.metric("Dividend Yield", dados_ativo['dy_str'])
+                st.metric("Dividend Yield / Yield", dados_ativo['dy_str'])
             with m3:
-                st.metric("P/L", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
+                st.metric("P/L (P/E Ratio)", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
             with m4:
-                st.metric("P/VP", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
+                st.metric("P/VP (P/B Ratio)", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
             with m5:
-                st.metric("Mínima 52S", f"R$ {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
+                st.metric("Mínima 52S", f"{moeda_prefix} {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
             with m6:
-                st.metric("Máxima 52S", f"R$ {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
+                st.metric("Máxima 52S", f"{moeda_prefix} {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
                 
             st.divider()
             
@@ -613,7 +645,7 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
                 df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
                 df_hist['MMA200'] = df_hist['Close'].rolling(window=200).mean()
                 
-                st.subheader("📊 Gráfico Técnico Profissional (Candlestick + Média Móvel + Volume)")
+                st.subheader("📊 Gráfico Técnico (Candlestick + Médias Móveis + Volume)")
                 
                 fig = make_subplots(
                     rows=2, cols=1, 
@@ -658,41 +690,40 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
                     legend=dict(orientation="h", yanchor="bottom", y=1, xanchor="right", x=1)
                 )
                 
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True)
                 
             st.divider()
-            st.subheader("🧠 Relatório de Inteligência & Recomendação Estratégica (Claude IA)")
+            st.subheader("🧠 Relatório Estratégico com Claude IA")
             
-            if st.button("Gerar Parecer de Decisão com Claude IA", type="primary"):
+            if st.button("Gerar Análise Estratégica com Claude IA", type="primary"):
                 if client_claude:
                     prompt_texto = (
-                        f"Atue como um analista financeiro sênior certificado (CNPI). "
-                        f"Faça uma avaliação detalhada e profissional para o ativo {dados_ativo['symbol']} com base nos seguintes dados: "
+                        f"Atue como um analista financeiro certificado (CNPI / CFA). "
+                        f"Avalie o ativo {dados_ativo['nome']} ({dados_ativo['symbol']}) com base nos seguintes dados de mercado: "
                         f"Cotação: {dados_ativo['preco']}, P/L: {dados_ativo['pe']}, P/VP: {dados_ativo['pb']}, Dividend Yield: {dados_ativo['dy_str']}. "
                         f"Estruture a resposta em:\n"
-                        f"1. **Análise de Múltiplos e Tendência**\n"
+                        f"1. **Análise do Ativo e Classe**\n"
                         f"2. **Matriz SWOT (Forças, Oportunidades, Fraquezas e Ameaças)**\n"
-                        f"3. **Veredito para Tomada de Decisão (Compra, Neutro ou Venda)** e perfil de investidor indicado."
+                        f"3. **Recomendação Estratégica (Compra, Neutro ou Venda)** e perfil de investidor indicado."
                     )
-                    with st.spinner("Consultando o Claude 3.5 Sonnet para parecer estratégico..."):
+                    with st.spinner("Consultando o Claude 3.5 Sonnet para avaliação de mercado..."):
                         try:
-                            # Chamada oficial da API Anthropic (Claude)
                             message = client_claude.messages.create(
                                 model="claude-3-5-sonnet-20241022",
                                 max_tokens=1500,
                                 messages=[{"role": "user", "content": prompt_texto}]
                             )
-                            st.success("Relatório estratégico gerado com sucesso!")
+                            st.success("Relatório gerado com sucesso!")
                             st.markdown(message.content[0].text)
                         except Exception as ex:
                             st.error(f"Erro ao consultar o Claude IA: {ex}")
                 else:
-                    st.warning("API Key da Anthropic não configurada no `.streamlit/secrets.toml` (utilize a chave `ANTHROPIC_API_KEY`).")
+                    st.warning("API Key da Anthropic não configurada no `.streamlit/secrets.toml`.")
         else:
-            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`.")
+            st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`. Verifique o código digitado.")
 
 # ==========================================
-# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL (REFORMULADA & PROFISSIONAL)
+# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL
 # ==========================================
 elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     st.markdown("""
@@ -706,7 +737,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     
     df_cart = carregar_carteira_supabase()
 
-    # Cálculo dos indicadores da carteira
     if not df_cart.empty:
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
@@ -728,7 +758,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     else:
         tot_inv, tot_val, tot_pnl, tot_pnl_pct = 0.0, 0.0, 0.0, 0.0
 
-    # --- RESUMO PATRIMONIAL SUPERIOR (KPIS) ---
     st.subheader("📊 Resumo da Carteira")
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     with kpi1:
@@ -743,14 +772,12 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
 
     st.divider()
 
-    # --- NAVEGAÇÃO INTERNA POR ABAS (ORGANIZAÇÃO LIMPA) ---
     aba_tab1, aba_tab2, aba_tab3 = st.tabs([
         "📋 Posição Custodiada & Edição", 
         "📊 Alocação & Distribuição", 
         "➕ Cadastrar Novo Ativo"
     ])
 
-    # --- ABA 1: TABELA DE ATIVOS E EXCLUSÃO ---
     with aba_tab1:
         if not df_cart.empty:
             st.markdown("##### 🔍 Posições Detalhadas em Tempo Real")
@@ -793,7 +820,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
         else:
             st.info("Sua carteira está vazia no momento. Cadastre um novo ativo na aba '➕ Cadastrar Novo Ativo'.")
 
-    # --- ABA 2: GRÁFICO DE ALOCAÇÃO ---
     with aba_tab2:
         if not df_cart.empty:
             col_chart1, col_chart2 = st.columns([1, 1])
@@ -838,13 +864,12 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
         else:
             st.info("Sem dados disponíveis para gerar gráficos de alocação.")
 
-    # --- ABA 3: FORMULÁRIO DE CADASTRO ---
     with aba_tab3:
         st.markdown("##### ➕ Registrar Aporte / Compra de Ativo")
         with st.form("form_carteira_novo"):
             col_f1, col_f2, col_f3 = st.columns(3)
             with col_f1:
-                ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4, VALE3, HGLG11):", value="PETR4").strip().upper()
+                ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4, HGLG11, AAPL, BOVA11):", value="PETR4").strip().upper()
             with col_f2:
                 qtd_cad = st.number_input("Quantidade de Ações/Cotas:", min_value=1, value=100, step=1)
             with col_f3:
@@ -853,7 +878,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
             salvar_btn = st.form_submit_button("💾 Salvar Ativo no Supabase", type="primary")
             
             if salvar_btn:
-                ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
+                ticker_final = normalizar_ticker_universal(ticker_cad_input)
                 if supabase:
                     try:
                         novo_registro = {
@@ -869,7 +894,6 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
                 else:
                     st.warning("Supabase não está conectado.")
 
-        # Card de pré-visualização no momento da compra
         if ticker_cad_input:
             preview_data = obter_dados_ticker_seguro(ticker_cad_input)
             if preview_data and preview_data["preco"] > 0:
@@ -881,6 +905,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
                     st.metric("Dividend Yield", preview_data['dy_str'])
                 with pv3:
                     st.metric("P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
+
 # ==========================================
 # SEÇÃO 5: SIMULADOR
 # ==========================================

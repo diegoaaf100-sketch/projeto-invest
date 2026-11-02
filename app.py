@@ -182,6 +182,16 @@ def init_supabase():
 
 supabase = init_supabase()
 
+# --- CLIENTE CLAUDE (ANTHROPIC) ---
+@st.cache_resource
+def init_claude():
+    api_key = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
+    if not api_key:
+        return None
+    return Anthropic(api_key=api_key)
+
+client_claude = init_claude()
+
 # --- MOTOR DE BUSCA UNIVERSAL ---
 def normalizar_ticker_universal(ticker_raw):
     t_clean = ticker_raw.strip().upper()
@@ -224,9 +234,26 @@ def obter_dados_ticker_seguro(ticker_raw):
         nome_longo = info.get('longName', info.get('shortName', t_symbol))
         categoria = info.get('quoteType', 'AÇÕES / B3')
         
-        descricao_negocio = info.get('longBusinessSummary', 'Resumo histórico não disponível para este ativo.')
+        descricao_original = info.get('longBusinessSummary', '')
         setor = info.get('sector', 'Não informado')
         industria = info.get('industry', 'Não informada')
+
+        # Tradução inteligente para o português via Claude IA se houver descrição original
+        descricao_final = descricao_original
+        if descricao_original and len(descricao_original) > 20:
+            if client_claude:
+                try:
+                    prompt_trad = f"Traduza o seguinte resumo corporativo financeiro para o português do Brasil de forma fluida e profissional:\n\n{descricao_original}"
+                    msg_trad = client_claude.messages.create(
+                        model="claude-3-haiku-20240307",
+                        max_tokens=400,
+                        messages=[{"role": "user", "content": prompt_trad}]
+                    )
+                    descricao_final = msg_trad.content[0].text
+                except Exception:
+                    descricao_final = descricao_original
+        else:
+            descricao_final = f"O ativo {nome_longo} ({t_symbol}) opera no setor de {setor} (indústria: {industria}). Ativo monitorado pelo terminal quantitativo para análise de alocação e gerenciamento de portfólio."
 
         return {
             "symbol": t_symbol,
@@ -239,16 +266,17 @@ def obter_dados_ticker_seguro(ticker_raw):
             "pb": pb,
             "min52": min52,
             "max52": max52,
-            "descricao": descricao_negocio,
+            "descricao": descricao_final,
             "setor": setor,
             "industria": industria
         }
     except Exception:
         return {
-            "symbol": t_symbol, "nome": t_symbol, "categoria": "OUTROS", 
+            "symbol": t_symbol, "nome": ticker_raw, "categoria": "OUTROS", 
             "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", 
             "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0,
-            "descricao": "Dados indisponíveis.", "setor": "N/D", "industria": "N/D"
+            "descricao": f"Não foi possível recuperar o histórico detalhado para o ativo {ticker_raw}.", 
+            "setor": "N/D", "industria": "N/D"
         }
 
 def obter_icone_ativo(simbolo):
@@ -354,15 +382,6 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
             continue
     return []
 
-@st.cache_resource
-def init_claude():
-    api_key = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
-    if not api_key:
-        return None
-    return Anthropic(api_key=api_key)
-
-client_claude = init_claude()
-
 # --- PAINEL LATERAL ---
 with st.sidebar:
     st.image("https://img.icons8.com/color/96/bullish.png", width=55)
@@ -373,7 +392,7 @@ with st.sidebar:
     st.markdown(f"**Supabase DB:** {'🟢 Conectado' if supabase else '🔴 Offline'}")
     st.markdown(f"**Claude 3.5 Sonnet:** {'🟢 Ativo' if client_claude else '🟡 Indisponível'}")
     st.markdown("---")
-    st.caption("Terminal Pro Brasil & Global v11.0")
+    st.caption("Terminal Pro Brasil & Global v11.1")
 
 # --- NAVEGAÇÃO SUPERIOR ---
 opcoes_menu = [
@@ -497,7 +516,7 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
                 <div class="hero-title">📈 Terminal Profissional de Ativos</div>
-                <div class="hero-subtitle">Suporte total a Renda Fixa e Variável com histórico corporativo e indicadores fundamentalistas</div>
+                <div class="hero-subtitle">Suporte total a Renda Fixa e Variável com histórico corporativo em português e indicadores</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -511,7 +530,7 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
             if dados_ativo and dados_ativo["preco"] > 0:
                 st.subheader(f"🔍 {dados_ativo['nome']} ({dados_ativo['symbol']})")
                 
-                # --- HISTÓRICO E PERFIL DO ATIVO ---
+                # --- HISTÓRICO E PERFIL DO ATIVO (TRADUZIDO EM PORTUGUÊS) ---
                 with st.expander("📖 Sobre a Empresa / Ativo (Histórico, Setor e Perfil)", expanded=False):
                     col_info1, col_info2 = st.columns([2, 1])
                     with col_info1:

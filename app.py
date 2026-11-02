@@ -692,67 +692,21 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
             st.error(f"Não foi possível carregar os dados para o ticker `{ticker_input}`.")
 
 # ==========================================
-# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL
+# SEÇÃO 4: GESTÃO DE CARTEIRA & PnL (REFORMULADA & PROFISSIONAL)
 # ==========================================
 elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
-                <div class="hero-title">💼 Gestão Detalhada de Carteira & PnL</div>
-                <div class="hero-subtitle">Adicione ativos, acompanhe rentabilidade em tempo real e gerencie posições</div>
+                <div class="hero-title">💼 Gestão de Carteira & PnL Institucional</div>
+                <div class="hero-subtitle">Consolidado patrimonial, análise de alocação de ativos e gerenciamento em tempo real</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
     
-    with st.expander("➕ Adicionar Novo Ativo à Carteira", expanded=True):
-        with st.form("form_carteira_integrado"):
-            col_f1, col_f2, col_f3 = st.columns(3)
-            with col_f1:
-                ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4 ou HGLG11):", value="PETR4").strip().upper()
-            with col_f2:
-                qtd_cad = st.number_input("Quantidade de Cotas/Ações:", min_value=1, value=100, step=1)
-            with col_f3:
-                pm_cad = st.number_input("Preço Médio de Aquisição (R$):", min_value=0.01, value=35.00, step=0.50)
-                
-            salvar_btn = st.form_submit_button("Salvar na Carteira (Supabase)", type="primary")
-            
-            if salvar_btn:
-                ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
-                if supabase:
-                    try:
-                        novo_registro = {
-                            "ticker": ticker_final,
-                            "quantidade": int(qtd_cad),
-                            "preco_medio": float(pm_cad)
-                        }
-                        supabase.table("carteira_usuarios").insert(novo_registro).execute()
-                        st.success(f"Ativo {ticker_final} adicionado e salvo com sucesso no Supabase!")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Erro ao salvar no Supabase: {e}")
-                else:
-                    st.warning("Conexão com o Supabase não configurada.")
-
-        if ticker_cad_input:
-            preview_data = obter_dados_ticker_seguro(ticker_cad_input)
-            if preview_data and preview_data["preco"] > 0:
-                st.caption("🔍 **Pré-visualização das Métricas do Ativo:**")
-                ip1, ip2, ip3, ip4, ip5 = st.columns(5)
-                with ip1:
-                    st.metric("Cotação Atual", f"R$ {preview_data['preco']:.2f}")
-                with ip2:
-                    st.metric("Dividend Yield (DY)", preview_data['dy_str'])
-                with ip3:
-                    st.metric("Índice P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
-                with ip4:
-                    st.metric("Mínima 52S", f"R$ {preview_data['min52']:.2f}" if isinstance(preview_data['min52'], (int, float)) else preview_data['min52'])
-                with ip5:
-                    st.metric("Máxima 52S", f"R$ {preview_data['max52']:.2f}" if isinstance(preview_data['max52'], (int, float)) else preview_data['max52'])
-
-    st.divider()
-    
     df_cart = carregar_carteira_supabase()
-    
+
+    # Cálculo dos indicadores da carteira
     if not df_cart.empty:
         cotacoes_atuais = []
         for idx, row in df_cart.iterrows():
@@ -766,59 +720,167 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira & PnL":
         df_cart['Valor_Atual'] = df_cart['quantidade'] * df_cart['Cotacao_Atual']
         df_cart['PnL_Reais'] = df_cart['Valor_Atual'] - df_cart['Total_Investido']
         df_cart['PnL_Percent'] = (df_cart['PnL_Reais'] / df_cart['Total_Investido']) * 100
-        
+
         tot_inv = df_cart['Total_Investido'].sum()
         tot_val = df_cart['Valor_Atual'].sum()
         tot_pnl = df_cart['PnL_Reais'].sum()
         tot_pnl_pct = (tot_pnl / tot_inv) * 100 if tot_inv > 0 else 0
-        
-        mc1, mc2, mc3 = st.columns(3)
-        with mc1:
-            st.metric("Patrimônio Total Investido", f"R$ {tot_inv:,.2f}")
-        with mc2:
-            st.metric("Valor Atual de Mercado", f"R$ {tot_val:,.2f}")
-        with mc3:
-            st.metric("Lucro / Prejuízo Total (PnL)", f"R$ {tot_pnl:,.2f}", f"{tot_pnl_pct:.2f}%")
-            
-        st.divider()
-        st.subheader("📋 Gerenciamento e Exclusão de Ativos")
-        
-        df_cart.insert(0, "Excluir", False)
-        
-        df_editado = st.data_editor(
-            df_cart[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
-            column_config={
-                "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir?", required=True),
-                "id": st.column_config.NumberColumn("ID", disabled=True),
-                "ticker": st.column_config.TextColumn("Ticker", disabled=True),
-                "quantidade": st.column_config.NumberColumn("Qtd", disabled=True),
-                "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
-                "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
-                "Total_Investido": st.column_config.NumberColumn("Total Investido", format="R$ %.2f", disabled=True),
-                "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
-                "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
-                "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
-            },
-            hide_index=True,
-            width='stretch',
-            key="editor_carteira"
-        )
-        
-        if st.button("🗑️ Remover Ativos Selecionados do Supabase", type="secondary"):
-            ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
-            if ids_para_remover and supabase:
-                try:
-                    for item_id in ids_para_remover:
-                        supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
-                    st.success("Ativo(s) removido(s) com sucesso! Atualizando...")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Erro ao excluir do Supabase: {e}")
-            else:
-                st.warning("Nenhum ativo foi selecionado para exclusão.")
     else:
-        st.warning("⚠️ Nenhuma posição encontrada na carteira do Supabase. Utilize o formulário acima para cadastrar seus primeiros ativos.")
+        tot_inv, tot_val, tot_pnl, tot_pnl_pct = 0.0, 0.0, 0.0, 0.0
 
+    # --- RESUMO PATRIMONIAL SUPERIOR (KPIS) ---
+    st.subheader("📊 Resumo da Carteira")
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+    with kpi1:
+        st.metric("Total Investido", f"R$ {tot_inv:,.2f}")
+    with kpi2:
+        st.metric("Valor de Mercado", f"R$ {tot_val:,.2f}")
+    with kpi3:
+        st.metric("Lucro / Prejuízo (PnL R$)", f"R$ {tot_pnl:,.2f}", delta=f"{tot_pnl_pct:.2f}%")
+    with kpi4:
+        total_ativos = len(df_cart) if not df_cart.empty else 0
+        st.metric("Ativos em Custódia", f"{total_ativos} Tickers")
+
+    st.divider()
+
+    # --- NAVEGAÇÃO INTERNA POR ABAS (ORGANIZAÇÃO LIMPA) ---
+    aba_tab1, aba_tab2, aba_tab3 = st.tabs([
+        "📋 Posição Custodiada & Edição", 
+        "📊 Alocação & Distribuição", 
+        "➕ Cadastrar Novo Ativo"
+    ])
+
+    # --- ABA 1: TABELA DE ATIVOS E EXCLUSÃO ---
+    with aba_tab1:
+        if not df_cart.empty:
+            st.markdown("##### 🔍 Posições Detalhadas em Tempo Real")
+            df_cart_display = df_cart.copy()
+            df_cart_display.insert(0, "Excluir", False)
+
+            df_editado = st.data_editor(
+                df_cart_display[['Excluir', 'id', 'ticker', 'quantidade', 'preco_medio', 'Cotacao_Atual', 'Total_Investido', 'Valor_Atual', 'PnL_Reais', 'PnL_Percent']],
+                column_config={
+                    "Excluir": st.column_config.CheckboxColumn("🗑️ Sair", default=False),
+                    "id": st.column_config.NumberColumn("ID", disabled=True),
+                    "ticker": st.column_config.TextColumn("Ativo", disabled=True),
+                    "quantidade": st.column_config.NumberColumn("Qtd", format="%d", disabled=True),
+                    "preco_medio": st.column_config.NumberColumn("Preço Médio", format="R$ %.2f", disabled=True),
+                    "Cotacao_Atual": st.column_config.NumberColumn("Cotação Atual", format="R$ %.2f", disabled=True),
+                    "Total_Investido": st.column_config.NumberColumn("Custo Total", format="R$ %.2f", disabled=True),
+                    "Valor_Atual": st.column_config.NumberColumn("Valor Atual", format="R$ %.2f", disabled=True),
+                    "PnL_Reais": st.column_config.NumberColumn("PnL (R$)", format="R$ %.2f", disabled=True),
+                    "PnL_Percent": st.column_config.NumberColumn("PnL (%)", format="%.2f%%", disabled=True),
+                },
+                hide_index=True,
+                use_container_width=True,
+                key="editor_carteira_v2"
+            )
+
+            col_del1, col_del2 = st.columns([1, 4])
+            with col_del1:
+                if st.button("🗑️ Excluir Selecionados", type="secondary"):
+                    ids_para_remover = df_editado[df_editado["Excluir"] == True]["id"].tolist()
+                    if ids_para_remover and supabase:
+                        try:
+                            for item_id in ids_para_remover:
+                                supabase.table("carteira_usuarios").delete().eq("id", item_id).execute()
+                            st.success("Ativo(s) removido(s) com sucesso!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Erro ao excluir do Supabase: {e}")
+                    else:
+                        st.warning("Selecione a caixa de exclusão na tabela.")
+        else:
+            st.info("Sua carteira está vazia no momento. Cadastre um novo ativo na aba '➕ Cadastrar Novo Ativo'.")
+
+    # --- ABA 2: GRÁFICO DE ALOCAÇÃO ---
+    with aba_tab2:
+        if not df_cart.empty:
+            col_chart1, col_chart2 = st.columns([1, 1])
+            
+            with col_chart1:
+                st.markdown("##### 🍩 Distribuição por Ativo (% do Patrimônio)")
+                fig_alloc = px.pie(
+                    df_cart, 
+                    names='ticker', 
+                    values='Valor_Atual', 
+                    hole=0.5,
+                    color_discrete_sequence=px.colors.qualitative.Dark24
+                )
+                fig_alloc.update_traces(textposition='inside', textinfo='percent+label')
+                fig_alloc.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    showlegend=False,
+                    margin=dict(t=20, b=20, l=20, r=20)
+                )
+                st.plotly_chart(fig_alloc, use_container_width=True)
+
+            with col_chart2:
+                st.markdown("##### 📈 Lucro/Prejuízo por Ativo (R$)")
+                fig_pnl_bar = px.bar(
+                    df_cart,
+                    x='ticker',
+                    y='PnL_Reais',
+                    color='PnL_Reais',
+                    color_continuous_scale=['#f87171', '#4ade80']
+                )
+                fig_pnl_bar.update_layout(
+                    template="plotly_dark",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    coloraxis_showscale=False,
+                    xaxis_title="Ativo",
+                    yaxis_title="PnL (R$)"
+                )
+                st.plotly_chart(fig_pnl_bar, use_container_width=True)
+        else:
+            st.info("Sem dados disponíveis para gerar gráficos de alocação.")
+
+    # --- ABA 3: FORMULÁRIO DE CADASTRO ---
+    with aba_tab3:
+        st.markdown("##### ➕ Registrar Aporte / Compra de Ativo")
+        with st.form("form_carteira_novo"):
+            col_f1, col_f2, col_f3 = st.columns(3)
+            with col_f1:
+                ticker_cad_input = st.text_input("Ticker do Ativo (ex: PETR4, VALE3, HGLG11):", value="PETR4").strip().upper()
+            with col_f2:
+                qtd_cad = st.number_input("Quantidade de Ações/Cotas:", min_value=1, value=100, step=1)
+            with col_f3:
+                pm_cad = st.number_input("Preço Médio Pago (R$):", min_value=0.01, value=35.00, step=0.50)
+                
+            salvar_btn = st.form_submit_button("💾 Salvar Ativo no Supabase", type="primary")
+            
+            if salvar_btn:
+                ticker_final = f"{ticker_cad_input}.SA" if not ticker_cad_input.endswith(".SA") else ticker_cad_input
+                if supabase:
+                    try:
+                        novo_registro = {
+                            "ticker": ticker_final,
+                            "quantidade": int(qtd_cad),
+                            "preco_medio": float(pm_cad)
+                        }
+                        supabase.table("carteira_usuarios").insert(novo_registro).execute()
+                        st.success(f"Ativo {ticker_final} gravado com sucesso!")
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao salvar: {e}")
+                else:
+                    st.warning("Supabase não está conectado.")
+
+        # Card de pré-visualização no momento da compra
+        if ticker_cad_input:
+            preview_data = obter_dados_ticker_seguro(ticker_cad_input)
+            if preview_data and preview_data["preco"] > 0:
+                st.caption("ℹ️ **Cotação em tempo real para conferência:**")
+                pv1, pv2, pv3 = st.columns(3)
+                with pv1:
+                    st.metric("Cotação Atual", f"R$ {preview_data['preco']:.2f}")
+                with pv2:
+                    st.metric("Dividend Yield", preview_data['dy_str'])
+                with pv3:
+                    st.metric("P/L", f"{preview_data['pe']:.2f}" if isinstance(preview_data['pe'], (int, float)) else preview_data['pe'])
 # ==========================================
 # SEÇÃO 5: SIMULADOR
 # ==========================================

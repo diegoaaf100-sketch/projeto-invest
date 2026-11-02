@@ -561,9 +561,14 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
     df_cart = carregar_carteira_supabase()
 
     if not df_cart.empty:
+        # Substitui os valores nulos ou vazios por "Não se aplica"
+        df_cart = df_cart.fillna("Não se aplica")
+        df_cart.replace({None: "Não se aplica", "": "Não se aplica"}, inplace=True)
+
         cotacoes_atuais = []
         for _, row in df_cart.iterrows():
-            if row.get('categoria_ativo') in ["CDB", "LCI", "LCA", "Tesouro Direto", "Poupança"]:
+            categoria = str(row.get('categoria_ativo', '')).upper()
+            if any(rf in categoria for rf in ["CDB", "LCI", "LCA", "TESOURO", "POUPANÇA"]):
                 cotacoes_atuais.append(row['preco_medio'])
             else:
                 cot = obter_dados_ticker_seguro(row['ticker'])['preco']
@@ -630,7 +635,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
                 st.plotly_chart(fig_bar, use_container_width=True)
 
     with aba3:
-        st.markdown("##### ➕ Formuário de Cadastro Completo de Ativos")
+        st.markdown("##### ➕ Formulário de Cadastro Completo de Ativos")
         tipo_cadastro = st.radio("Selecione a Classe do Ativo:", ["Renda Variável (Ação B3, FII, ETF, BDR)", "Renda Fixa (Tesouro, CDB, LCI, LCA, Poupança)"], horizontal=True)
         
         with st.form("form_novo_ativo_completo"):
@@ -640,10 +645,10 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
                 with f2: qtd_cad = st.number_input("Quantidade de Ações/Cotas:", min_value=1, value=100)
                 with f3: pm_cad = st.number_input("Preço Médio de Compra (R$):", min_value=0.01, value=35.00)
                 
-                banco_cad = "B3 / Corretora"
+                banco_cad = "Não se aplica"
                 cat_cad = "Renda Variável"
-                rent_cad = "Variável / Dividendos"
-                prazo_cad = "Longo Prazo"
+                rent_cad = "Não se aplica"
+                prazo_cad = "Não se aplica"
             else:
                 f1, f2, f3 = st.columns(3)
                 with f1:

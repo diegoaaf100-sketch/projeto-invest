@@ -1,7 +1,8 @@
-streamlit
-pandas
-plotly
-yfinance
-supabase
-anthropic
-feedparser
+streamlit>=1.49.0,<2.0.0
+pandas>=2.2.0,<3.0.0
+plotly>=5.24.0,<7.0.0
+yfinance>=0.2.54,<2.0.0
+supabase>=2.11.0,<3.0.0
+anthropic>=0.49.0,<1.0.0
+feedparser>=6.0.11,<7.0.0
+requests>=2.32.0,<3.0.0

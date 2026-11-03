@@ -77,6 +77,22 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { background:transparent; border-radius:9px 9px 0 0; color:#91A198; font-weight:650; }
     .stTabs [aria-selected="true"] { color:#00C781 !important; border-bottom-color:#00C781 !important; }
     [data-testid="stDataFrame"], [data-testid="stDataEditor"] { border:1px solid var(--dion-border); border-radius:12px; overflow:hidden; }
+    /* Visão Global: hierarquia enxuta e leitura editorial */
+    .global-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; padding:12px 2px 22px; margin-bottom:10px; border-bottom:1px solid var(--dion-border); }
+    .global-eyebrow { color:#00C781; font-size:.68rem; font-weight:800; letter-spacing:2px; margin-bottom:7px; }
+    .global-title { color:#F4FBF6; font-size:clamp(1.8rem,3vw,2.45rem); line-height:1.05; font-weight:780; letter-spacing:-1.2px; }
+    .global-description { color:#91A198; font-size:.88rem; margin-top:8px; }
+    .global-status { color:#91A198; font-size:.65rem; letter-spacing:1.1px; font-weight:700; white-space:nowrap; padding:8px 11px; border:1px solid var(--dion-border); border-radius:20px; }
+    .global-status span { display:inline-block; width:7px; height:7px; margin-right:7px; border-radius:50%; background:#00C781; box-shadow:0 0 9px rgba(0,199,129,.65); }
+    .global-section-label { color:#91A198; font-size:.68rem; font-weight:800; letter-spacing:1.5px; margin:18px 0 9px; }
+    .global-section-spaced { margin-top:25px; }
+    .global-news-item { display:flex; align-items:center; gap:13px; padding:13px 15px; margin:7px 0; text-decoration:none !important; background:rgba(16,25,21,.72); border:1px solid var(--dion-border); border-radius:11px; transition:border-color .18s ease,background .18s ease; }
+    .global-news-item:hover { border-color:rgba(0,199,129,.42); background:rgba(17,34,25,.92); }
+    .global-news-dot { width:6px; height:6px; flex:0 0 6px; border-radius:50%; background:#00C781; }
+    .global-news-text { flex:1; color:#E5EEE8; font-size:.84rem; line-height:1.4; font-weight:550; }
+    .global-news-date { color:#829188; font-size:.7rem; white-space:nowrap; }
+    .global-news-arrow { color:#00C781; font-size:1rem; }
+    @media (max-width: 800px) { .global-heading { align-items:flex-start; flex-direction:column; } .global-news-date { display:none; } }
     @media (max-width: 800px) { .hero-header { min-height:155px; } .hero-overlay { padding:20px; } .dion-name { font-size:23px; } div[role="radiogroup"] { gap:3px; } div[role="radiogroup"] label { padding:6px 8px; } }
 </style>
 """, unsafe_allow_html=True)
@@ -405,31 +421,44 @@ st.divider()
 # SEÇÃO 1: VISÃO GLOBAL
 # ==========================================
 if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
-    tickers_globais = ["AAPL", "AMZN", "TSLA", "NVDA", "GOOGL", "MSFT", "META", "SPY", "QQQ", "BTC-USD", "ETH-USD"]
-    renderizar_ticker_tape(tickers_globais)
-
+    # Cabeçalho simples: menos elementos decorativos e mais espaço para os dados.
     st.markdown("""
-        <div class="hero-header" style="background-image:url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=1600&q=85');">
-            <div class="hero-overlay">
-                <div class="section-kicker">DION MARKETS · GLOBAL OVERVIEW</div>
-                <div class="hero-title">Visão Global de Mercado</div>
-                <div class="hero-subtitle">Acompanhe câmbio, criptoativos, índices internacionais e os principais movimentos do mercado em um só lugar.</div>
+        <div class="global-heading">
+            <div>
+                <div class="global-eyebrow">DION / MERCADOS</div>
+                <div class="global-title">Visão Global</div>
+                <div class="global-description">Um resumo objetivo dos principais mercados e ativos internacionais.</div>
             </div>
+            <div class="global-status"><span></span> PAINEL DE MERCADO</div>
         </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("<div class='section-kicker'>01 · MOEDAS E ATIVOS DIGITAIS</div>", unsafe_allow_html=True)
-    st.subheader("Câmbio & Criptoativos")
-    c1, c2 = st.columns(2)
+    # Bloco principal: somente os dois indicadores mais consultados.
+    st.markdown("<div class='global-section-label'>CÂMBIO E CRIPTOATIVOS</div>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2, gap="medium")
     with c1:
-        st.metric(label="Dólar Comercial · USD/BRL", value=cot_dolar, delta=f"{dolar_data['variacao']:+.2f}%" if dolar_data and dolar_data.get('variacao') is not None else None)
+        st.metric(
+            label="Dólar comercial · USD/BRL",
+            value=cot_dolar,
+            delta=f"{dolar_data['variacao']:+.2f}%" if dolar_data and dolar_data.get("variacao") is not None else None
+        )
     with c2:
-        st.metric(label="Bitcoin · BTC/BRL", value=cot_btc, delta=f"{btc_data['variacao']:+.2f}%" if btc_data and btc_data.get('variacao') is not None else None)
+        st.metric(
+            label="Bitcoin · BTC/BRL",
+            value=cot_btc,
+            delta=f"{btc_data['variacao']:+.2f}%" if btc_data and btc_data.get("variacao") is not None else None
+        )
 
-    st.markdown("<div class='section-kicker'>02 · TERMÔMETRO INTERNACIONAL</div>", unsafe_allow_html=True)
-    st.subheader("Principais Indicadores Globais")
-    indicadores_globais = [("S&P 500", "^GSPC"), ("Nasdaq 100", "^NDX"), ("Petróleo Brent", "BZ=F"), ("Ouro", "GC=F"), ("VIX", "^VIX")]
-    cols_ind = st.columns(5)
+    # Indicadores globais em uma única faixa, sem títulos repetidos ou excesso de cartões.
+    st.markdown("<div class='global-section-label global-section-spaced'>MERCADOS INTERNACIONAIS</div>", unsafe_allow_html=True)
+    indicadores_globais = [
+        ("S&P 500", "^GSPC"),
+        ("Nasdaq 100", "^NDX"),
+        ("Brent", "BZ=F"),
+        ("Ouro", "GC=F"),
+        ("VIX", "^VIX")
+    ]
+    cols_ind = st.columns(5, gap="small")
     dados_grafico = []
     for col, (nome_ind, ticker_ind) in zip(cols_ind, indicadores_globais):
         d_ind = obter_dados_ticker_seguro(ticker_ind)
@@ -441,12 +470,11 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
                 if variacao_ind is not None:
                     dados_grafico.append({"Indicador": nome_ind, "Variação (%)": variacao_ind})
             else:
-                st.metric(nome_ind, "Indisponível")
+                st.metric(nome_ind, "—")
 
+    # O gráfico continua disponível, mas recolhido para não competir com as cotações.
     if dados_grafico:
-        st.markdown("<div class='section-kicker'>03 · DESEMPENHO DO DIA</div>", unsafe_allow_html=True)
-        with st.container(border=True):
-            st.markdown("**Variação percentual dos indicadores**")
+        with st.expander("Ver comparação de desempenho do dia", expanded=False):
             df_variacoes = pd.DataFrame(dados_grafico).sort_values("Variação (%)", ascending=True)
             fig_global = px.bar(
                 df_variacoes, x="Variação (%)", y="Indicador", orientation="h",
@@ -455,7 +483,7 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
             )
             fig_global.update_traces(textposition="outside", cliponaxis=False, marker_line_width=0)
             fig_global.update_layout(
-                template="plotly_dark", height=300, margin=dict(l=10,r=45,t=15,b=10),
+                template="plotly_dark", height=270, margin=dict(l=8, r=42, t=8, b=8),
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 coloraxis_showscale=False, xaxis_title="Variação (%)", yaxis_title="",
                 font=dict(family="Inter", color="#DCE8E0"),
@@ -464,26 +492,29 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
             )
             st.plotly_chart(fig_global, width="stretch", config={"displayModeBar": False})
 
-    st.markdown("<div class='section-kicker'>04 · INTELIGÊNCIA E NOTÍCIAS</div>", unsafe_allow_html=True)
-    st.subheader("Notícias Internacionais")
-    urls_globais = ["https://feeds.content.dowjones.io/public/rss/mw_topstories", "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance"]
-    noticias_globais = buscar_noticias_rss_com_imagens(urls_globais, "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80", limite=3)
-
+    # Notícias em formato editorial compacto: sem três imagens grandes disputando atenção.
+    st.markdown("<div class='global-section-label global-section-spaced'>DESTAQUES DO MERCADO</div>", unsafe_allow_html=True)
+    urls_globais = [
+        "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+        "https://search.cnbc.com/rs/search/combinednewsletter/rss?partnerId=wrnt&keywords=finance"
+    ]
+    noticias_globais = buscar_noticias_rss_com_imagens(
+        urls_globais,
+        "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80",
+        limite=3
+    )
     if noticias_globais:
-        cols_g = st.columns(3)
-        for idx, item in enumerate(noticias_globais):
-            with cols_g[idx]:
-                st.markdown(f"""
-                    <div class="news-card">
-                        <img src="{item['imagem']}" class="news-img">
-                        <div class="news-content">
-                            <div class="news-title"><a href="{item['link']}" target="_blank" rel="noopener noreferrer" style="color:#F1F7F3;text-decoration:none;">{item['titulo']}</a></div>
-                            <div class="news-date">{item['data'][:16]} &nbsp;·&nbsp; MERCADO GLOBAL</div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+        for item in noticias_globais:
+            st.markdown(f"""
+                <a class="global-news-item" href="{html.escape(item['link'], quote=True)}" target="_blank" rel="noopener noreferrer">
+                    <span class="global-news-dot"></span>
+                    <span class="global-news-text">{html.escape(item['titulo'])}</span>
+                    <span class="global-news-date">{html.escape(str(item['data'])[:16])}</span>
+                    <span class="global-news-arrow">↗</span>
+                </a>
+            """, unsafe_allow_html=True)
     else:
-        st.info("As notícias internacionais não estão disponíveis neste momento. Tente novamente mais tarde.")
+        st.caption("Notícias internacionais indisponíveis no momento.")
 
 # ==========================================
 # SEÇÃO 2: MERCADO BRASILEIRO

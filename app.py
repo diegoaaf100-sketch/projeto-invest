@@ -24,7 +24,7 @@ import feedparser
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
-    page_title="DION | Inteligência Financeira",
+    page_title="ZION | Inteligência Financeira",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -43,6 +43,8 @@ st.markdown("""
     h1,h2,h3,h4 { color:#F3FAF5 !important; letter-spacing:-.035em; }
     p, label, [data-testid="stCaptionContainer"] { color:#B0BDB5; }
     hr { border-color:var(--dion-border) !important; }
+    .zion-brand-header { width:100%; max-width:920px; margin:0 0 14px 0; padding:0; }
+    .zion-brand-header img { display:block; width:100%; max-height:190px; object-fit:contain; object-position:left center; }
     .dion-brand { display:flex; align-items:center; gap:13px; margin:2px 0 15px; }
     .dion-mark { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#00D68A,#087849); color:#03130B; font-size:25px; font-weight:900; box-shadow:0 8px 26px rgba(0,199,129,.20); }
     .dion-name { color:#F5FFF8; font-size:27px; line-height:1.05; font-weight:850; letter-spacing:2.3px; }
@@ -157,7 +159,7 @@ def traduzir_texto_pt(texto):
 
 @st.cache_data(ttl=86400, show_spinner=False)
 def buscar_historico_publico(nome, ticker):
-    headers = {"User-Agent":"DIONFinancialTerminal/1.0"}
+    headers = {"User-Agent":"ZIONFinancialTerminal/1.0"}
     for idioma in ["pt", "en"]:
         api = f"https://{idioma}.wikipedia.org/w/api.php"
         for termo in [nome, str(ticker).replace(".SA", "")]:
@@ -398,14 +400,14 @@ def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
 
 # --- PAINEL LATERAL ---
 with st.sidebar:
-    st.markdown("## **DION**")
+    st.markdown("## **ZION**")
     st.caption("INTELIGÊNCIA FINANCEIRA · B3 & GLOBAL")
     st.markdown("---")
     st.markdown("### ⚡ **Status dos Motores**")
     st.markdown(f"**Supabase DB:** {'🟢 Conectado' if supabase else '🔴 Offline'}")
     st.markdown(f"**Claude IA:** {'🟢 Ativo' if client_claude else '🟡 Tradução alternativa'}")
     st.markdown("---")
-    st.caption("DION · Terminal Financeiro")
+    st.caption("ZION · Terminal Financeiro")
 
 # --- NAVEGAÇÃO SUPERIOR ---
 opcoes_menu = [
@@ -419,7 +421,16 @@ opcoes_menu = [
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-st.markdown("<div class='dion-brand'><div class='dion-mark'>D</div><div><div class='dion-name'>DION</div><div class='dion-tagline'>INTELIGÊNCIA FINANCEIRA · B3 & GLOBAL</div></div></div>", unsafe_allow_html=True)
+# Logo oficial ZION aprovada: arquivo local mantido junto ao app.py.
+logo_zion_path = Path(__file__).parent / "logo_zion.png"
+if logo_zion_path.exists():
+    logo_zion_b64 = base64.b64encode(logo_zion_path.read_bytes()).decode("utf-8")
+    st.markdown(
+        f"<div class='zion-brand-header'><img src='data:image/png;base64,{logo_zion_b64}' alt='ZION — Inteligência Financeira · B3 & Global'></div>",
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown("<div class='dion-brand'><div class='dion-mark'>Z</div><div><div class='dion-name'>ZION</div><div class='dion-tagline'>INTELIGÊNCIA FINANCEIRA · B3 & GLOBAL</div></div></div>", unsafe_allow_html=True)
 st.session_state["aba_ativa"] = st.radio(
     "Menu de Navegação", opcoes_menu,
     index=opcoes_menu.index(st.session_state["aba_ativa"]),
@@ -440,7 +451,7 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
     st.markdown("""
         <div class="global-heading">
             <div>
-                <div class="global-eyebrow">DION / MERCADOS</div>
+                <div class="global-eyebrow">ZION / MERCADOS</div>
                 <div class="global-title">Visão Global</div>
                 <div class="global-description">Um resumo objetivo dos principais mercados e ativos internacionais.</div>
             </div>

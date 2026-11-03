@@ -364,26 +364,37 @@ cot_dolar, cot_btc, dolar_data, btc_data = buscar_cotacoes_atuais()
 
 @st.cache_data(ttl=1800)
 def buscar_noticias_rss_com_imagens(urls, img_fallback_default, limite=3):
+    # Combina os feeds informados até atingir o limite solicitado, sem duplicar links.
+    noticias = []
+    links_processados = set()
+
     for url in urls:
         try:
             feed = feedparser.parse(url)
-            if feed.entries:
-                noticias = []
-                for entry in feed.entries[:limite]:
-                    titulo_original = entry.get("title", "Sem título")
-                    titulo = traduzir_texto_pt(titulo_original) or titulo_original
-                    link = entry.get("link", "#")
-                    data = entry.get("published", "Hoje")
-                    img_url = img_fallback_default
-                    if "media_content" in entry and len(entry.media_content) > 0:
-                        img_url = entry.media_content[0].get("url", img_fallback_default)
-                    elif "media_thumbnail" in entry and len(entry.media_thumbnail) > 0:
-                        img_url = entry.media_thumbnail[0].get("url", img_fallback_default)
-                    noticias.append({"titulo": titulo, "link": link, "data": data, "imagem": img_url})
-                return noticias
+            for entry in feed.entries:
+                link = entry.get("link", "#")
+                if link in links_processados:
+                    continue
+
+                titulo_original = entry.get("title", "Sem título")
+                titulo = traduzir_texto_pt(titulo_original) or titulo_original
+                data = entry.get("published", entry.get("updated", "Hoje"))
+                img_url = img_fallback_default
+
+                if entry.get("media_content"):
+                    img_url = entry.media_content[0].get("url", img_fallback_default)
+                elif entry.get("media_thumbnail"):
+                    img_url = entry.media_thumbnail[0].get("url", img_fallback_default)
+
+                noticias.append({"titulo": titulo, "link": link, "data": data, "imagem": img_url})
+                links_processados.add(link)
+
+                if len(noticias) >= limite:
+                    return noticias
         except Exception:
             continue
-    return []
+
+    return noticias
 
 # --- PAINEL LATERAL ---
 with st.sidebar:
@@ -492,7 +503,8 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
             )
             st.plotly_chart(fig_global, width="stretch", config={"displayModeBar": False})
 
-    # Notícias em formato editorial compacto: sem três imagens grandes disputando atenção.
+    # Notícias no formato visual original: cartões com imagem, título e data.
+    # Exibe até 6 notícias em 3 colunas por linha.
     st.markdown("<div class='global-section-label global-section-spaced'>DESTAQUES DO MERCADO</div>", unsafe_allow_html=True)
     urls_globais = [
         "https://feeds.content.dowjones.io/public/rss/mw_topstories",
@@ -501,18 +513,22 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
     noticias_globais = buscar_noticias_rss_com_imagens(
         urls_globais,
         "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=600&q=80",
-        limite=3
+        limite=6
     )
     if noticias_globais:
-        for item in noticias_globais:
-            st.markdown(f"""
-                <a class="global-news-item" href="{html.escape(item['link'], quote=True)}" target="_blank" rel="noopener noreferrer">
-                    <span class="global-news-dot"></span>
-                    <span class="global-news-text">{html.escape(item['titulo'])}</span>
-                    <span class="global-news-date">{html.escape(str(item['data'])[:16])}</span>
-                    <span class="global-news-arrow">↗</span>
-                </a>
-            """, unsafe_allow_html=True)
+        for inicio in range(0, len(noticias_globais), 3):
+            cols_global = st.columns(3, gap="medium")
+            for coluna, item in zip(cols_global, noticias_globais[inicio:inicio + 3]):
+                with coluna:
+                    st.markdown(f"""
+                        <div class="news-card">
+                            <img src="{html.escape(item['imagem'], quote=True)}" class="news-img">
+                            <div class="news-content">
+                                <div class="news-title"><a href="{html.escape(item['link'], quote=True)}" target="_blank" rel="noopener noreferrer" style="color:#f8fafc;text-decoration:none;">{html.escape(item['titulo'])}</a></div>
+                                <div class="news-date">📅 {html.escape(str(item['data'])[:16])} &nbsp;|&nbsp; 🌐 Mercado Global</div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
     else:
         st.caption("Notícias internacionais indisponíveis no momento.")
 
@@ -558,21 +574,29 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
     st.divider()
     st.subheader("📰 Notícias do Mercado Nacional")
     urls_nacionais = ["https://exame.com/invest/feed/", "https://www.infomoney.com.br/feed/"]
-    noticias_nacionais = buscar_noticias_rss_com_imagens(urls_nacionais, "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80", limite=3)
-    
+    noticias_nacionais = buscar_noticias_rss_com_imagens(
+        urls_nacionais,
+        "https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=600&q=80",
+        limite=6
+    )
+
     if noticias_nacionais:
-        cols_n = st.columns(3)
-        for idx, item in enumerate(noticias_nacionais):
-            with cols_n[idx]:
-                st.markdown(f"""
-                    <div class="news-card">
-                        <img src="{item['imagem']}" class="news-img">
-                        <div class="news-content">
-                            <div class="news-title"><a href="{item['link']}" target="_blank" style="color: #f8fafc; text-decoration: none;">{item['titulo']}</a></div>
-                            <div class="news-date">📅 {item['data'][:16]} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
+        # Mantém os cartões com imagem e organiza até 6 notícias em duas linhas de 3.
+        for inicio in range(0, len(noticias_nacionais), 3):
+            cols_n = st.columns(3, gap="medium")
+            for coluna, item in zip(cols_n, noticias_nacionais[inicio:inicio + 3]):
+                with coluna:
+                    st.markdown(f"""
+                        <div class="news-card">
+                            <img src="{html.escape(item['imagem'], quote=True)}" class="news-img">
+                            <div class="news-content">
+                                <div class="news-title"><a href="{html.escape(item['link'], quote=True)}" target="_blank" rel="noopener noreferrer" style="color:#f8fafc;text-decoration:none;">{html.escape(item['titulo'])}</a></div>
+                                <div class="news-date">📅 {html.escape(str(item['data'])[:16])} &nbsp;|&nbsp; 🇧🇷 Mercado Nacional</div>
+                            </div>
                         </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+    else:
+        st.caption("Notícias nacionais indisponíveis no momento.")
 
 # ==========================================
 # SEÇÃO 3: ANÁLISE PROFISSIONAL MULTI-ATIVOS

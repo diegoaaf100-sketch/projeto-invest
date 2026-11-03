@@ -432,6 +432,10 @@ st.divider()
 # SEÇÃO 1: VISÃO GLOBAL
 # ==========================================
 if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
+    # Faixa de rolagem com os principais ativos internacionais.
+    tickers_globais = ["^GSPC", "^IXIC", "^DJI", "^NDX", "GC=F", "BZ=F", "BTC-USD", "EURUSD=X", "USDBRL=X"]
+    renderizar_ticker_tape(tickers_globais)
+
     # Cabeçalho simples: menos elementos decorativos e mais espaço para os dados.
     st.markdown("""
         <div class="global-heading">

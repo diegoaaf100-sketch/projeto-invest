@@ -69,18 +69,54 @@ st.markdown("""
     .news-content { padding:12px 13px; display:flex; flex:1; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden; }
     .news-title { font-weight:700; color:#F1F7F3; font-size:.82rem; line-height:1.35; min-height:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
     .news-date { flex:0 0 auto; margin-top:8px; padding-top:7px; border-top:1px solid rgba(174,205,187,.12); font-size:.67rem; line-height:1.25; color:#00C781; font-weight:600; white-space:normal; }
-    /* Navegação ZION: cápsulas premium, brilho sutil e leitura limpa */
-    .zion-topbar { padding:8px 0 15px; margin-bottom:12px; border-bottom:1px solid rgba(92,166,255,.20); }
-    .zion-nav { margin-top:5px; padding:7px; border:1px solid rgba(125,170,220,.16); border-radius:17px; background:linear-gradient(135deg,rgba(11,22,39,.94),rgba(7,14,27,.92)); box-shadow:0 12px 32px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.035); }
-    .zion-nav div[role="radiogroup"] { display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:stretch; gap:7px; width:100%; padding:0; background:transparent; border:0; }
-    .zion-nav div[role="radiogroup"] label { flex:1 1 0; min-width:0; justify-content:center; background:rgba(255,255,255,.018); border:1px solid transparent; border-radius:12px; padding:11px 9px; transition:background .2s ease,border-color .2s ease,transform .2s ease,box-shadow .2s ease; white-space:nowrap; }
-    .zion-nav div[role="radiogroup"] label:hover { background:rgba(64,142,230,.10); border-color:rgba(94,169,255,.28); transform:translateY(-1px); }
-    .zion-nav div[role="radiogroup"] label[data-checked="true"] { background:linear-gradient(145deg,rgba(34,111,194,.28),rgba(20,63,112,.22)); border-color:rgba(91,169,255,.62); box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 5px 18px rgba(20,105,200,.16); position:relative; }
-    .zion-nav div[role="radiogroup"] label[data-checked="true"]:after { content:""; position:absolute; left:22%; right:22%; bottom:-2px; height:2px; border-radius:3px; background:linear-gradient(90deg,transparent,#59B7FF,transparent); box-shadow:0 0 10px rgba(73,174,255,.8); }
-    .zion-nav div[role="radiogroup"] label p { color:#9EADBF !important; font-weight:650; font-size:.77rem; letter-spacing:.01em; transition:color .2s ease; }
-    .zion-nav div[role="radiogroup"] label[data-checked="true"] p { color:#EAF5FF !important; font-weight:750; }
-    .zion-nav div[role="radiogroup"] label input { accent-color:#55B5FF; }
-    .zion-nav div[role="radiogroup"] label [data-testid="stMarkdownContainer"] { overflow:visible; }
+    /* NAVEGAÇÃO ZION — menu premium aplicado diretamente ao widget Streamlit */
+    .st-key-seletor_principal {
+        margin: 10px 0 14px !important; padding: 8px !important;
+        border: 1px solid rgba(110,155,205,.22) !important; border-radius: 17px !important;
+        background: linear-gradient(110deg,rgba(8,19,34,.98),rgba(10,25,38,.96)) !important;
+        box-shadow: 0 12px 30px rgba(0,0,0,.28),inset 0 1px 0 rgba(255,255,255,.045) !important;
+    }
+    .st-key-seletor_principal [data-testid="stRadio"] { width:100%; }
+    .st-key-seletor_principal [role="radiogroup"] {
+        display:flex !important; flex-wrap:nowrap !important; align-items:stretch !important;
+        gap:8px !important; width:100% !important;
+    }
+    .st-key-seletor_principal [role="radiogroup"] > label,
+    .st-key-seletor_principal label[data-baseweb="radio"] {
+        position:relative !important; flex:1 1 0 !important; min-width:0 !important;
+        display:flex !important; justify-content:center !important; align-items:center !important;
+        margin:0 !important; padding:13px 10px !important;
+        border:1px solid rgba(148,177,205,.10) !important; border-radius:12px !important;
+        background:rgba(255,255,255,.025) !important; transition:all .2s ease !important;
+        cursor:pointer !important;
+    }
+    .st-key-seletor_principal [role="radiogroup"] > label:hover,
+    .st-key-seletor_principal label[data-baseweb="radio"]:hover {
+        background:rgba(29,119,151,.16) !important; border-color:rgba(55,190,204,.45) !important;
+        transform:translateY(-2px) !important; box-shadow:0 7px 18px rgba(0,0,0,.20) !important;
+    }
+    .st-key-seletor_principal [data-baseweb="radio"] > div:first-child {
+        display:none !important; width:0 !important; margin:0 !important;
+    }
+    .st-key-seletor_principal [role="radiogroup"] label p,
+    .st-key-seletor_principal [role="radiogroup"] label div[data-testid="stMarkdownContainer"] {
+        color:#AFC1D1 !important; font-size:.79rem !important; font-weight:650 !important;
+        letter-spacing:.01em !important; white-space:nowrap !important; text-align:center !important;
+    }
+    .st-key-seletor_principal [role="radiogroup"] label:has(input:checked) {
+        background:linear-gradient(135deg,rgba(0,174,139,.23),rgba(24,104,160,.25)) !important;
+        border:1px solid rgba(42,205,190,.68) !important;
+        box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 0 0 1px rgba(21,173,169,.10),0 7px 22px rgba(0,155,160,.13) !important;
+    }
+    .st-key-seletor_principal [role="radiogroup"] label:has(input:checked) p,
+    .st-key-seletor_principal [role="radiogroup"] label:has(input:checked) div[data-testid="stMarkdownContainer"] {
+        color:#F1FFFC !important; font-weight:800 !important;
+    }
+    .st-key-seletor_principal [role="radiogroup"] label:has(input:checked):after {
+        content:""; position:absolute; left:24%; right:24%; bottom:-1px; height:2px;
+        border-radius:4px; background:linear-gradient(90deg,transparent,#35E0C0,transparent);
+        box-shadow:0 0 12px rgba(53,224,192,.85);
+    }
     .zion-brand-left { display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px; padding:2px 0 8px; }
     .zion-brand-left img { display:block; width:auto; max-width:190px; max-height:58px; object-fit:contain; object-position:left center; }
     .zion-brand-left .dion-brand { margin:0; }
@@ -108,8 +144,8 @@ st.markdown("""
     .global-news-text { flex:1; color:#E5EEE8; font-size:.84rem; line-height:1.4; font-weight:550; }
     .global-news-date { color:#829188; font-size:.7rem; white-space:nowrap; }
     .global-news-arrow { color:#00C781; font-size:1rem; }
-    @media (max-width: 1050px) { .zion-nav div[role="radiogroup"] { flex-wrap:wrap; } .zion-nav div[role="radiogroup"] label { flex:1 1 28%; } .global-heading { min-height:180px; } }
-    @media (max-width: 800px) { .global-heading { align-items:flex-start; flex-direction:column; padding:22px; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } .zion-nav div[role="radiogroup"] { gap:4px; } .zion-nav div[role="radiogroup"] label { flex:1 1 44%; padding:8px 7px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
+    @media (max-width: 1050px) { .st-key-seletor_principal [role="radiogroup"] { flex-wrap:wrap !important; } .st-key-seletor_principal [role="radiogroup"] > label { flex:1 1 28% !important; } .global-heading { min-height:180px; } }
+    @media (max-width: 800px) { .global-heading { align-items:flex-start; flex-direction:column; padding:22px; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } .st-key-seletor_principal [role="radiogroup"] { gap:5px !important; flex-wrap:wrap !important; } .st-key-seletor_principal [role="radiogroup"] > label { flex:1 1 44% !important; padding:10px 7px !important; } .zion-brand-left img { max-width:150px; max-height:48px; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -582,7 +618,6 @@ if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in o
 
 # Cabeçalho superior: marca ZION à esquerda, acima do menu e dos indicadores.
 with st.container():
-    st.markdown("<div class='zion-topbar'>", unsafe_allow_html=True)
 
     # Marca no canto superior esquerdo.
     col_brand, col_status = st.columns([7, 2], gap="small", vertical_alignment="center")
@@ -606,15 +641,12 @@ with st.container():
             unsafe_allow_html=True
         )
 
-    # Navegação em uma linha separada, logo abaixo da marca.
-    st.markdown("<div class='zion-nav'>", unsafe_allow_html=True)
+    # Navegação premium logo abaixo da marca; CSS aplicado pelo widget key.
     st.session_state["aba_ativa"] = st.radio(
         "Menu de Navegação", opcoes_menu,
         index=opcoes_menu.index(st.session_state["aba_ativa"]),
         key="seletor_principal", horizontal=True, label_visibility="collapsed"
     )
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # SEÇÃO 1: VISÃO GLOBAL

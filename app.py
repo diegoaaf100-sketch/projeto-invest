@@ -77,8 +77,11 @@ st.markdown("""
     .zion-nav div[role="radiogroup"] label[data-checked="true"] { background:linear-gradient(135deg,rgba(0,199,129,.20),rgba(0,120,73,.13)); border-color:rgba(0,199,129,.48); box-shadow:inset 0 0 0 1px rgba(0,199,129,.08); }
     .zion-nav div[role="radiogroup"] label p { color:#AABBB1 !important; font-weight:650; font-size:.78rem; }
     .zion-nav div[role="radiogroup"] label[data-checked="true"] p { color:#65E6AD !important; }
-    .zion-logo-right { display:flex; justify-content:flex-end; align-items:center; width:100%; min-height:58px; }
-    .zion-logo-right img { display:block; width:100%; max-width:170px; max-height:56px; object-fit:contain; object-position:right center; }
+    .zion-brand-left { display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px; padding:2px 0 8px; }
+    .zion-brand-left img { display:block; width:auto; max-width:190px; max-height:58px; object-fit:contain; object-position:left center; }
+    .zion-brand-left .dion-brand { margin:0; }
+    .zion-brand-left .dion-mark { width:46px; height:46px; }
+    .zion-header-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 0 8px; }
     button[kind="primary"], .stButton button[kind="primary"] { background:linear-gradient(135deg,#00C781,#07834F) !important; color:#04130B !important; border:0 !important; font-weight:750 !important; border-radius:10px !important; }
     .stButton button, .stDownloadButton button { border-radius:10px !important; border-color:var(--dion-border) !important; }
     input, textarea, [data-baseweb="select"] > div { background-color:#101915 !important; border-color:var(--dion-border) !important; }
@@ -102,7 +105,7 @@ st.markdown("""
     .global-news-date { color:#829188; font-size:.7rem; white-space:nowrap; }
     .global-news-arrow { color:#00C781; font-size:1rem; }
     @media (max-width: 1050px) { .zion-nav div[role="radiogroup"] { flex-wrap:wrap; } .global-heading { min-height:180px; } }
-    @media (max-width: 800px) { .global-heading { align-items:flex-start; flex-direction:column; padding:22px; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } .zion-nav div[role="radiogroup"] { gap:3px; } .zion-nav div[role="radiogroup"] label { padding:6px 8px; } .zion-logo-right img { max-width:125px; } }
+    @media (max-width: 800px) { .global-heading { align-items:flex-start; flex-direction:column; padding:22px; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } .zion-nav div[role="radiogroup"] { gap:3px; } .zion-nav div[role="radiogroup"] label { padding:6px 8px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -245,7 +248,7 @@ def obter_dados_ticker_seguro(ticker_raw):
         nome_longo = info.get('longName', info.get('shortName', t_symbol))
         categoria_raw = info.get('quoteType', 'AÇÕES / B3')
         categoria = TRADUCOES_TIPO.get(str(categoria_raw).upper(), categoria_raw)
-        
+
         descricao_original = info.get('longBusinessSummary', '')
         setor_raw = info.get('sector', 'Não informado')
         setor = TRADUCOES_SETOR.get(str(setor_raw).lower(), setor_raw)
@@ -271,16 +274,16 @@ def obter_dados_ticker_seguro(ticker_raw):
             "descricao": descricao_final,
             "setor": setor,
             "industria": industria,
-            "website": info.get("website", ""),
-            "pais": traduzir_texto_pt(info.get("country", "Não informado")) or info.get("country", "Não informado"),
-            "funcionarios": info.get("fullTimeEmployees")
+            "website": info.get('website', ""),
+            "pais": traduzir_texto_pt(info.get('country', "Não informado")) or info.get('country', "Não informado"),
+            "funcionarios": info.get('fullTimeEmployees')
         }
     except Exception:
         return {
-            "symbol": t_symbol, "nome": ticker_raw, "categoria": "OUTROS", 
-            "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", 
+            "symbol": t_symbol, "nome": ticker_raw, "categoria": "OUTROS",
+            "preco": 0.0, "variacao": 0.0, "dy_str": "N/D",
             "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0,
-            "descricao": f"Não foi possível recuperar o histórico detalhado para o ativo {ticker_raw}.", 
+            "descricao": f"Não foi possível recuperar o histórico detalhado para o ativo {ticker_raw}.",
             "setor": "N/D", "industria": "N/D"
         }
 
@@ -310,7 +313,7 @@ def renderizar_ticker_tape(lista_tickers):
             cor_var = "#4ade80" if var >= 0 else "#f87171"
             sinal = "+" if var >= 0 else ""
             var_str = f"{sinal}{var:.2f}%"
-            
+
             itens_html += f"""
                 <div class="ticker-item">
                     <img src="{icone_url}" class="ticker-logo">
@@ -432,28 +435,40 @@ opcoes_menu = [
 if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-# Cabeçalho superior: navegação centralizada e marca ZION no canto superior direito.
+# Cabeçalho superior: marca ZION à esquerda, acima do menu e dos indicadores.
 with st.container():
     st.markdown("<div class='zion-topbar'>", unsafe_allow_html=True)
-    col_spacer, col_menu, col_status, col_logo = st.columns([0.45, 7.3, 1.35, 1.55], gap="small", vertical_alignment="center")
-    with col_menu:
-        st.markdown("<div class='zion-nav'>", unsafe_allow_html=True)
-        st.session_state["aba_ativa"] = st.radio(
-            "Menu de Navegação", opcoes_menu,
-            index=opcoes_menu.index(st.session_state["aba_ativa"]),
-            key="seletor_principal", horizontal=True, label_visibility="collapsed"
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-    with col_status:
-        agora_header = datetime.now().strftime("%d/%m/%Y %H:%M")
-        st.markdown(f"<div class='zion-top-status'><span class='live-dot'></span><b>Mercado ativo</b><br>{agora_header}</div>", unsafe_allow_html=True)
-    with col_logo:
+
+    # Marca no canto superior esquerdo.
+    col_brand, col_status = st.columns([7, 2], gap="small", vertical_alignment="center")
+    with col_brand:
         logo_zion_path = Path(__file__).parent / "logo_zion.png"
         if logo_zion_path.exists():
             logo_zion_b64 = base64.b64encode(logo_zion_path.read_bytes()).decode("utf-8")
-            st.markdown(f"<div class='zion-logo-right'><img src='data:image/png;base64,{logo_zion_b64}' alt='ZION — Inteligência Financeira'></div>", unsafe_allow_html=True)
+            st.markdown(
+                f"<div class='zion-brand-left'><img src='data:image/png;base64,{logo_zion_b64}' alt='ZION — Inteligência Financeira'></div>",
+                unsafe_allow_html=True
+            )
         else:
-            st.markdown("<div class='zion-logo-right'><div class='dion-brand'><div class='dion-mark'>Z</div><div><div class='dion-name'>ZION</div><div class='dion-tagline'>INTELIGÊNCIA FINANCEIRA</div></div></div></div>", unsafe_allow_html=True)
+            st.markdown(
+                "<div class='zion-brand-left'><div class='dion-brand'><div class='dion-mark'>Z</div><div><div class='dion-name'>ZION</div><div class='dion-tagline'>INTELIGÊNCIA FINANCEIRA</div></div></div></div>",
+                unsafe_allow_html=True
+            )
+    with col_status:
+        agora_header = datetime.now().strftime("%d/%m/%Y %H:%M")
+        st.markdown(
+            f"<div class='zion-top-status'><span class='live-dot'></span><b>Mercado ativo</b><br>{agora_header}</div>",
+            unsafe_allow_html=True
+        )
+
+    # Navegação em uma linha separada, logo abaixo da marca.
+    st.markdown("<div class='zion-nav'>", unsafe_allow_html=True)
+    st.session_state["aba_ativa"] = st.radio(
+        "Menu de Navegação", opcoes_menu,
+        index=opcoes_menu.index(st.session_state["aba_ativa"]),
+        key="seletor_principal", horizontal=True, label_visibility="collapsed"
+    )
+    st.markdown("</div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
@@ -578,28 +593,35 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
             </div>
         </div>
     """, unsafe_allow_html=True)
-    
+
     st.subheader("📊 Macroeconomia Nacional")
     ibov = obter_dados_ticker_seguro("^BVSP")
     ib1, ib2, ib3, ib4 = st.columns(4)
     with ib1:
         st.metric("Ibovespa (IBOV)", f"{ibov['preco']:,.0f} pts".replace(",", ".") if ibov["preco"] else "Indisponível", delta=f"{ibov['variacao']:+.2f}%" if ibov["variacao"] is not None else None)
+
     def bcb_ultimo(codigo, dias=60):
         try:
             fim = datetime.now().strftime("%d/%m/%Y")
             inicio = (datetime.now() - timedelta(days=dias)).strftime("%d/%m/%Y")
             url = f"https://api.bcb.gov.br/dados/serie/bcdata.sgs.{codigo}/dados"
             r = requests.get(url, params={"formato":"json", "dataInicial":inicio, "dataFinal":fim}, timeout=10)
-            r.raise_for_status(); dados = r.json()
+            r.raise_for_status()
+            dados = r.json()
             return float(dados[-1]["valor"].replace(",", ".")) if dados else None
         except Exception:
             return None
+
     selic_atual = bcb_ultimo(432, 90)
     ipca_atual = bcb_ultimo(433, 90)
     cdi_atual = bcb_ultimo(12, 30)
-    with ib2: st.metric("Selic (último registro)", f"{selic_atual:.2f}%" if selic_atual is not None else "Indisponível")
-    with ib3: st.metric("IPCA (último registro)", f"{ipca_atual:.2f}%" if ipca_atual is not None else "Indisponível")
-    with ib4: st.metric("CDI (último registro)", f"{cdi_atual:.2f}%" if cdi_atual is not None else "Indisponível")
+    with ib2:
+        st.metric("Selic (último registro)", f"{selic_atual:.2f}%" if selic_atual is not None else "Indisponível")
+    with ib3:
+        st.metric("IPCA (último registro)", f"{ipca_atual:.2f}%" if ipca_atual is not None else "Indisponível")
+    with ib4:
+        st.metric("CDI (último registro)", f"{cdi_atual:.2f}%" if cdi_atual is not None else "Indisponível")
+
     st.caption("Indicadores consultados em fontes externas; a série exibida corresponde ao último registro retornado e pode não ser uma taxa anualizada.")
 
     st.divider()
@@ -641,25 +663,31 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
             </div>
         </div>
     """, unsafe_allow_html=True)
-    
+
     tipo_consulta = st.radio("Selecione o Tipo de Ativo para Analisar:", ["Ações / FIIs / ETFs (B3 e Global)", "Renda Fixa (Tesouro, CDB, LCI, LCA, Poupança)"], horizontal=True)
-    
+
     if tipo_consulta == "Ações / FIIs / ETFs (B3 e Global)":
         ticker_input = st.text_input("Digite o Ticker (ex: PETR4, HGLG11, IVVB11, AAPL):", value="PETR4").strip().upper()
         if ticker_input:
             dados_ativo = obter_dados_ticker_seguro(ticker_input)
             if dados_ativo and dados_ativo["preco"] > 0:
                 st.subheader(f"🔍 {dados_ativo['nome']} ({dados_ativo['symbol']})")
-                
+
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 moeda_prefix = "R$" if ".SA" in dados_ativo['symbol'] or "BRL" in dados_ativo['symbol'] else "$"
-                with m1: st.metric("Cotação", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
-                with m2: st.metric("Dividend Yield", dados_ativo['dy_str'])
-                with m3: st.metric("P/L", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
-                with m4: st.metric("P/VP", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
-                with m5: st.metric("Mínima 52S", f"{moeda_prefix} {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
-                with m6: st.metric("Máxima 52S", f"{moeda_prefix} {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
-                
+                with m1:
+                    st.metric("Cotação", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
+                with m2:
+                    st.metric("Dividend Yield", dados_ativo['dy_str'])
+                with m3:
+                    st.metric("P/L", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
+                with m4:
+                    st.metric("P/VP", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
+                with m5:
+                    st.metric("Mínima 52S", f"{moeda_prefix} {dados_ativo['min52']:.2f}" if isinstance(dados_ativo['min52'], (int, float)) else dados_ativo['min52'])
+                with m6:
+                    st.metric("Máxima 52S", f"{moeda_prefix} {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
+
                 st.divider()
                 df_hist = yf.Ticker(dados_ativo['symbol']).history(period="2y")
                 if not df_hist.empty:
@@ -710,7 +738,6 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
                             st.markdown(f"**Funcionários:** {int(dados_ativo['funcionarios']):,}".replace(',', '.'))
                     st.caption("O histórico depende da existência de fontes públicas. Informações indisponíveis não são inventadas.")
 
-
     else:
         st.subheader("📋 Ficha Técnica de Renda Fixa")
         col_rf1, col_rf2, col_rf3 = st.columns(3)
@@ -727,10 +754,14 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
         st.divider()
         st.markdown("#### 💡 Resumo do Perfil do Título")
         r_c1, r_c2, r_c3, r_c4 = st.columns(4)
-        with r_c1: st.metric("Garantia FGC", "Até R$ 250 mil" if categoria_rf in ["CDB", "LCI", "LCA", "Poupança"] else "Soberana (Governo)")
-        with r_c2: st.metric("Isenção de IR", "SIM (Isento)" if categoria_rf in ["LCI", "LCA", "Poupança"] else "NÃO (Tabela Regressiva)")
-        with r_c3: st.metric("Prazo", prazo_rf.split()[0])
-        with r_c4: st.metric("Fluxo de Caixa", proventos_rf)
+        with r_c1:
+            st.metric("Garantia FGC", "Até R$ 250 mil" if categoria_rf in ["CDB", "LCI", "LCA", "Poupança"] else "Soberana (Governo)")
+        with r_c2:
+            st.metric("Isenção de IR", "SIM (Isento)" if categoria_rf in ["LCI", "LCA", "Poupança"] else "NÃO (Tabela Regressiva)")
+        with r_c3:
+            st.metric("Prazo", prazo_rf.split()[0])
+        with r_c4:
+            st.metric("Fluxo de Caixa", proventos_rf)
 
 # ==========================================
 # SEÇÃO 4: GESTÃO DE CARTEIRA COMPLETA
@@ -744,7 +775,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
             </div>
         </div>
     """, unsafe_allow_html=True)
-    
+
     df_cart = carregar_carteira_supabase()
 
     if not df_cart.empty:
@@ -774,10 +805,14 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
 
     st.subheader("📊 Resumo Consolidado do Patrimônio")
     k1, k2, k3, k4 = st.columns(4)
-    with k1: st.metric("Total Investido", f"R$ {tot_inv:,.2f}")
-    with k2: st.metric("Valor Atual de Mercado", f"R$ {tot_val:,.2f}")
-    with k3: st.metric("Lucro / Prejuízo (PnL)", f"R$ {tot_pnl:,.2f}", delta=f"{tot_pnl_pct:.2f}%")
-    with k4: st.metric("Ativos na Carteira", f"{len(df_cart) if not df_cart.empty else 0}")
+    with k1:
+        st.metric("Total Investido", f"R$ {tot_inv:,.2f}")
+    with k2:
+        st.metric("Valor Atual de Mercado", f"R$ {tot_val:,.2f}")
+    with k3:
+        st.metric("Lucro / Prejuízo (PnL)", f"R$ {tot_pnl:,.2f}", delta=f"{tot_pnl_pct:.2f}%")
+    with k4:
+        st.metric("Ativos na Carteira", f"{len(df_cart) if not df_cart.empty else 0}")
 
     st.divider()
 
@@ -789,7 +824,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
             df_display.insert(0, "Excluir", False)
             cols_exibicao = ['Excluir', 'id', 'ticker', 'banco_emissor', 'categoria_ativo', 'tipo_rentabilidade', 'prazo', 'quantidade', 'preco_medio', 'Valor_Atual', 'PnL_Reais']
             cols_presentes = [c for c in cols_exibicao if c in df_display.columns]
-            
+
             df_editado = st.data_editor(
                 df_display[cols_presentes],
                 column_config={
@@ -836,14 +871,17 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
     with aba3:
         st.markdown("##### ➕ Formulário de Cadastro Completo de Ativos")
         tipo_cadastro = st.radio("Selecione a Classe do Ativo:", ["Renda Variável (Ação B3, FII, ETF, BDR)", "Renda Fixa (Tesouro, CDB, LCI, LCA, Poupança)"], horizontal=True)
-        
+
         with st.form("form_novo_ativo_completo"):
             if tipo_cadastro == "Renda Variável (Ação B3, FII, ETF, BDR)":
                 f1, f2, f3 = st.columns(3)
-                with f1: ticker_cad = st.text_input("Ticker do Ativo (ex: PETR4, HGLG11, BOVA11):", value="PETR4").strip().upper()
-                with f2: qtd_cad = st.number_input("Quantidade de Ações/Cotas:", min_value=1, value=100)
-                with f3: pm_cad = st.number_input("Preço Médio de Compra (R$):", min_value=0.01, value=35.00)
-                
+                with f1:
+                    ticker_cad = st.text_input("Ticker do Ativo (ex: PETR4, HGLG11, BOVA11):", value="PETR4").strip().upper()
+                with f2:
+                    qtd_cad = st.number_input("Quantidade de Ações/Cotas:", min_value=1, value=100)
+                with f3:
+                    pm_cad = st.number_input("Preço Médio de Compra (R$):", min_value=0.01, value=35.00)
+
                 banco_cad = "Não se aplica"
                 cat_cad = "Renda Variável"
                 rent_cad = "Não se aplica"
@@ -859,7 +897,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
                 with f3:
                     prazo_cad = st.selectbox("Horizonte / Prazo:", ["Curto Prazo (Até 2 anos)", "Longo Prazo (> 2 anos)"])
                     valor_total_rf = st.number_input("Valor Total Investido (R$):", min_value=1.0, value=5000.0)
-                
+
                 qtd_cad = 1
                 pm_cad = valor_total_rf
 
@@ -893,7 +931,7 @@ elif st.session_state["aba_ativa"] == "🧮 5. Simulador":
             </div>
         </div>
     """, unsafe_allow_html=True)
-    
+
     cs1, cs2 = st.columns(2)
     with cs1:
         ap_init = st.number_input("Aporte Inicial (R$):", value=10000.0)
@@ -901,7 +939,7 @@ elif st.session_state["aba_ativa"] == "🧮 5. Simulador":
     with cs2:
         tx_anual = st.number_input("Rentabilidade Anual Estimada (%):", value=10.0)
         anos_proj = st.slider("Prazo (Anos):", 1, 30, 10)
-        
+
     if st.button("Simular Projeção", type="primary"):
         meses = anos_proj * 12
         tx_mensal = (1 + tx_anual / 100) ** (1/12) - 1

@@ -72,15 +72,15 @@ st.markdown("""
     /* Navegação ZION: cápsulas premium, brilho sutil e leitura limpa */
     .zion-topbar { padding:8px 0 15px; margin-bottom:12px; border-bottom:1px solid rgba(92,166,255,.20); }
     .zion-nav { margin-top:5px; padding:7px; border:1px solid rgba(125,170,220,.16); border-radius:17px; background:linear-gradient(135deg,rgba(11,22,39,.94),rgba(7,14,27,.92)); box-shadow:0 12px 32px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.035); }
-    .zion-nav div[role="radiogroup"] { display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:stretch; gap:7px; width:100%; padding:0; background:transparent; border:0; }
-    .zion-nav div[role="radiogroup"] label { flex:1 1 0; min-width:0; justify-content:center; background:rgba(255,255,255,.018); border:1px solid transparent; border-radius:12px; padding:11px 9px; transition:background .2s ease,border-color .2s ease,transform .2s ease,box-shadow .2s ease; white-space:nowrap; }
-    .zion-nav div[role="radiogroup"] label:hover { background:rgba(64,142,230,.10); border-color:rgba(94,169,255,.28); transform:translateY(-1px); }
-    .zion-nav div[role="radiogroup"] label[data-checked="true"] { background:linear-gradient(145deg,rgba(34,111,194,.28),rgba(20,63,112,.22)); border-color:rgba(91,169,255,.62); box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 5px 18px rgba(20,105,200,.16); position:relative; }
-    .zion-nav div[role="radiogroup"] label[data-checked="true"]:after { content:""; position:absolute; left:22%; right:22%; bottom:-2px; height:2px; border-radius:3px; background:linear-gradient(90deg,transparent,#59B7FF,transparent); box-shadow:0 0 10px rgba(73,174,255,.8); }
-    .zion-nav div[role="radiogroup"] label p { color:#9EADBF !important; font-weight:650; font-size:.77rem; letter-spacing:.01em; transition:color .2s ease; }
-    .zion-nav div[role="radiogroup"] label[data-checked="true"] p { color:#EAF5FF !important; font-weight:750; }
-    .zion-nav div[role="radiogroup"] label input { accent-color:#55B5FF; }
-    .zion-nav div[role="radiogroup"] label [data-testid="stMarkdownContainer"] { overflow:visible; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] { display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:stretch; gap:7px; width:100%; padding:0; background:transparent; border:0; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 0; min-width:0; justify-content:center; background:rgba(255,255,255,.018); border:1px solid transparent; border-radius:12px; padding:11px 9px; transition:background .2s ease,border-color .2s ease,transform .2s ease,box-shadow .2s ease; white-space:nowrap; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label:hover { background:rgba(64,142,230,.10); border-color:rgba(94,169,255,.28); transform:translateY(-1px); }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label[data-checked="true"] { background:linear-gradient(145deg,rgba(34,111,194,.28),rgba(20,63,112,.22)); border-color:rgba(91,169,255,.62); box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 5px 18px rgba(20,105,200,.16); position:relative; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label[data-checked="true"]:after { content:""; position:absolute; left:22%; right:22%; bottom:-2px; height:2px; border-radius:3px; background:linear-gradient(90deg,transparent,#59B7FF,transparent); box-shadow:0 0 10px rgba(73,174,255,.8); }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label p { color:#9EADBF !important; font-weight:650; font-size:.77rem; letter-spacing:.01em; transition:color .2s ease; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label[data-checked="true"] p { color:#EAF5FF !important; font-weight:750; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label input { accent-color:#55B5FF; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"] { overflow:visible; }
     .zion-brand-left { display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px; padding:2px 0 8px; }
     .zion-brand-left img { display:block; width:auto; max-width:190px; max-height:58px; object-fit:contain; object-position:left center; }
     .zion-brand-left .dion-brand { margin:0; }
@@ -108,17 +108,17 @@ st.markdown("""
     .global-news-text { flex:1; color:#E5EEE8; font-size:.84rem; line-height:1.4; font-weight:550; }
     .global-news-date { color:#829188; font-size:.7rem; white-space:nowrap; }
     .global-news-arrow { color:#00C781; font-size:1rem; }
-    @media (max-width: 1050px) { .zion-nav div[role="radiogroup"] { flex-wrap:wrap; } .zion-nav div[role="radiogroup"] label { flex:1 1 28%; } .global-heading { min-height:180px; } }
+    @media (max-width: 1050px) { [class*="st-key-zion_nav"] div[role="radiogroup"] { flex-wrap:wrap; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 28%; } .global-heading { min-height:180px; } }
     /* Faixas fotográficas discretas: imagem apenas no cabeçalho, nunca atrás dos dados. */
-    .hero-header { min-height:108px !important; height:108px; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); background-position:center 45%; }
+    .hero-header { background-size:cover !important; background-repeat:no-repeat !important; min-height:108px !important; height:108px; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); background-position:center 45%; }
     .hero-overlay { padding:15px 24px !important; background:linear-gradient(90deg,rgba(4,10,16,.94) 0%,rgba(4,12,19,.78) 52%,rgba(4,12,19,.30) 100%) !important; }
     .hero-title { font-size:clamp(1.05rem,1.8vw,1.45rem) !important; letter-spacing:-.35px; }
     .hero-subtitle { font-size:.76rem !important; margin-top:4px !important; max-width:720px; color:#D0DBE6 !important; }
-    .global-heading { min-height:108px !important; height:108px; padding:15px 24px !important; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); }
+    .global-heading { background-size:cover !important; background-repeat:no-repeat !important; background-position:center !important; min-height:108px !important; height:108px; padding:15px 24px !important; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); }
     .global-eyebrow { font-size:.60rem; margin-bottom:4px; }
     .global-title { font-size:clamp(1.2rem,2vw,1.55rem) !important; letter-spacing:-.5px; }
     .global-description { font-size:.76rem; margin-top:4px; color:#D0DBE6; }
-    @media (max-width: 800px) { .global-heading { min-height:100px !important; height:100px; padding:13px 16px !important; } .hero-header { min-height:100px !important; height:100px; } .hero-overlay { padding:13px 16px !important; } .hero-subtitle { max-width:90%; font-size:.68rem !important; } .global-description { font-size:.68rem; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } .zion-nav div[role="radiogroup"] { gap:4px; } .zion-nav div[role="radiogroup"] label { flex:1 1 44%; padding:8px 7px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
+    @media (max-width: 800px) { .global-heading { min-height:100px !important; height:100px; padding:13px 16px !important; } .hero-header { min-height:100px !important; height:100px; } .hero-overlay { padding:13px 16px !important; } .hero-subtitle { max-width:90%; font-size:.68rem !important; } .global-description { font-size:.68rem; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } [class*="st-key-zion_nav"] div[role="radiogroup"] { gap:4px; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 44%; padding:8px 7px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -615,14 +615,13 @@ with st.container():
             unsafe_allow_html=True
         )
 
-    # Navegação em uma linha separada, logo abaixo da marca.
-    st.markdown("<div class='zion-nav'>", unsafe_allow_html=True)
-    st.session_state["aba_ativa"] = st.radio(
-        "Menu de Navegação", opcoes_menu,
-        index=opcoes_menu.index(st.session_state["aba_ativa"]),
-        key="seletor_principal", horizontal=True, label_visibility="collapsed"
-    )
-    st.markdown("</div>", unsafe_allow_html=True)
+    # Navegação em container real do Streamlit para que o CSS alcance o seletor.
+    with st.container(key="zion_nav"):
+        st.session_state["aba_ativa"] = st.radio(
+            "Menu de Navegação", opcoes_menu,
+            index=opcoes_menu.index(st.session_state["aba_ativa"]),
+            key="seletor_principal", horizontal=True, label_visibility="collapsed"
+        )
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================

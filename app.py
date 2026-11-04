@@ -109,7 +109,31 @@ st.markdown("""
     .global-news-date { color:#829188; font-size:.7rem; white-space:nowrap; }
     .global-news-arrow { color:#00C781; font-size:1rem; }
     @media (max-width: 1050px) { [class*="st-key-zion_nav"] div[role="radiogroup"] { flex-wrap:wrap; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 28%; } .global-heading { min-height:180px; } }
-    /* Faixas fotográficas discretas: imagem apenas no cabeçalho, nunca atrás dos dados. */
+    /* Navegação por botões nativos do Streamlit: visual consistente sem st.radio. */
+    [class*="st-key-zion_nav"] { width:100%; }
+    [class*="st-key-zion_nav_item_"] .stButton button {
+        min-height:48px; width:100%; border-radius:12px !important;
+        border:1px solid rgba(133,170,153,.18) !important;
+        background:linear-gradient(145deg,rgba(18,34,26,.96),rgba(9,20,15,.98)) !important;
+        color:#C7D8CE !important; font-weight:700 !important; font-size:.78rem !important;
+        white-space:nowrap; padding:9px 8px !important;
+        transition:all .18s ease; box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+    }
+    [class*="st-key-zion_nav_item_"] .stButton button:hover {
+        border-color:rgba(0,215,137,.62) !important; color:#F2FFF8 !important;
+        background:linear-gradient(145deg,rgba(16,65,44,.98),rgba(10,35,25,.98)) !important;
+        transform:translateY(-1px); box-shadow:0 7px 20px rgba(0,199,129,.12);
+    }
+    .st-key-zion_nav_item_0 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_1 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_2 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_3 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_4 .stButton button[kind="primary"] {
+        color:#EFFFF6 !important; border:1px solid rgba(0,220,140,.75) !important;
+        background:linear-gradient(135deg,rgba(0,133,83,.92),rgba(7,65,43,.98)) !important;
+        box-shadow:0 0 0 1px rgba(0,199,129,.10),0 7px 22px rgba(0,199,129,.16) !important;
+    }
+    /* Faixas fotográficas discretas: imagem somente no cabeçalho. */
     .hero-header { background-size:cover !important; background-repeat:no-repeat !important; min-height:108px !important; height:108px; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); background-position:center 45%; }
     .hero-overlay { padding:15px 24px !important; background:linear-gradient(90deg,rgba(4,10,16,.94) 0%,rgba(4,12,19,.78) 52%,rgba(4,12,19,.30) 100%) !important; }
     .hero-title { font-size:clamp(1.05rem,1.8vw,1.45rem) !important; letter-spacing:-.35px; }
@@ -579,21 +603,32 @@ with st.sidebar:
 
 # --- NAVEGAÇÃO SUPERIOR ---
 opcoes_menu = [
-    "🌐 1. Visão Global",
-    "🇧🇷 2. Mercado Brasileiro",
-    "📈 3. Análise Profissional & IA",
-    "💼 4. Gestão de Carteira",
-    "🧮 5. Simulador"
+    "🌐 Visão Global",
+    "🇧🇷 Mercado Brasileiro",
+    "📈 Análise Profissional & IA",
+    "💼 Gestão de Carteira",
+    "🧮 Simulador"
 ]
 
-if "aba_ativa" not in st.session_state or st.session_state["aba_ativa"] not in opcoes_menu:
+# Mantém compatibilidade com sessões que ainda guardam os rótulos numerados antigos.
+mapa_rotulos_antigos = {
+    "🌐 1. Visão Global": opcoes_menu[0],
+    "🇧🇷 2. Mercado Brasileiro": opcoes_menu[1],
+    "📈 3. Análise Profissional & IA": opcoes_menu[2],
+    "💼 4. Gestão de Carteira": opcoes_menu[3],
+    "🧮 5. Simulador": opcoes_menu[4],
+}
+if st.session_state.get("aba_ativa") in mapa_rotulos_antigos:
+    st.session_state["aba_ativa"] = mapa_rotulos_antigos[st.session_state["aba_ativa"]]
+if st.session_state.get("aba_ativa") not in opcoes_menu:
     st.session_state["aba_ativa"] = opcoes_menu[0]
 
-# Cabeçalho superior: marca ZION à esquerda, acima do menu e dos indicadores.
+def selecionar_aba_zion(opcao):
+    st.session_state["aba_ativa"] = opcao
+
+# Cabeçalho com marca, status e navegação em botões reais (não usa st.radio).
 with st.container():
     st.markdown("<div class='zion-topbar'>", unsafe_allow_html=True)
-
-    # Marca no canto superior esquerdo.
     col_brand, col_status = st.columns([7, 2], gap="small", vertical_alignment="center")
     with col_brand:
         logo_zion_path = Path(__file__).parent / "logo_zion.png"
@@ -615,19 +650,25 @@ with st.container():
             unsafe_allow_html=True
         )
 
-    # Navegação em container real do Streamlit para que o CSS alcance o seletor.
     with st.container(key="zion_nav"):
-        st.session_state["aba_ativa"] = st.radio(
-            "Menu de Navegação", opcoes_menu,
-            index=opcoes_menu.index(st.session_state["aba_ativa"]),
-            key="seletor_principal", horizontal=True, label_visibility="collapsed"
-        )
+        colunas_menu = st.columns(5, gap="small")
+        for indice, (coluna, opcao) in enumerate(zip(colunas_menu, opcoes_menu)):
+            with coluna:
+                with st.container(key=f"zion_nav_item_{indice}"):
+                    st.button(
+                        opcao,
+                        key=f"zion_nav_button_{indice}",
+                        type="primary" if st.session_state["aba_ativa"] == opcao else "secondary",
+                        use_container_width=True,
+                        on_click=selecionar_aba_zion,
+                        args=(opcao,)
+                    )
     st.markdown("</div>", unsafe_allow_html=True)
 
 # ==========================================
 # SEÇÃO 1: VISÃO GLOBAL
 # ==========================================
-if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
+if st.session_state["aba_ativa"] == "🌐 Visão Global":
     # Faixa de rolagem com os principais ativos internacionais.
     tickers_globais = ["^GSPC", "^IXIC", "^DJI", "^NDX", "GC=F", "BZ=F", "BTC-USD", "EURUSD=X", "USDBRL=X"]
     renderizar_ticker_tape(tickers_globais)
@@ -734,7 +775,7 @@ if st.session_state["aba_ativa"] == "🌐 1. Visão Global":
 # ==========================================
 # SEÇÃO 2: MERCADO BRASILEIRO
 # ==========================================
-elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
+elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11"]
     renderizar_ticker_tape(tickers_br)
 
@@ -800,7 +841,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 2. Mercado Brasileiro":
 # ==========================================
 # SEÇÃO 3: ANÁLISE PROFISSIONAL MULTI-ATIVOS
 # ==========================================
-elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
+elif st.session_state["aba_ativa"] == "📈 Análise Profissional & IA":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1642543492481-44e81e3914a7?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -903,7 +944,7 @@ elif st.session_state["aba_ativa"] == "📈 3. Análise Profissional & IA":
 # ==========================================
 # SEÇÃO 4: GESTÃO DE CARTEIRA COMPLETA
 # ==========================================
-elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
+elif st.session_state["aba_ativa"] == "💼 Gestão de Carteira":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">
@@ -1076,7 +1117,7 @@ elif st.session_state["aba_ativa"] == "💼 4. Gestão de Carteira":
 # ==========================================
 # SEÇÃO 5: SIMULADOR
 # ==========================================
-elif st.session_state["aba_ativa"] == "🧮 5. Simulador":
+elif st.session_state["aba_ativa"] == "🧮 Simulador":
     st.markdown("""
         <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?auto=format&fit=crop&w=1200&q=80');">
             <div class="hero-overlay">

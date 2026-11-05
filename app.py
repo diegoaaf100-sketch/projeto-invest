@@ -30,7 +30,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- DESIGN SYSTEM ZION | DARK INSTITUTIONAL ---
+# --- DESIGN SYSTEM ZION | DARK INSTITUTIONAL (LAYOUT ORIGINAL RESTAURADO) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -54,7 +54,21 @@ st.markdown("""
     .dion-name { color:#F5FFF8; font-size:27px; line-height:1.05; font-weight:850; letter-spacing:2.3px; }
     .dion-tagline { color:#00C781; font-size:9px; letter-spacing:2px; margin-top:5px; font-weight:700; }
     
-    /* Estilos dos Cartões de Ranking */
+    div[data-testid="stMetric"] { background:linear-gradient(145deg,rgba(19,32,25,.96),rgba(12,21,16,.96)) !important; border:1px solid var(--dion-border) !important; border-radius:15px !important; padding:17px 19px !important; min-height:105px; box-shadow:0 10px 28px rgba(0,0,0,.18); transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+    div[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(0,199,129,.48) !important; box-shadow:0 14px 30px rgba(0,199,129,.08); }
+    div[data-testid="stMetricValue"] { color:#F4FBF6 !important; font-size:1.45rem !important; font-weight:750 !important; }
+    div[data-testid="stMetricLabel"] { color:#91A198 !important; font-size:.72rem !important; font-weight:700 !important; text-transform:uppercase; letter-spacing:.7px; }
+    [data-testid="stMetricDelta"] { font-size:.82rem !important; font-weight:650 !important; }
+    
+    /* Visão Global: Hierarquia e Fundo Original Restaurados */
+    .global-heading { position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:180px; padding:28px 34px; margin:0 0 18px; border-radius:16px; overflow:hidden; border:1px solid rgba(0,210,130,.22); background:linear-gradient(90deg,rgba(2,10,7,.96) 0%,rgba(2,12,8,.78) 40%,rgba(2,12,8,.12) 100%),url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=85') center 48%/cover; box-shadow:0 14px 38px rgba(0,0,0,.25); }
+    .global-eyebrow { color:#00D98B; font-size:.68rem; font-weight:800; letter-spacing:2px; margin-bottom:7px; }
+    .global-title { color:#F4FBF6; font-size:clamp(2rem,3.5vw,3rem); line-height:1.0; font-weight:850; letter-spacing:-1.2px; }
+    .global-description { color:#F1F7F3; font-size:.9rem; margin-top:8px; }
+    .global-status { color:#91A198; font-size:.65rem; letter-spacing:1.1px; font-weight:700; white-space:nowrap; padding:8px 11px; border:1px solid var(--dion-border); border-radius:20px; }
+    .global-status span { display:inline-block; width:7px; height:7px; margin-right:7px; border-radius:50%; background:#00C781; box-shadow:0 0 9px rgba(0,199,129,.65); }
+
+    /* Estilos dos Painéis de Ranking Inferiores */
     .market-card { background:linear-gradient(145deg, rgba(16, 25, 21, 0.95), rgba(10, 18, 14, 0.98)); border:1px solid rgba(174, 205, 187, 0.13); border-radius:18px; padding:22px 20px; box-shadow:0 10px 30px rgba(0, 0, 0, 0.25); display:flex; flex-direction:column; justify-content:space-between; min-height: 420px; }
     .market-card-header { text-align:center; margin-bottom:18px; border-bottom:1px solid rgba(174, 205, 187, 0.1); padding-bottom:14px; }
     .market-card-category { display:flex; align-items:center; justify-content:center; gap:8px; color:#91A198; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
@@ -288,11 +302,15 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 
 # --- ABA 1: VISÃO GLOBAL ---
 with tab1:
+    # Cabeçalho com o visual institucional original idêntico ao seu projeto
     st.markdown("""
-    <div class="global-heading" style="padding:15px 24px; margin:8px 0 16px; border-radius:12px; background:linear-gradient(90deg,rgba(2,10,7,.96) 0%,rgba(2,12,8,.78) 40%,rgba(2,12,8,.12) 100%); border:1px solid rgba(0,210,130,.22);">
-        <div style="color:#00D98B; font-size:.68rem; font-weight:800; letter-spacing:2px; margin-bottom:7px;">MERCADO GLOBAL & PANORAMA INSTITUCIONAL</div>
-        <div style="color:#F4FBF6; font-size:1.55rem; font-weight:850; letter-spacing:-.5px;">Painel de Mercado</div>
-        <div style="color:#D0DBE6; font-size:.76rem; margin-top:4px;">Acompanhe os principais indicadores, tendências e cotações em tempo real.</div>
+    <div class="global-heading">
+        <div>
+            <div class="global-eyebrow">MERCADO GLOBAL & PANORAMA INSTITUCIONAL</div>
+            <div class="global-title">Painel de Mercado</div>
+            <div class="global-description">Acompanhe os principais indicadores, tendências e cotações em tempo real.</div>
+        </div>
+        <div class="global-status"><span></span>CONEXÃO EM TEMPO REAL</div>
     </div>
     """, unsafe_allow_html=True)
     
@@ -308,7 +326,7 @@ with tab1:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- PAINÉIS INFERIORES: USANDO COLUNAS NATIVAS DO STREAMLIT PARA GARANTIR RENDERIZAÇÃO ---
+    # --- PAINÉIS INFERIORES: RANKINGS DE MERCADO (STOCKS, CRIPTOMOEDAS, BDRS) ---
     col_card1, col_card2, col_card3 = st.columns(3)
 
     # CARD 1: STOCKS

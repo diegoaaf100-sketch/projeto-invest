@@ -144,23 +144,26 @@ st.markdown("""
     .global-description { font-size:.76rem; margin-top:4px; color:#D0DBE6; }
     @media (max-width: 800px) { .global-heading { min-height:100px !important; height:100px; padding:13px 16px !important; } .hero-header { min-height:100px !important; height:100px; } .hero-overlay { padding:13px 16px !important; } .hero-subtitle { max-width:90%; font-size:.68rem !important; } .global-description { font-size:.68rem; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } [class*="st-key-zion_nav"] div[role="radiogroup"] { gap:4px; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 44%; padding:8px 7px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
 
-    /* Rankings no rodapé da Visão Global */
-    .ranking-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin:28px 0 12px; }
-    .ranking-title { color:#F2FAF5; font-size:1.12rem; font-weight:800; letter-spacing:-.35px; }
-    .ranking-subtitle { color:#91A198; font-size:.72rem; margin-top:4px; }
-    .ranking-panel-title { color:#EAF5EE; font-size:.93rem; font-weight:800; margin-bottom:2px; }
-    .ranking-panel-note { color:#8FA197; font-size:.66rem; margin-bottom:12px; }
-    .ranking-item-name { color:#EAF5EE; font-size:.77rem; font-weight:700; line-height:1.2; }
-    .ranking-item-detail { color:#87988E; font-size:.65rem; line-height:1.25; }
-    .ranking-price { color:#EAF5EE; font-size:.76rem; font-weight:700; text-align:right; white-space:nowrap; }
-    .ranking-change { font-size:.65rem; text-align:right; white-space:nowrap; }
-    .ranking-separator { border-bottom:1px solid rgba(174,205,187,.10); margin:7px 0; }
+    /* Rankings: cartões compactos, logos e alinhamento consistente */
+    .ranking-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin:30px 0 14px; }
+    .ranking-title { color:#F2FAF5; font-size:1.22rem; font-weight:800; letter-spacing:-.4px; }
+    .ranking-subtitle { color:#91A198; font-size:.74rem; margin-top:4px; }
+    .ranking-panel-title { color:#F0F7F2; font-size:1rem; font-weight:800; margin-bottom:3px; }
+    .ranking-panel-note { color:#91A198; font-size:.69rem; margin-bottom:13px; min-height:18px; }
+    .ranking-item-detail { color:#87988E; font-size:.68rem; line-height:1.25; }
+    .ranking-price { color:#F0F7F2; font-size:.77rem; font-weight:750; text-align:right; white-space:nowrap; }
+    .ranking-change { font-size:.68rem; font-weight:650; text-align:right; white-space:nowrap; margin-top:3px; }
+    .ranking-separator { border-bottom:1px solid rgba(174,205,187,.12); margin:9px 0; }
+    .ranking-logo-fallback { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#20372B,#102018); border:1px solid rgba(0,199,129,.22); color:#BFFFE0; font-size:.68rem; font-weight:800; }
     [class*="st-key-ranking_acao_"] .stButton button,
     [class*="st-key-ranking_crypto_"] .stButton button,
-    [class*="st-key-ranking_bdr_"] .stButton button { background:transparent !important; border:0 !important; color:#EAF5EE !important; padding:3px 2px !important; min-height:30px !important; text-align:left !important; font-size:.76rem !important; font-weight:750 !important; }
+    [class*="st-key-ranking_bdr_"] .stButton button { width:100% !important; background:transparent !important; border:0 !important; color:#F0F7F2 !important; padding:1px 0 !important; min-height:25px !important; text-align:left !important; justify-content:flex-start !important; font-size:.80rem !important; font-weight:750 !important; box-shadow:none !important; }
     [class*="st-key-ranking_acao_"] .stButton button:hover,
     [class*="st-key-ranking_crypto_"] .stButton button:hover,
-    [class*="st-key-ranking_bdr_"] .stButton button:hover { color:#00D98B !important; background:rgba(0,199,129,.07) !important; }
+    [class*="st-key-ranking_bdr_"] .stButton button:hover { color:#00D98B !important; background:rgba(0,199,129,.06) !important; }
+    [class*="st-key-ranking_acao_"] .stButton button div,
+    [class*="st-key-ranking_crypto_"] .stButton button div,
+    [class*="st-key-ranking_bdr_"] .stButton button div { justify-content:flex-start !important; }
     @media (max-width: 900px) { .ranking-intro { align-items:flex-start; flex-direction:column; } }
 
 </style>
@@ -480,7 +483,8 @@ def buscar_ranking_acoes():
                 "preco": float(preco),
                 "variacao": variacao,
                 "capitalizacao": float(cap),
-                "moeda": info.get("currency", "USD")
+                "moeda": info.get("currency", "USD"),
+                "logo": info.get("logo_url")
             })
         except Exception:
             continue
@@ -510,7 +514,8 @@ def buscar_ranking_cripto():
                 "nome": item.get("name", "Criptoativo"),
                 "preco": float(item.get("current_price") or 0),
                 "variacao": item.get("price_change_percentage_24h"),
-                "capitalizacao": float(item.get("market_cap") or 0)
+                "capitalizacao": float(item.get("market_cap") or 0),
+                "logo": item.get("image")
             })
         return saida
     except Exception:
@@ -541,7 +546,8 @@ def buscar_ranking_bdrs():
                 "nome": info.get("shortName") or info.get("longName") or ticker.replace(".SA", ""),
                 "preco": preco,
                 "variacao": variacao,
-                "volume": volume
+                "volume": volume,
+                "logo": info.get("logo_url")
             })
         except Exception:
             continue
@@ -565,6 +571,28 @@ def abrir_ativo_do_ranking(ticker):
     st.rerun()
 
 
+def obter_logo_ranking(item, tipo):
+    """Obtém o logotipo do emissor/ativo; retorna None para usar avatar de fallback."""
+    logo = item.get("logo")
+    if logo:
+        return logo
+    ticker = str(item.get("ticker", "")).upper().replace(".SA", "")
+    logos_empresas = {
+        "AAPL": "https://logo.clearbit.com/apple.com", "MSFT": "https://logo.clearbit.com/microsoft.com",
+        "NVDA": "https://logo.clearbit.com/nvidia.com", "AMZN": "https://logo.clearbit.com/amazon.com",
+        "GOOGL": "https://logo.clearbit.com/google.com", "GOOG": "https://logo.clearbit.com/google.com",
+        "META": "https://logo.clearbit.com/meta.com", "AVGO": "https://logo.clearbit.com/broadcom.com",
+        "TSLA": "https://logo.clearbit.com/tesla.com", "BRK-B": "https://logo.clearbit.com/berkshirehathaway.com",
+        "TSM": "https://logo.clearbit.com/tsmc.com", "WMT": "https://logo.clearbit.com/walmart.com",
+        "AAPL34": "https://logo.clearbit.com/apple.com", "MSFT34": "https://logo.clearbit.com/microsoft.com",
+        "NVDC34": "https://logo.clearbit.com/nvidia.com", "AMZO34": "https://logo.clearbit.com/amazon.com",
+        "GOGL34": "https://logo.clearbit.com/google.com", "META34": "https://logo.clearbit.com/meta.com",
+        "TSLA34": "https://logo.clearbit.com/tesla.com", "NFLX34": "https://logo.clearbit.com/netflix.com",
+        "ORCL34": "https://logo.clearbit.com/oracle.com", "AVGO34": "https://logo.clearbit.com/broadcom.com",
+    }
+    return logos_empresas.get(ticker)
+
+
 def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
     with coluna:
         with st.container(border=True):
@@ -573,30 +601,47 @@ def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
             if not itens:
                 st.caption("Ranking temporariamente indisponível. Tente atualizar em instantes.")
                 return
+
             for posicao, item in enumerate(itens, start=1):
-                ticker = item.get("ticker", "")
-                nome = str(item.get("nome", ticker))
-                if len(nome) > 24:
-                    nome = nome[:22] + "…"
-                c_rank, c_ativo, c_valor = st.columns([0.12, 0.52, 0.36], vertical_alignment="center")
+                ticker = str(item.get("ticker", ""))
+                ticker_visivel = ticker.replace(".SA", "")
+                nome = str(item.get("nome", ticker_visivel))
+                logo_url = obter_logo_ranking(item, tipo)
+                variacao = item.get("variacao")
+                moeda = "BRL" if ticker.endswith(".SA") else "USD"
+
+                c_rank, c_logo, c_ativo, c_valor = st.columns(
+                    [0.10, 0.16, 0.43, 0.31], vertical_alignment="center", gap="small"
+                )
                 with c_rank:
-                    st.markdown(f"<div class='ranking-item-detail'>#{posicao}</div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='ranking-item-detail' style='font-weight:750;color:#A7B9AE'>#{posicao}</div>", unsafe_allow_html=True)
+                with c_logo:
+                    if logo_url:
+                        try:
+                            st.image(logo_url, width=36)
+                        except Exception:
+                            iniciais = html.escape(ticker_visivel[:2])
+                            st.markdown(f"<div class='ranking-logo-fallback'>{iniciais}</div>", unsafe_allow_html=True)
+                    else:
+                        iniciais = html.escape(ticker_visivel[:2])
+                        st.markdown(f"<div class='ranking-logo-fallback'>{iniciais}</div>", unsafe_allow_html=True)
                 with c_ativo:
-                    st.button(ticker.replace(".SA", ""), key=f"ranking_{tipo}_{posicao}_{ticker}",
+                    st.button(ticker_visivel, key=f"ranking_{tipo}_{posicao}_{ticker}",
                               use_container_width=True, on_click=abrir_ativo_do_ranking, args=(ticker,))
-                    st.markdown(f"<div class='ranking-item-detail'>{html.escape(nome)}</div>", unsafe_allow_html=True)
+                    nome_curto = nome if len(nome) <= 25 else nome[:23] + "…"
+                    st.markdown(f"<div class='ranking-item-detail'>{html.escape(nome_curto)}</div>", unsafe_allow_html=True)
                 with c_valor:
-                    moeda = "BRL" if ticker.endswith(".SA") else "USD"
                     preco_txt = formatar_preco_ranking(item.get("preco", 0), moeda)
                     st.markdown(f"<div class='ranking-price'>{preco_txt}</div>", unsafe_allow_html=True)
-                    variacao = item.get("variacao")
                     if variacao is not None:
-                        cor = "#00D98B" if float(variacao) >= 0 else "#F07878"
-                        st.markdown(f"<div class='ranking-change' style='color:{cor}'>{float(variacao):+.2f}%</div>", unsafe_allow_html=True)
+                        try:
+                            cor = "#00D98B" if float(variacao) >= 0 else "#F07878"
+                            st.markdown(f"<div class='ranking-change' style='color:{cor}'>{float(variacao):+.2f}%</div>", unsafe_allow_html=True)
+                        except (TypeError, ValueError):
+                            pass
                 if posicao < len(itens):
                     st.markdown("<div class='ranking-separator'></div>", unsafe_allow_html=True)
-            st.markdown("<div style='height:3px'></div>", unsafe_allow_html=True)
-            st.caption("Selecione um ativo para abrir sua análise.")
+            st.caption("Clique em um ativo para abrir sua análise.")
 
 
 def renderizar_rankings_mercado():

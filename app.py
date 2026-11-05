@@ -30,7 +30,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- DESIGN SYSTEM ZION | DARK INSTITUTIONAL (LAYOUT ORIGINAL RESTAURADO) ---
+# --- DESIGN SYSTEM ZION | DARK INSTITUTIONAL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -53,20 +53,61 @@ st.markdown("""
     .dion-mark { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#00D68A,#087849); color:#03130B; font-size:25px; font-weight:900; box-shadow:0 8px 26px rgba(0,199,129,.20); }
     .dion-name { color:#F5FFF8; font-size:27px; line-height:1.05; font-weight:850; letter-spacing:2.3px; }
     .dion-tagline { color:#00C781; font-size:9px; letter-spacing:2px; margin-top:5px; font-weight:700; }
-    
+    .hero-header { position:relative; width:100%; min-height:178px; border-radius:18px; background-size:cover; background-position:center 48%; margin:10px 0 24px; overflow:hidden; border:1px solid var(--dion-border); box-shadow:0 18px 48px rgba(0,0,0,.30); }
+    .hero-overlay { position:absolute; inset:0; background:linear-gradient(90deg,rgba(4,12,8,.96) 0%,rgba(5,18,12,.82) 48%,rgba(5,18,12,.18) 100%); padding:30px 34px; display:flex; flex-direction:column; justify-content:center; }
+    .hero-title { font-size:clamp(1.55rem,2.4vw,2.1rem); font-weight:800; color:#fff; letter-spacing:-.7px; margin:0; }
+    .hero-subtitle { font-size:.9rem; color:#65E6AD; margin-top:8px; font-weight:500; max-width:680px; }
+    .section-kicker { color:#00C781; font-size:.72rem; text-transform:uppercase; letter-spacing:1.8px; font-weight:800; margin:4px 0 6px; }
     div[data-testid="stMetric"] { background:linear-gradient(145deg,rgba(19,32,25,.96),rgba(12,21,16,.96)) !important; border:1px solid var(--dion-border) !important; border-radius:15px !important; padding:17px 19px !important; min-height:105px; box-shadow:0 10px 28px rgba(0,0,0,.18); transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
     div[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(0,199,129,.48) !important; box-shadow:0 14px 30px rgba(0,199,129,.08); }
     div[data-testid="stMetricValue"] { color:#F4FBF6 !important; font-size:1.45rem !important; font-weight:750 !important; }
     div[data-testid="stMetricLabel"] { color:#91A198 !important; font-size:.72rem !important; font-weight:700 !important; text-transform:uppercase; letter-spacing:.7px; }
     [data-testid="stMetricDelta"] { font-size:.82rem !important; font-weight:650 !important; }
+    .news-card { display:flex; align-items:stretch; background:linear-gradient(110deg,rgba(10,22,17,.96),rgba(5,13,10,.96)); border-radius:14px; border:1px solid rgba(0,199,129,.25); overflow:hidden; margin-bottom:12px; transition:transform .22s ease,border-color .22s ease; min-height:148px; height:148px; }
+    .news-card:hover { transform:translateY(-2px); border-color:rgba(0,220,135,.65); }
+    .news-img { width:38%; height:148px; object-fit:cover; display:block; flex:0 0 38%; }
+    .news-content { padding:12px 13px; display:flex; flex:1; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden; }
+    .news-title { font-weight:700; color:#F1F7F3; font-size:.82rem; line-height:1.35; min-height:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
+    .news-date { flex:0 0 auto; margin-top:8px; padding-top:7px; border-top:1px solid rgba(174,205,187,.12); font-size:.67rem; line-height:1.25; color:#00C781; font-weight:600; white-space:normal; }
     
-    /* Visão Global: Hierarquia e Fundo Original Restaurados */
-    .global-heading { position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:180px; padding:28px 34px; margin:0 0 18px; border-radius:16px; overflow:hidden; border:1px solid rgba(0,210,130,.22); background:linear-gradient(90deg,rgba(2,10,7,.96) 0%,rgba(2,12,8,.78) 40%,rgba(2,12,8,.12) 100%),url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=85') center 48%/cover; box-shadow:0 14px 38px rgba(0,0,0,.25); }
+    /* Navegação ZION original */
+    .zion-topbar { padding:8px 0 15px; margin-bottom:12px; border-bottom:1px solid rgba(92,166,255,.20); }
+    .zion-brand-left { display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px; padding:2px 0 8px; }
+    .zion-brand-left img { display:block; width:auto; max-width:190px; max-height:58px; object-fit:contain; object-position:left center; }
+    .zion-brand-left .dion-brand { margin:0; }
+    .zion-brand-left .dion-mark { width:46px; height:46px; }
+    .zion-header-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 0 8px; }
+    button[kind="primary"], .stButton button[kind="primary"] { background:linear-gradient(135deg,#00C781,#07834F) !important; color:#04130B !important; border:0 !important; font-weight:750 !important; border-radius:10px !important; }
+    .stButton button, .stDownloadButton button { border-radius:10px !important; border-color:var(--dion-border) !important; }
+    input, textarea, [data-baseweb="select"] > div { background-color:#101915 !important; border-color:var(--dion-border) !important; }
+    .stTabs [data-baseweb="tab-list"] { gap:8px; }
+    .stTabs [data-baseweb="tab"] { background:transparent; border-radius:9px 9px 0 0; color:#91A198; font-weight:650; }
+    .stTabs [aria-selected="true"] { color:#00C781 !important; border-bottom-color:#00C781 !important; }
+    [data-testid="stDataFrame"], [data-testid="stDataEditor"] { border:1px solid var(--dion-border); border-radius:12px; overflow:hidden; }
+    
+    /* Visão Global: hierarquia enxuta e leitura editorial */
+    .global-heading { position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:225px; padding:28px 34px; margin:0 0 18px; border-radius:16px; overflow:hidden; border:1px solid rgba(0,210,130,.22); background:linear-gradient(90deg,rgba(2,10,7,.96) 0%,rgba(2,12,8,.78) 40%,rgba(2,12,8,.12) 100%),url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=85') center 48%/cover; box-shadow:0 14px 38px rgba(0,0,0,.25); }
     .global-eyebrow { color:#00D98B; font-size:.68rem; font-weight:800; letter-spacing:2px; margin-bottom:7px; }
-    .global-title { color:#F4FBF6; font-size:clamp(2rem,3.5vw,3rem); line-height:1.0; font-weight:850; letter-spacing:-1.2px; }
-    .global-description { color:#F1F7F3; font-size:.9rem; margin-top:8px; }
+    .global-title { color:#F4FBF6; font-size:clamp(2.5rem,5vw,4rem); line-height:1.0; font-weight:850; letter-spacing:-1.8px; }
+    .global-description { color:#F1F7F3; font-size:1rem; margin-top:8px; }
     .global-status { color:#91A198; font-size:.65rem; letter-spacing:1.1px; font-weight:700; white-space:nowrap; padding:8px 11px; border:1px solid var(--dion-border); border-radius:20px; }
     .global-status span { display:inline-block; width:7px; height:7px; margin-right:7px; border-radius:50%; background:#00C781; box-shadow:0 0 9px rgba(0,199,129,.65); }
+
+    /* Navegação por botões customizados */
+    [class*="st-key-zion_nav"] { width:100%; }
+    [class*="st-key-zion_nav_item_"] .stButton button {
+        min-height:48px; width:100%; border-radius:12px !important;
+        border:1px solid rgba(133,170,153,.18) !important;
+        background:linear-gradient(145deg,rgba(18,34,26,.96),rgba(9,20,15,.98)) !important;
+        color:#C7D8CE !important; font-weight:700 !important; font-size:.78rem !important;
+        white-space:nowrap; padding:9px 8px !important;
+        transition:all .18s ease; box-shadow:inset 0 1px 0 rgba(255,255,255,.025);
+    }
+    [class*="st-key-zion_nav_item_"] .stButton button:hover {
+        border-color:rgba(0,215,137,.62) !important; color:#F2FFF8 !important;
+        background:linear-gradient(145deg,rgba(16,65,44,.98),rgba(10,35,25,.98)) !important;
+        transform:translateY(-1px); box-shadow:0 7px 20px rgba(0,199,129,.12);
+    }
 
     /* Estilos dos Painéis de Ranking Inferiores */
     .market-card { background:linear-gradient(145deg, rgba(16, 25, 21, 0.95), rgba(10, 18, 14, 0.98)); border:1px solid rgba(174, 205, 187, 0.13); border-radius:18px; padding:22px 20px; box-shadow:0 10px 30px rgba(0, 0, 0, 0.25); display:flex; flex-direction:column; justify-content:space-between; min-height: 420px; }
@@ -274,9 +315,9 @@ def renderizar_ticker_tape(lista_tickers):
 
 # Cabeçalho da aplicação
 st.markdown("""
-<div class="zion-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 0 8px;">
-    <div class="zion-brand-left" style="display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px;">
-        <div class="dion-brand" style="display:flex; align-items:center; gap:13px; margin:2px 0 15px;">
+<div class="zion-header-row">
+    <div class="zion-brand-left">
+        <div class="dion-brand">
             <div class="dion-mark">Z</div>
             <div>
                 <div class="dion-name">ZION</div>
@@ -292,17 +333,25 @@ st.markdown("""
 
 renderizar_ticker_tape(["NVDA", "AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "PETR4.SA", "VALE3.SA"])
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "Visão Global", 
-    "Análise de Ativo", 
-    "Minha Carteira", 
-    "IA Consultora", 
-    "Administração"
-])
+# --- SISTEMA DE NAVEGAÇÃO POR ABAS ORIGINAL DO ZION ---
+abas_nomes = ["Visão Global", "Análise de Ativo", "Minha Carteira", "IA Consultora", "Administração"]
+if "zion_aba_ativa" not in st.session_state:
+    st.session_state["zion_aba_ativa"] = 0
 
-# --- ABA 1: VISÃO GLOBAL ---
-with tab1:
-    # Cabeçalho com o visual institucional original idêntico ao seu projeto
+st.markdown('<div class="zion-topbar"><div class="zion-nav">', unsafe_allow_html=True)
+col_nav = st.columns(len(abas_nomes))
+for i, nome_aba in enumerate(abas_nomes):
+    with col_nav[i]:
+        tipo_botao = "primary" if st.session_state["zion_aba_ativa"] == i else "secondary"
+        if st.button(nome_aba, key=f"zion_nav_item_{i}", type=tipo_botao, use_container_width=True):
+            st.session_state["zion_aba_ativa"] = i
+            st.rerun()
+st.markdown('</div></div>', unsafe_allow_html=True)
+
+aba_ativa = st.session_state["zion_aba_ativa"]
+
+# --- ABA 0: VISÃO GLOBAL ---
+if aba_ativa == 0:
     st.markdown("""
     <div class="global-heading">
         <div>
@@ -386,13 +435,20 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
 
-with tab2:
+# --- ABA 1: ANÁLISE DE ATIVO ---
+elif aba_ativa == 1:
     st.info("Módulo de Análise de Ativo selecionado.")
-with tab3:
+
+# --- ABA 2: MINHA CARTEIRA ---
+elif aba_ativa == 2:
     st.info("Módulo de Minha Carteira selecionado.")
-with tab4:
+
+# --- ABA 3: IA CONSULTORA ---
+elif aba_ativa == 3:
     st.info("Módulo da IA Consultora selecionado.")
-with tab5:
+
+# --- ABA 4: ADMINISTRAÇÃO ---
+elif aba_ativa == 4:
     if perfil_usuario == "admin":
         st.success("Acesso administrativo liberado.")
     else:

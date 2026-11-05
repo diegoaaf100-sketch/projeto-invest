@@ -772,6 +772,350 @@ if st.session_state["aba_ativa"] == "🌐 Visão Global":
     else:
         st.caption("Notícias internacionais indisponíveis no momento.")
 
+# --- PAINÉIS INFERIORES: RANKINGS DE MERCADO (STOCKS, CRIPTOMOEDAS, BDRs) ---
+st.markdown("""
+<style>
+    .market-panel-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+    }
+    @media (max-width: 1024px) {
+        .market-panel-container {
+            grid-template-columns: 1fr;
+        }
+    }
+    .market-card {
+        background: linear-gradient(145deg, rgba(16, 25, 21, 0.95), rgba(10, 18, 14, 0.98));
+        border: 1px solid rgba(174, 205, 187, 0.13);
+        border-radius: 18px;
+        padding: 22px 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .market-card-header {
+        text-align: center;
+        margin-bottom: 18px;
+        border-bottom: 1px solid rgba(174, 205, 187, 0.1);
+        padding-bottom: 14px;
+    }
+    .market-card-category {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        color: #91A198;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 6px;
+    }
+    .market-card-title {
+        color: #F3FAF5;
+        font-size: 1.15rem;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+        margin: 0;
+    }
+    .market-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(174, 205, 187, 0.06);
+    }
+    .market-item-row:last-of-type {
+        border-bottom: none;
+        margin-bottom: 12px;
+    }
+    .market-item-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+    .market-item-rank {
+        color: #00C781;
+        font-weight: 800;
+        font-size: 0.85rem;
+        min-width: 22px;
+    }
+    .market-item-logo {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        object-fit: contain;
+    }
+    .market-item-info {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+    }
+    .market-item-ticker {
+        color: #F1F7F3;
+        font-weight: 750;
+        font-size: 0.85rem;
+        line-height: 1.2;
+    }
+    .market-item-name {
+        color: #91A198;
+        font-size: 0.7rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 130px;
+    }
+    .market-item-value {
+        color: #F4FBF6;
+        font-weight: 700;
+        font-size: 0.85rem;
+        white-space: nowrap;
+        text-align: right;
+    }
+    .market-card-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(174, 205, 187, 0.15);
+        color: #F1F7F3;
+        padding: 10px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        margin-top: 8px;
+    }
+    .market-card-btn:hover {
+        background: rgba(0, 199, 129, 0.15);
+        border-color: rgba(0, 199, 129, 0.4);
+        color: #00D98B;
+    }
+</style>
+
+<div class="market-panel-container">
+
+    <!-- PAINEL 1: STOCKS (MAIORES VALOR DE MERCADO) -->
+    <div class="market-card">
+        <div>
+            <div class="market-card-header">
+                <div class="market-card-category"><span>🌐</span> Stocks</div>
+                <div class="market-card-title">Maiores Valor de Mercado</div>
+            </div>
+            
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#1</span>
+                    <img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">NVDA</span>
+                        <span class="market-item-name">NVIDIA Corporation</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 4,98 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#2</span>
+                    <img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">AAPL</span>
+                        <span class="market-item-name">Apple Inc</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 4,95 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#3</span>
+                    <img src="https://img.icons8.com/color/48/microsoft.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">MSFT</span>
+                        <span class="market-item-name">Microsoft Corp</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 3,87 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#4</span>
+                    <img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">GOOGL</span>
+                        <span class="market-item-name">Alphabet Inc</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 3,48 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#5</span>
+                    <img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">GOOG</span>
+                        <span class="market-item-name">Alphabet Inc</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 3,46 T</span>
+            </div>
+        </div>
+        <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
+    </div>
+
+    <!-- PAINEL 2: CRIPTOMOEDAS (MAIOR CAPITALIZAÇÃO) -->
+    <div class="market-card">
+        <div>
+            <div class="market-card-header">
+                <div class="market-card-category"><span>🪙</span> Criptomoedas</div>
+                <div class="market-card-title">Maior Capitalização</div>
+            </div>
+            
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#1</span>
+                    <img src="https://img.icons8.com/color/48/bitcoin.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">BTC</span>
+                        <span class="market-item-name">Bitcoin</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 1,56 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#2</span>
+                    <img src="https://img.icons8.com/color/48/ethereum.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">ETH</span>
+                        <span class="market-item-name">Ethereum</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 279,49 B</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#3</span>
+                    <img src="https://img.icons8.com/color/48/tether.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">USDT</span>
+                        <span class="market-item-name">Tether</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 178,91 B</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#4</span>
+                    <img src="https://img.icons8.com/color/48/binance-coin.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">BNB</span>
+                        <span class="market-item-name">Binance Coin</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 91,95 B</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#5</span>
+                    <img src="https://img.icons8.com/color/48/ripple.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">XRP</span>
+                        <span class="market-item-name">XRP</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 80,96 B</span>
+            </div>
+        </div>
+        <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
+    </div>
+
+    <!-- PAINEL 3: BDRS (OS MAIS BUSCADOS) -->
+    <div class="market-card">
+        <div>
+            <div class="market-card-header">
+                <div class="market-card-category"><span>📊</span> BDRs</div>
+                <div class="market-card-title">Os Mais Buscados</div>
+            </div>
+            
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#1</span>
+                    <img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">AAPL34</span>
+                        <span class="market-item-name">Apple Inc</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 4,95 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#2</span>
+                    <img src="https://img.icons8.com/color/48/amazon.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">AMZO34</span>
+                        <span class="market-item-name">Amazon.com Inc</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 2,59 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#3</span>
+                    <img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">NVDC34</span>
+                        <span class="market-item-name">NVIDIA Corporation</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 4,98 T</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#4</span>
+                    <img src="https://img.icons8.com/color/48/nubank.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">ROXO34</span>
+                        <span class="market-item-name">Nu Holdings</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 57,04 B</span>
+            </div>
+
+            <div class="market-item-row">
+                <div class="market-item-left">
+                    <span class="market-item-rank">#5</span>
+                    <img src="https://img.icons8.com/color/48/tesla-logo.png" class="market-item-logo">
+                    <div class="market-item-info">
+                        <span class="market-item-ticker">TSLA34</span>
+                        <span class="market-item-name">Tesla Inc</span>
+                    </div>
+                </div>
+                <span class="market-item-value">US$ 1,58 T</span>
+            </div>
+        </div>
+        <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
+    </div>
+
+</div>
+""", unsafe_allow_html=True)
 # ==========================================
 # SEÇÃO 2: MERCADO BRASILEIRO
 # ==========================================

@@ -143,6 +143,26 @@ st.markdown("""
     .global-title { font-size:clamp(1.2rem,2vw,1.55rem) !important; letter-spacing:-.5px; }
     .global-description { font-size:.76rem; margin-top:4px; color:#D0DBE6; }
     @media (max-width: 800px) { .global-heading { min-height:100px !important; height:100px; padding:13px 16px !important; } .hero-header { min-height:100px !important; height:100px; } .hero-overlay { padding:13px 16px !important; } .hero-subtitle { max-width:90%; font-size:.68rem !important; } .global-description { font-size:.68rem; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } [class*="st-key-zion_nav"] div[role="radiogroup"] { gap:4px; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 44%; padding:8px 7px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
+
+    /* Rankings no rodapé da Visão Global */
+    .ranking-intro { display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin:28px 0 12px; }
+    .ranking-title { color:#F2FAF5; font-size:1.12rem; font-weight:800; letter-spacing:-.35px; }
+    .ranking-subtitle { color:#91A198; font-size:.72rem; margin-top:4px; }
+    .ranking-panel-title { color:#EAF5EE; font-size:.93rem; font-weight:800; margin-bottom:2px; }
+    .ranking-panel-note { color:#8FA197; font-size:.66rem; margin-bottom:12px; }
+    .ranking-item-name { color:#EAF5EE; font-size:.77rem; font-weight:700; line-height:1.2; }
+    .ranking-item-detail { color:#87988E; font-size:.65rem; line-height:1.25; }
+    .ranking-price { color:#EAF5EE; font-size:.76rem; font-weight:700; text-align:right; white-space:nowrap; }
+    .ranking-change { font-size:.65rem; text-align:right; white-space:nowrap; }
+    .ranking-separator { border-bottom:1px solid rgba(174,205,187,.10); margin:7px 0; }
+    [class*="st-key-ranking_acao_"] .stButton button,
+    [class*="st-key-ranking_crypto_"] .stButton button,
+    [class*="st-key-ranking_bdr_"] .stButton button { background:transparent !important; border:0 !important; color:#EAF5EE !important; padding:3px 2px !important; min-height:30px !important; text-align:left !important; font-size:.76rem !important; font-weight:750 !important; }
+    [class*="st-key-ranking_acao_"] .stButton button:hover,
+    [class*="st-key-ranking_crypto_"] .stButton button:hover,
+    [class*="st-key-ranking_bdr_"] .stButton button:hover { color:#00D98B !important; background:rgba(0,199,129,.07) !important; }
+    @media (max-width: 900px) { .ranking-intro { align-items:flex-start; flex-direction:column; } }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -425,6 +445,182 @@ def obter_dados_ticker_seguro(ticker_raw):
             "descricao": f"Não foi possível recuperar o histórico detalhado para o ativo {ticker_raw}.", 
             "setor": "N/D", "industria": "N/D"
         }
+
+# --- RANKINGS DE MERCADO PARA A VISÃO GLOBAL ---
+# Os rankings consultam uma lista ampla de ativos acompanhados. A classificação
+# de ações usa valor de mercado; cripto usa capitalização da CoinGecko; BDR usa
+# volume negociado mais recente disponível no Yahoo Finance.
+
+@st.cache_data(ttl=300, show_spinner=False)
+def buscar_ranking_acoes():
+    universo = ["NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "TSLA", "BRK-B", "TSM", "WMT"]
+    resultados = []
+    for ticker in universo:
+        try:
+            obj = yf.Ticker(ticker)
+            info = obj.info or {}
+            hist = obj.history(period="5d")
+            preco = info.get("currentPrice") or info.get("regularMarketPrice")
+            if (preco is None or float(preco or 0) <= 0) and not hist.empty:
+                preco = float(hist["Close"].iloc[-1])
+            if not preco or float(preco) <= 0:
+                continue
+            variacao = None
+            if len(hist) >= 2:
+                anterior = float(hist["Close"].iloc[-2])
+                atual = float(hist["Close"].iloc[-1])
+                if anterior:
+                    variacao = (atual / anterior - 1) * 100
+            cap = info.get("marketCap") or 0
+            if not cap:
+                continue
+            resultados.append({
+                "ticker": ticker,
+                "nome": info.get("shortName") or info.get("longName") or ticker,
+                "preco": float(preco),
+                "variacao": variacao,
+                "capitalizacao": float(cap),
+                "moeda": info.get("currency", "USD")
+            })
+        except Exception:
+            continue
+    return sorted(resultados, key=lambda x: x["capitalizacao"], reverse=True)[:5]
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def buscar_ranking_cripto():
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd", "order": "market_cap_desc", "per_page": 5,
+        "page": 1, "sparkline": "false", "price_change_percentage": "24h"
+    }
+    try:
+        resposta = requests.get(url, params=params, timeout=12, headers={"accept": "application/json"})
+        resposta.raise_for_status()
+        dados = resposta.json()
+        mapa_yahoo = {"bitcoin": "BTC-USD", "ethereum": "ETH-USD", "tether": "USDT-USD",
+                      "binancecoin": "BNB-USD", "ripple": "XRP-USD", "solana": "SOL-USD",
+                      "usd-coin": "USDC-USD", "tron": "TRX-USD", "dogecoin": "DOGE-USD"}
+        saida = []
+        for item in dados:
+            coin_id = item.get("id", "")
+            saida.append({
+                "ticker": mapa_yahoo.get(coin_id, f"{str(item.get('symbol','')).upper()}-USD"),
+                "simbolo": str(item.get("symbol", "")).upper(),
+                "nome": item.get("name", "Criptoativo"),
+                "preco": float(item.get("current_price") or 0),
+                "variacao": item.get("price_change_percentage_24h"),
+                "capitalizacao": float(item.get("market_cap") or 0)
+            })
+        return saida
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def buscar_ranking_bdrs():
+    universo = ["AAPL34.SA", "MSFT34.SA", "NVDC34.SA", "AMZO34.SA", "GOGL34.SA",
+                "META34.SA", "TSLA34.SA", "NFLX34.SA", "ORCL34.SA", "AVGO34.SA"]
+    resultados = []
+    for ticker in universo:
+        try:
+            obj = yf.Ticker(ticker)
+            hist = obj.history(period="5d")
+            if hist.empty:
+                continue
+            preco = float(hist["Close"].iloc[-1])
+            volume = float(hist["Volume"].iloc[-1]) if "Volume" in hist else 0.0
+            anterior = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else 0.0
+            variacao = ((preco / anterior) - 1) * 100 if anterior else None
+            try:
+                info = obj.info or {}
+            except Exception:
+                info = {}
+            resultados.append({
+                "ticker": ticker,
+                "nome": info.get("shortName") or info.get("longName") or ticker.replace(".SA", ""),
+                "preco": preco,
+                "variacao": variacao,
+                "volume": volume
+            })
+        except Exception:
+            continue
+    return sorted(resultados, key=lambda x: x["volume"], reverse=True)[:5]
+
+
+def formatar_preco_ranking(valor, moeda="USD"):
+    try:
+        valor = float(valor)
+        prefixo = "R$" if moeda in ("BRL", "BRL") else "US$"
+        return f"{prefixo} {valor:,.2f}"
+    except Exception:
+        return "—"
+
+
+def abrir_ativo_do_ranking(ticker):
+    st.session_state["zion_ticker_selecionado"] = ticker
+    st.session_state["zion_ticker_input"] = ticker
+    st.session_state["zion_tipo_consulta"] = "Ações / FIIs / ETFs (B3 e Global)"
+    st.session_state["aba_ativa"] = "📈 Análise Profissional & IA"
+    st.rerun()
+
+
+def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
+    with coluna:
+        with st.container(border=True):
+            st.markdown(f"<div class='ranking-panel-title'>{html.escape(titulo)}</div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='ranking-panel-note'>{html.escape(subtitulo)}</div>", unsafe_allow_html=True)
+            if not itens:
+                st.caption("Ranking temporariamente indisponível. Tente atualizar em instantes.")
+                return
+            for posicao, item in enumerate(itens, start=1):
+                ticker = item.get("ticker", "")
+                nome = str(item.get("nome", ticker))
+                if len(nome) > 24:
+                    nome = nome[:22] + "…"
+                c_rank, c_ativo, c_valor = st.columns([0.12, 0.52, 0.36], vertical_alignment="center")
+                with c_rank:
+                    st.markdown(f"<div class='ranking-item-detail'>#{posicao}</div>", unsafe_allow_html=True)
+                with c_ativo:
+                    st.button(ticker.replace(".SA", ""), key=f"ranking_{tipo}_{posicao}_{ticker}",
+                              use_container_width=True, on_click=abrir_ativo_do_ranking, args=(ticker,))
+                    st.markdown(f"<div class='ranking-item-detail'>{html.escape(nome)}</div>", unsafe_allow_html=True)
+                with c_valor:
+                    moeda = "BRL" if ticker.endswith(".SA") else "USD"
+                    preco_txt = formatar_preco_ranking(item.get("preco", 0), moeda)
+                    st.markdown(f"<div class='ranking-price'>{preco_txt}</div>", unsafe_allow_html=True)
+                    variacao = item.get("variacao")
+                    if variacao is not None:
+                        cor = "#00D98B" if float(variacao) >= 0 else "#F07878"
+                        st.markdown(f"<div class='ranking-change' style='color:{cor}'>{float(variacao):+.2f}%</div>", unsafe_allow_html=True)
+                if posicao < len(itens):
+                    st.markdown("<div class='ranking-separator'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='height:3px'></div>", unsafe_allow_html=True)
+            st.caption("Selecione um ativo para abrir sua análise.")
+
+
+def renderizar_rankings_mercado():
+    st.markdown("<div class='ranking-intro'><div><div class='ranking-title'>Rankings do mercado</div><div class='ranking-subtitle'>Ativos em destaque · atualização automática a cada 5 minutos</div></div></div>", unsafe_allow_html=True)
+    c_atualizar, c_horario = st.columns([1, 4], vertical_alignment="center")
+    with c_atualizar:
+        if st.button("↻ Atualizar rankings", key="zion_atualizar_rankings", use_container_width=True):
+            buscar_ranking_acoes.clear()
+            buscar_ranking_cripto.clear()
+            buscar_ranking_bdrs.clear()
+            st.rerun()
+    with c_horario:
+        st.caption(f"Última consulta desta sessão: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')} · dados sujeitos ao atraso da fonte.")
+
+    with st.spinner("Atualizando rankings do mercado..."):
+        acoes = buscar_ranking_acoes()
+        criptos = buscar_ranking_cripto()
+        bdrs = buscar_ranking_bdrs()
+
+    col_acoes, col_cripto, col_bdrs = st.columns(3, gap="medium")
+    renderizar_painel_ranking(col_acoes, "Ações", "Maior valor de mercado · universo acompanhado", acoes, "acao")
+    renderizar_painel_ranking(col_cripto, "Criptomoedas", "Maior capitalização · mercado global", criptos, "crypto")
+    renderizar_painel_ranking(col_bdrs, "BDRs", "Mais negociados · volume recente na B3", bdrs, "bdr")
+
 
 def obter_icone_ativo(simbolo):
     icones = {
@@ -772,6 +968,14 @@ if st.session_state["aba_ativa"] == "🌐 Visão Global":
     else:
         st.caption("Notícias internacionais indisponíveis no momento.")
 
+    # Rankings ficam no rodapé da Página 01 (Visão Global), depois das notícias.
+    st.divider()
+    if hasattr(st, "fragment"):
+        renderizar_rankings_auto = st.fragment(run_every=timedelta(minutes=5))(renderizar_rankings_mercado)
+        renderizar_rankings_auto()
+    else:
+        renderizar_rankings_mercado()
+
 # ==========================================
 # SEÇÃO 2: MERCADO BRASILEIRO
 # ==========================================
@@ -851,10 +1055,18 @@ elif st.session_state["aba_ativa"] == "📈 Análise Profissional & IA":
         </div>
     """, unsafe_allow_html=True)
     
-    tipo_consulta = st.radio("Selecione o Tipo de Ativo para Analisar:", ["Ações / FIIs / ETFs (B3 e Global)", "Renda Fixa (Tesouro, CDB, LCI, LCA, Poupança)"], horizontal=True)
+    tipo_consulta = st.radio(
+        "Selecione o Tipo de Ativo para Analisar:",
+        ["Ações / FIIs / ETFs (B3 e Global)", "Renda Fixa (Tesouro, CDB, LCI, LCA, Poupança)"],
+        horizontal=True, key="zion_tipo_consulta"
+    )
     
     if tipo_consulta == "Ações / FIIs / ETFs (B3 e Global)":
-        ticker_input = st.text_input("Digite o Ticker (ex: PETR4, HGLG11, IVVB11, AAPL):", value="PETR4").strip().upper()
+        ticker_padrao = st.session_state.get("zion_ticker_selecionado", "PETR4")
+        ticker_input = st.text_input(
+            "Digite o Ticker (ex: PETR4, HGLG11, IVVB11, AAPL):",
+            value=ticker_padrao, key="zion_ticker_input"
+        ).strip().upper()
         if ticker_input:
             dados_ativo = obter_dados_ticker_seguro(ticker_input)
             if dados_ativo and dados_ativo["preco"] > 0:
@@ -870,19 +1082,44 @@ elif st.session_state["aba_ativa"] == "📈 Análise Profissional & IA":
                 with m6: st.metric("Máxima 52S", f"{moeda_prefix} {dados_ativo['max52']:.2f}" if isinstance(dados_ativo['max52'], (int, float)) else dados_ativo['max52'])
                 
                 st.divider()
-                df_hist = yf.Ticker(dados_ativo['symbol']).history(period="2y")
-                if not df_hist.empty:
-                    df_hist['MMA21'] = df_hist['Close'].rolling(window=21).mean()
-                    df_hist['MMA200'] = df_hist['Close'].rolling(window=200).mean()
-                    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, row_heights=[0.75, 0.25])
-                    fig.add_trace(go.Candlestick(x=df_hist.index, open=df_hist['Open'], high=df_hist['High'], low=df_hist['Low'], close=df_hist['Close'], name="Candles"), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA21'], mode='lines', name='MMA 21', line=dict(color='#00C96B', width=1.5)), row=1, col=1)
-                    fig.add_trace(go.Scatter(x=df_hist.index, y=df_hist['MMA200'], mode='lines', name='MMA 200', line=dict(color='#f59e0b', width=1.5)), row=1, col=1)
-                    fig.add_trace(go.Bar(x=df_hist.index, y=df_hist['Volume'], name="Volume", marker_color='rgba(37, 99, 235, 0.5)'), row=2, col=1)
-                    fig.update_layout(template="plotly_dark", height=480, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", xaxis_rangeslider_visible=False)
-                    st.plotly_chart(fig, width="stretch")
+                st.markdown("#### 📈 Histórico de cotação")
+                periodo_escolhido = st.selectbox(
+                    "Período do gráfico:", ["1D", "1S", "1M", "6M", "1A", "2A"],
+                    index=5, key="zion_periodo_grafico"
+                )
+                configuracao_periodo = {
+                    "1D": ("1d", "5m"), "1S": ("5d", "30m"),
+                    "1M": ("1mo", "1d"), "6M": ("6mo", "1d"),
+                    "1A": ("1y", "1d"), "2A": ("2y", "1d")
+                }
+                periodo_yf, intervalo_yf = configuracao_periodo[periodo_escolhido]
+                try:
+                    df_hist = yf.Ticker(dados_ativo['symbol']).history(period=periodo_yf, interval=intervalo_yf)
+                except Exception:
+                    df_hist = pd.DataFrame()
+
+                if not df_hist.empty and "Close" in df_hist:
+                    df_hist = df_hist.dropna(subset=["Close"])
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_hist.index, y=df_hist["Close"], mode="lines", name="Cotação",
+                        line=dict(color="#00C781", width=2.2),
+                        fill="tozeroy", fillcolor="rgba(0,199,129,0.10)",
+                        hovertemplate="%{x|%d/%m/%Y %H:%M}<br>Preço: %{y:,.2f}<extra></extra>"
+                    ))
+                    fig.update_layout(
+                        template="plotly_dark", height=420,
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=10, r=18, t=18, b=10),
+                        showlegend=False, hovermode="x unified",
+                        font=dict(family="Inter", color="#DCE8E0"),
+                        xaxis=dict(title="", gridcolor="rgba(180,210,190,.08)", showline=False),
+                        yaxis=dict(title="Preço", gridcolor="rgba(180,210,190,.08)", side="right"),
+                    )
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": True, "displaylogo": False})
+                    st.caption("Gráfico de linha com preços históricos. A disponibilidade e o atraso das cotações dependem da fonte consultada.")
                 else:
-                    st.info("Não foi possível carregar o gráfico histórico deste ativo no momento.")
+                    st.info("Não foi possível carregar o histórico deste ativo para o período selecionado.")
 
                 st.divider()
                 # O perfil e o histórico ficam abaixo das cotações e do gráfico.

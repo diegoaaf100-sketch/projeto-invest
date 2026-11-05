@@ -30,7 +30,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- DESIGN SYSTEM ZION | DARK INSTITUTIONAL ---
+# --- DESIGN SYSTEM DION | DARK INSTITUTIONAL ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
@@ -69,9 +69,18 @@ st.markdown("""
     .news-content { padding:12px 13px; display:flex; flex:1; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden; }
     .news-title { font-weight:700; color:#F1F7F3; font-size:.82rem; line-height:1.35; min-height:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
     .news-date { flex:0 0 auto; margin-top:8px; padding-top:7px; border-top:1px solid rgba(174,205,187,.12); font-size:.67rem; line-height:1.25; color:#00C781; font-weight:600; white-space:normal; }
-    
-    /* Navegação ZION original */
+    /* Navegação ZION: cápsulas premium, brilho sutil e leitura limpa */
     .zion-topbar { padding:8px 0 15px; margin-bottom:12px; border-bottom:1px solid rgba(92,166,255,.20); }
+    .zion-nav { margin-top:5px; padding:7px; border:1px solid rgba(125,170,220,.16); border-radius:17px; background:linear-gradient(135deg,rgba(11,22,39,.94),rgba(7,14,27,.92)); box-shadow:0 12px 32px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.035); }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] { display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:stretch; gap:7px; width:100%; padding:0; background:transparent; border:0; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 0; min-width:0; justify-content:center; background:rgba(255,255,255,.018); border:1px solid transparent; border-radius:12px; padding:11px 9px; transition:background .2s ease,border-color .2s ease,transform .2s ease,box-shadow .2s ease; white-space:nowrap; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label:hover { background:rgba(64,142,230,.10); border-color:rgba(94,169,255,.28); transform:translateY(-1px); }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label[data-checked="true"] { background:linear-gradient(145deg,rgba(34,111,194,.28),rgba(20,63,112,.22)); border-color:rgba(91,169,255,.62); box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 5px 18px rgba(20,105,200,.16); position:relative; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label[data-checked="true"]:after { content:""; position:absolute; left:22%; right:22%; bottom:-2px; height:2px; border-radius:3px; background:linear-gradient(90deg,transparent,#59B7FF,transparent); box-shadow:0 0 10px rgba(73,174,255,.8); }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label p { color:#9EADBF !important; font-weight:650; font-size:.77rem; letter-spacing:.01em; transition:color .2s ease; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label[data-checked="true"] p { color:#EAF5FF !important; font-weight:750; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label input { accent-color:#55B5FF; }
+    [class*="st-key-zion_nav"] div[role="radiogroup"] label [data-testid="stMarkdownContainer"] { overflow:visible; }
     .zion-brand-left { display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px; padding:2px 0 8px; }
     .zion-brand-left img { display:block; width:auto; max-width:190px; max-height:58px; object-fit:contain; object-position:left center; }
     .zion-brand-left .dion-brand { margin:0; }
@@ -84,7 +93,6 @@ st.markdown("""
     .stTabs [data-baseweb="tab"] { background:transparent; border-radius:9px 9px 0 0; color:#91A198; font-weight:650; }
     .stTabs [aria-selected="true"] { color:#00C781 !important; border-bottom-color:#00C781 !important; }
     [data-testid="stDataFrame"], [data-testid="stDataEditor"] { border:1px solid var(--dion-border); border-radius:12px; overflow:hidden; }
-    
     /* Visão Global: hierarquia enxuta e leitura editorial */
     .global-heading { position:relative; display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:225px; padding:28px 34px; margin:0 0 18px; border-radius:16px; overflow:hidden; border:1px solid rgba(0,210,130,.22); background:linear-gradient(90deg,rgba(2,10,7,.96) 0%,rgba(2,12,8,.78) 40%,rgba(2,12,8,.12) 100%),url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1800&q=85') center 48%/cover; box-shadow:0 14px 38px rgba(0,0,0,.25); }
     .global-eyebrow { color:#00D98B; font-size:.68rem; font-weight:800; letter-spacing:2px; margin-bottom:7px; }
@@ -92,8 +100,16 @@ st.markdown("""
     .global-description { color:#F1F7F3; font-size:1rem; margin-top:8px; }
     .global-status { color:#91A198; font-size:.65rem; letter-spacing:1.1px; font-weight:700; white-space:nowrap; padding:8px 11px; border:1px solid var(--dion-border); border-radius:20px; }
     .global-status span { display:inline-block; width:7px; height:7px; margin-right:7px; border-radius:50%; background:#00C781; box-shadow:0 0 9px rgba(0,199,129,.65); }
-
-    /* Navegação por botões customizados */
+    .global-section-label { color:#91A198; font-size:.68rem; font-weight:800; letter-spacing:1.5px; margin:18px 0 9px; }
+    .global-section-spaced { margin-top:25px; }
+    .global-news-item { display:flex; align-items:center; gap:13px; padding:13px 15px; margin:7px 0; text-decoration:none !important; background:rgba(16,25,21,.72); border:1px solid var(--dion-border); border-radius:11px; transition:border-color .18s ease,background .18s ease; }
+    .global-news-item:hover { border-color:rgba(0,199,129,.42); background:rgba(17,34,25,.92); }
+    .global-news-dot { width:6px; height:6px; flex:0 0 6px; border-radius:50%; background:#00C781; }
+    .global-news-text { flex:1; color:#E5EEE8; font-size:.84rem; line-height:1.4; font-weight:550; }
+    .global-news-date { color:#829188; font-size:.7rem; white-space:nowrap; }
+    .global-news-arrow { color:#00C781; font-size:1rem; }
+    @media (max-width: 1050px) { [class*="st-key-zion_nav"] div[role="radiogroup"] { flex-wrap:wrap; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 28%; } .global-heading { min-height:180px; } }
+    /* Navegação por botões nativos do Streamlit: visual consistente sem st.radio. */
     [class*="st-key-zion_nav"] { width:100%; }
     [class*="st-key-zion_nav_item_"] .stButton button {
         min-height:48px; width:100%; border-radius:12px !important;
@@ -108,23 +124,25 @@ st.markdown("""
         background:linear-gradient(145deg,rgba(16,65,44,.98),rgba(10,35,25,.98)) !important;
         transform:translateY(-1px); box-shadow:0 7px 20px rgba(0,199,129,.12);
     }
-
-    /* Estilos dos Painéis de Ranking Inferiores */
-    .market-card { background:linear-gradient(145deg, rgba(16, 25, 21, 0.95), rgba(10, 18, 14, 0.98)); border:1px solid rgba(174, 205, 187, 0.13); border-radius:18px; padding:22px 20px; box-shadow:0 10px 30px rgba(0, 0, 0, 0.25); display:flex; flex-direction:column; justify-content:space-between; min-height: 420px; }
-    .market-card-header { text-align:center; margin-bottom:18px; border-bottom:1px solid rgba(174, 205, 187, 0.1); padding-bottom:14px; }
-    .market-card-category { display:flex; align-items:center; justify-content:center; gap:8px; color:#91A198; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
-    .market-card-title { color:#F3FAF5; font-size:1.15rem; font-weight:800; letter-spacing:-0.3px; margin:0; }
-    .market-item-row { display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid rgba(174, 205, 187, 0.06); }
-    .market-item-row:last-of-type { border-bottom:none; margin-bottom:12px; }
-    .market-item-left { display:flex; align-items:center; gap:12px; min-width:0; }
-    .market-item-rank { color:#00C781; font-weight:800; font-size:0.85rem; min-width:22px; }
-    .market-item-logo { width:28px; height:28px; border-radius:50%; object-fit:contain; }
-    .market-item-info { display:flex; flex-direction:column; min-width:0; }
-    .market-item-ticker { color:#F1F7F3; font-weight:750; font-size:0.85rem; line-height:1.2; }
-    .market-item-name { color:#91A198; font-size:0.7rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:130px; }
-    .market-item-value { color:#F4FBF6; font-weight:700; font-size:0.85rem; white-space:nowrap; text-align:right; }
-    .market-card-btn { display:block; width:100%; text-align:center; background:rgba(255, 255, 255, 0.03); border:1px solid rgba(174, 205, 187, 0.15); color:#F1F7F3; padding:10px; border-radius:12px; font-weight:700; font-size:0.8rem; text-decoration:none; transition:all 0.2s ease; margin-top:8px; }
-    .market-card-btn:hover { background:rgba(0, 199, 129, 0.15); border-color:rgba(0, 199, 129, 0.4); color:#00D98B; }
+    .st-key-zion_nav_item_0 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_1 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_2 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_3 .stButton button[kind="primary"],
+    .st-key-zion_nav_item_4 .stButton button[kind="primary"] {
+        color:#EFFFF6 !important; border:1px solid rgba(0,220,140,.75) !important;
+        background:linear-gradient(135deg,rgba(0,133,83,.92),rgba(7,65,43,.98)) !important;
+        box-shadow:0 0 0 1px rgba(0,199,129,.10),0 7px 22px rgba(0,199,129,.16) !important;
+    }
+    /* Faixas fotográficas discretas: imagem somente no cabeçalho. */
+    .hero-header { background-size:cover !important; background-repeat:no-repeat !important; min-height:108px !important; height:108px; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); background-position:center 45%; }
+    .hero-overlay { padding:15px 24px !important; background:linear-gradient(90deg,rgba(4,10,16,.94) 0%,rgba(4,12,19,.78) 52%,rgba(4,12,19,.30) 100%) !important; }
+    .hero-title { font-size:clamp(1.05rem,1.8vw,1.45rem) !important; letter-spacing:-.35px; }
+    .hero-subtitle { font-size:.76rem !important; margin-top:4px !important; max-width:720px; color:#D0DBE6 !important; }
+    .global-heading { background-size:cover !important; background-repeat:no-repeat !important; background-position:center !important; min-height:108px !important; height:108px; padding:15px 24px !important; margin:8px 0 16px !important; border-radius:12px; box-shadow:0 8px 22px rgba(0,0,0,.18); }
+    .global-eyebrow { font-size:.60rem; margin-bottom:4px; }
+    .global-title { font-size:clamp(1.2rem,2vw,1.55rem) !important; letter-spacing:-.5px; }
+    .global-description { font-size:.76rem; margin-top:4px; color:#D0DBE6; }
+    @media (max-width: 800px) { .global-heading { min-height:100px !important; height:100px; padding:13px 16px !important; } .hero-header { min-height:100px !important; height:100px; } .hero-overlay { padding:13px 16px !important; } .hero-subtitle { max-width:90%; font-size:.68rem !important; } .global-description { font-size:.68rem; } .global-news-date { display:none; } .news-card { height:auto; min-height:125px; } .news-img { height:auto; min-height:125px; } .zion-top-status { display:none; } [class*="st-key-zion_nav"] div[role="radiogroup"] { gap:4px; } [class*="st-key-zion_nav"] div[role="radiogroup"] label { flex:1 1 44%; padding:8px 7px; } .zion-brand-left img { max-width:150px; max-height:48px; } }
 </style>
 """, unsafe_allow_html=True)
 
@@ -150,6 +168,7 @@ def criar_cliente_admin():
 
 supabase_admin = criar_cliente_admin()
 
+# Cada sessão do Streamlit mantém seu próprio token; não compartilhamos cliente autenticado.
 supabase = None
 auth_user = None
 perfil_usuario = "user"
@@ -164,6 +183,7 @@ except Exception as erro:
     st.error(f"Não foi possível conectar ao Supabase: {erro}")
     st.stop()
 
+# Restaura a sessão autenticada desta pessoa.
 if st.session_state.get("zion_access_token") and st.session_state.get("zion_refresh_token"):
     try:
         supabase.auth.set_session(
@@ -178,6 +198,7 @@ if st.session_state.get("zion_access_token") and st.session_state.get("zion_refr
         st.session_state.pop("zion_user_id", None)
         st.session_state.pop("zion_email", None)
 
+# Tela de entrada: cadastro público e login.
 if auth_user is None:
     st.markdown("<div style='max-width:560px;margin:5vh auto 0;text-align:center'><div style='font-size:42px;font-weight:900;letter-spacing:5px;color:#00C781'>ZION</div><div style='color:#91A198;letter-spacing:2px'>INTELIGÊNCIA FINANCEIRA</div></div>", unsafe_allow_html=True)
     tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
@@ -199,8 +220,9 @@ if auth_user is None:
                     st.session_state["zion_email"] = resultado.user.email
                     st.rerun()
             except Exception as erro:
-                st.error(f"Falha no login. Detalhe: {erro}")
+                st.error(f"Falha no login. Confira suas credenciais. Detalhe: {erro}")
     with tab_cadastro:
+        st.caption("Crie sua conta para ter uma carteira privada. Se a confirmação de e-mail estiver ativada no Supabase, confirme o endereço antes de entrar.")
         with st.form("zion_signup_form"):
             nome_cadastro = st.text_input("Nome")
             email_cadastro = st.text_input("E-mail", key="zion_signup_email")
@@ -209,7 +231,7 @@ if auth_user is None:
             enviar_cadastro = st.form_submit_button("Criar minha conta", type="primary", use_container_width=True)
         if enviar_cadastro:
             if not nome_cadastro.strip() or not email_cadastro.strip() or len(senha_cadastro) < 8:
-                st.warning("Preencha todos os campos corretamente.")
+                st.warning("Informe seu nome, e-mail e uma senha com pelo menos 8 caracteres.")
             elif senha_cadastro != senha_confirma:
                 st.warning("As senhas não coincidem.")
             else:
@@ -218,20 +240,29 @@ if auth_user is None:
                     if resultado.session:
                         st.session_state["zion_access_token"] = resultado.session.access_token
                         st.session_state["zion_refresh_token"] = resultado.session.refresh_token
+                        st.session_state["zion_user_id"] = resultado.user.id
+                        st.session_state["zion_email"] = resultado.user.email
                         st.success("Conta criada!")
                         st.rerun()
                     else:
-                        st.success("Confirme seu e-mail antes de entrar.")
+                        st.success("Cadastro recebido. Confirme seu e-mail e depois entre no ZION.")
                 except Exception as erro:
-                    st.error(f"Erro: {erro}")
+                    st.error(f"Não foi possível criar a conta: {erro}")
     st.stop()
 
+# Confirma o perfil no banco; a tabela e o gatilho são criados pelo SQL fornecido.
 try:
     perfil_resp = supabase.table("perfis_usuarios").select("role").eq("id", auth_user.id).single().execute()
     perfil_usuario = (perfil_resp.data or {}).get("role", "user")
 except Exception:
-    perfil_usuario = "user"
+    st.error("Seu perfil ainda não foi criado no banco. Execute primeiro o SQL de configuração do ZION no Supabase.")
+    st.stop()
 
+# --- CLIENTE ADMINISTRATIVO: somente disponível para sessão com papel admin ---
+if perfil_usuario == "admin" and supabase_admin is None:
+    st.warning("O painel administrativo precisa de SUPABASE_SERVICE_ROLE_KEY nos Secrets do Streamlit.")
+
+# --- CLIENTE CLAUDE (ANTHROPIC) ---
 @st.cache_resource
 def init_claude():
     api_key = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
@@ -241,24 +272,170 @@ def init_claude():
 
 client_claude = init_claude()
 
+# --- TRADUÇÃO E HISTÓRICO CORPORATIVO ---
+TRADUCOES_SETOR = {
+    "technology": "Tecnologia", "financial services": "Serviços financeiros",
+    "financial": "Financeiro", "energy": "Energia", "healthcare": "Saúde",
+    "health care": "Saúde", "consumer defensive": "Consumo não cíclico",
+    "consumer cyclical": "Consumo cíclico", "industrials": "Bens industriais",
+    "basic materials": "Materiais básicos", "real estate": "Imobiliário",
+    "utilities": "Serviços públicos", "communication services": "Serviços de comunicação"
+}
+TRADUCOES_TIPO = {"EQUITY":"Ação", "ETF":"Fundo de índice (ETF)", "MUTUALFUND":"Fundo de investimento",
+                  "CRYPTOCURRENCY":"Criptomoeda", "INDEX":"Índice de mercado", "CURRENCY":"Moeda", "FUTURE":"Contrato futuro"}
+
+def traduzir_texto_pt(texto):
+    texto = str(texto or "").strip()
+    if not texto:
+        return ""
+    if client_claude:
+        try:
+            msg = client_claude.messages.create(
+                model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-latest"), max_tokens=900,
+                messages=[{"role":"user", "content":"Traduza integralmente para português do Brasil. Preserve nomes, datas e fatos; não acrescente informações. Retorne apenas a tradução:\n\n" + texto[:9000]}]
+            )
+            return msg.content[0].text.strip()
+        except Exception:
+            pass
+    try:
+        r = requests.get("https://translate.googleapis.com/translate_a/single",
+            params={"client":"gtx", "sl":"auto", "tl":"pt", "dt":"t", "q":texto[:4500]}, timeout=12,
+            headers={"User-Agent":"Mozilla/5.0"})
+        r.raise_for_status()
+        return "".join(x[0] for x in r.json()[0] if x and x[0])
+    except Exception:
+        return ""
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def buscar_historico_publico(nome, ticker):
+    headers = {"User-Agent":"ZIONFinancialTerminal/1.0"}
+    for idioma in ["pt", "en"]:
+        api = f"https://{idioma}.wikipedia.org/w/api.php"
+        for termo in [nome, str(ticker).replace(".SA", "")]:
+            try:
+                busca = requests.get(api, params={"action":"query", "list":"search", "srsearch":termo, "format":"json", "srlimit":5}, headers=headers, timeout=10).json()
+                resultados = busca.get("query", {}).get("search", [])
+                if not resultados:
+                    continue
+                pagina = resultados[0]["title"]
+                resumo_json = requests.get(api, params={"action":"query", "prop":"extracts|info", "exintro":1, "explaintext":1, "inprop":"url", "titles":pagina, "format":"json"}, headers=headers, timeout=10).json()
+                item = next(iter(resumo_json.get("query", {}).get("pages", {}).values()))
+                resumo = item.get("extract", "").strip()
+                if len(resumo) < 100:
+                    continue
+                url = item.get("fullurl", f"https://{idioma}.wikipedia.org/wiki/{pagina.replace(' ', '_')}")
+                historico = ""
+                try:
+                    secoes = requests.get(api, params={"action":"parse", "page":pagina, "prop":"sections", "format":"json"}, headers=headers, timeout=10).json().get("parse", {}).get("sections", [])
+                    alvo = next((x for x in secoes if any(k in x.get("line", "").lower() for k in (["história", "histórico", "history"] if idioma == "pt" else ["history"]))), None)
+                    if alvo:
+                        raw = requests.get(api, params={"action":"parse", "page":pagina, "prop":"wikitext", "section":alvo["index"], "format":"json"}, headers=headers, timeout=10).json().get("parse", {}).get("wikitext", {}).get("*", "")
+                        historico = re.sub(r"\{\{.*?\}\}", " ", raw, flags=re.S)
+                        historico = re.sub(r"\[\[([^|\]]*\|)?([^\]]+)\]\]", r"\2", historico)
+                        historico = re.sub(r"'{2,5}|<[^>]+>", "", historico)
+                        historico = re.sub(r"\s+", " ", historico).strip()[:7000]
+                except Exception:
+                    pass
+                if idioma == "en":
+                    resumo = traduzir_texto_pt(resumo)
+                    historico = traduzir_texto_pt(historico) if historico else ""
+                if resumo:
+                    return {"resumo":resumo, "historico":historico, "url":url, "idioma":"Português" if idioma == "pt" else "Inglês traduzido"}
+            except Exception:
+                continue
+    return None
+
+# --- MOTOR DE BUSCA UNIVERSAL ---
+def normalizar_ticker_universal(ticker_raw):
+    t_clean = ticker_raw.strip().upper()
+    if "=" in t_clean or "^" in t_clean or "-" in t_clean or t_clean.endswith(".SA"):
+        return t_clean
+    if any(t_clean.endswith(str(i)) for i in range(10)):
+        return f"{t_clean}.SA"
+    return t_clean
+
+@st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
-    t_symbol = ticker_raw.strip().upper()
+    t_symbol = normalizar_ticker_universal(ticker_raw)
     try:
         t_obj = yf.Ticker(t_symbol)
         hist = t_obj.history(period="5d")
-        preco_atual = float(hist['Close'].iloc[-1]) if not hist.empty else 0.0
-        var_pct = ((float(hist['Close'].iloc[-1]) - float(hist['Close'].iloc[-2])) / float(hist['Close'].iloc[-2])) * 100 if not hist.empty and len(hist) >= 2 else 0.0
-        return {"symbol": t_symbol, "preco": preco_atual, "variacao": var_pct}
+        preco_atual = 0.0
+        var_pct = 0.0
+        if not hist.empty and len(hist) >= 2:
+            preco_atual = float(hist['Close'].iloc[-1])
+            preco_ant = float(hist['Close'].iloc[-2])
+            var_pct = ((preco_atual - preco_ant) / preco_ant) * 100
+        elif not hist.empty:
+            preco_atual = float(hist['Close'].iloc[-1])
+        else:
+            info = t_obj.info or {}
+            preco_atual = info.get('currentPrice', info.get('regularMarketPrice', info.get('navPrice', 0.0)))
+
+        info = {}
+        try:
+            info = t_obj.info or {}
+        except Exception:
+            pass
+
+        dy = info.get('dividendYield', info.get('yield', 0.0))
+        dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
+        pe = info.get('trailingPE', info.get('forwardPE', 'N/D'))
+        pb = info.get('priceToBook', 'N/D')
+        min52 = info.get('fiftyTwoWeekLow', 'N/D')
+        max52 = info.get('fiftyTwoWeekHigh', 'N/D')
+        nome_longo = info.get('longName', info.get('shortName', t_symbol))
+        categoria_raw = info.get('quoteType', 'AÇÕES / B3')
+        categoria = TRADUCOES_TIPO.get(str(categoria_raw).upper(), categoria_raw)
+        
+        descricao_original = info.get('longBusinessSummary', '')
+        setor_raw = info.get('sector', 'Não informado')
+        setor = TRADUCOES_SETOR.get(str(setor_raw).lower(), setor_raw)
+        industria_raw = info.get('industry', 'Não informada')
+        industria = TRADUCOES_SETOR.get(str(industria_raw).lower(), traduzir_texto_pt(industria_raw) or industria_raw)
+
+        # Tradução para português: Claude quando configurado e serviço alternativo como fallback.
+        descricao_final = traduzir_texto_pt(descricao_original) if descricao_original and len(descricao_original) > 20 else ""
+        if not descricao_final:
+            descricao_final = "A fonte consultada não disponibilizou uma descrição institucional em português para este ativo. Não foram criadas informações substitutas."
+
+        return {
+            "symbol": t_symbol,
+            "nome": nome_longo,
+            "categoria": categoria,
+            "preco": preco_atual,
+            "variacao": var_pct,
+            "dy_str": dy_str,
+            "pe": pe,
+            "pb": pb,
+            "min52": min52,
+            "max52": max52,
+            "descricao": descricao_final,
+            "setor": setor,
+            "industria": industria,
+            "website": info.get("website", ""),
+            "pais": traduzir_texto_pt(info.get("country", "Não informado")) or info.get("country", "Não informado"),
+            "funcionarios": info.get("fullTimeEmployees")
+        }
     except Exception:
-        return {"symbol": t_symbol, "preco": 0.0, "variacao": 0.0}
+        return {
+            "symbol": t_symbol, "nome": ticker_raw, "categoria": "OUTROS", 
+            "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", 
+            "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0,
+            "descricao": f"Não foi possível recuperar o histórico detalhado para o ativo {ticker_raw}.", 
+            "setor": "N/D", "industria": "N/D"
+        }
 
 def obter_icone_ativo(simbolo):
     icones = {
         "AAPL": "https://img.icons8.com/color/48/mac-os.png",
         "MSFT": "https://img.icons8.com/color/48/microsoft.png",
         "GOOGL": "https://img.icons8.com/color/48/google-logo.png",
-        "NVDA": "https://img.icons8.com/color/48/nvidia.png",
-        "BTC": "https://img.icons8.com/color/48/bitcoin.png"
+        "PETR4": "https://img.icons8.com/color/48/petrol.png",
+        "VALE3": "https://img.icons8.com/color/48/ore.png",
+        "ITUB4": "https://img.icons8.com/color/48/bank-building.png",
+        "HGLG11": "https://img.icons8.com/color/48/commercial-development.png",
+        "MXRF11": "https://img.icons8.com/color/48/real-estate.png"
     }
     limpo = simbolo.replace(".SA", "").split("-")[0]
     return icones.get(limpo, "https://img.icons8.com/color/48/stocks.png")
@@ -290,166 +467,18 @@ def renderizar_ticker_tape(lista_tickers):
     <html>
     <head>
         <style>
-            html, body {{ margin: 0; padding: 0; width: 100%; background-color: #050807; overflow: hidden; font-family: sans-serif; }}
+            html, body {{ margin: 0; padding: 0; width: 100%; background-color: #050807; overflow: hidden; }}
             .ticker-container {{ width: 100%; overflow: hidden; background: #050807; border-top: 1px solid rgba(255, 255, 255, 0.08); border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding: 8px 0; white-space: nowrap; box-sizing: border-box; }}
-            .ticker-wrapper {{ display: inline-flex; gap: 24px; animation: ticker 35s linear infinite; }}
-            .ticker-item {{ display: inline-flex; align-items: center; gap: 8px; background: rgba(16, 25, 21, 0.6); border: 1px solid rgba(174, 205, 187, 0.1); border-radius: 8px; padding: 4px 12px; }}
-            .ticker-logo {{ width: 20px; height: 20px; object-fit: contain; }}
-            .ticker-symbol {{ color: #F1F7F3; font-weight: 700; font-size: 0.8rem; }}
-            .ticker-price {{ color: #91A198; font-size: 0.8rem; }}
-            .ticker-var {{ font-weight: 700; font-size: 0.8rem; }}
-            @keyframes ticker {{ 0% {{ transform: translateX(0); }} 100% {{ transform: translateX(-50%); }} }}
+            .ticker-wrapper {{ display: inline-flex; white-space: nowrap; }}
         </style>
     </head>
     <body>
         <div class="ticker-container">
             <div class="ticker-wrapper">
                 {itens_html}
-                {itens_html}
             </div>
         </div>
     </body>
     </html>
     """
-    components.html(full_component, height=52)
-
-# Cabeçalho da aplicação
-st.markdown("""
-<div class="zion-header-row">
-    <div class="zion-brand-left">
-        <div class="dion-brand">
-            <div class="dion-mark">Z</div>
-            <div>
-                <div class="dion-name">ZION</div>
-                <div class="dion-tagline">INTELIGÊNCIA FINANCEIRA</div>
-            </div>
-        </div>
-    </div>
-    <div class="zion-top-status">
-        <span class="live-dot"></span>SISTEMA OPERACIONAL | TERMINAL ATIVO
-    </div>
-</div>
-""", unsafe_allow_html=True)
-
-renderizar_ticker_tape(["NVDA", "AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "PETR4.SA", "VALE3.SA"])
-
-# --- SISTEMA DE NAVEGAÇÃO POR ABAS ORIGINAL DO ZION ---
-abas_nomes = ["Visão Global", "Análise de Ativo", "Minha Carteira", "IA Consultora", "Administração"]
-if "zion_aba_ativa" not in st.session_state:
-    st.session_state["zion_aba_ativa"] = 0
-
-st.markdown('<div class="zion-topbar"><div class="zion-nav">', unsafe_allow_html=True)
-col_nav = st.columns(len(abas_nomes))
-for i, nome_aba in enumerate(abas_nomes):
-    with col_nav[i]:
-        tipo_botao = "primary" if st.session_state["zion_aba_ativa"] == i else "secondary"
-        if st.button(nome_aba, key=f"zion_nav_item_{i}", type=tipo_botao, use_container_width=True):
-            st.session_state["zion_aba_ativa"] = i
-            st.rerun()
-st.markdown('</div></div>', unsafe_allow_html=True)
-
-aba_ativa = st.session_state["zion_aba_ativa"]
-
-# --- ABA 0: VISÃO GLOBAL ---
-if aba_ativa == 0:
-    st.markdown("""
-    <div class="global-heading">
-        <div>
-            <div class="global-eyebrow">MERCADO GLOBAL & PANORAMA INSTITUCIONAL</div>
-            <div class="global-title">Painel de Mercado</div>
-            <div class="global-description">Acompanhe os principais indicadores, tendências e cotações em tempo real.</div>
-        </div>
-        <div class="global-status"><span></span>CONEXÃO EM TEMPO REAL</div>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-    with col_m1:
-        st.metric("IBOVESPA", "128.450 pts", "+0.45%")
-    with col_m2:
-        st.metric("S&P 500", "5.860 pts", "+0.12%")
-    with col_m3:
-        st.metric("DÓLAR (USD/BRL)", "R$ 5,72", "-0.28%")
-    with col_m4:
-        st.metric("BITCOIN", "US$ 88.400", "+2.15%")
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # --- PAINÉIS INFERIORES: RANKINGS DE MERCADO (STOCKS, CRIPTOMOEDAS, BDRS) ---
-    col_card1, col_card2, col_card3 = st.columns(3)
-
-    # CARD 1: STOCKS
-    with col_card1:
-        st.markdown("""
-        <div class="market-card">
-            <div>
-                <div class="market-card-header">
-                    <div class="market-card-category"><span>🌐</span> Stocks</div>
-                    <div class="market-card-title">Maiores Valor de Mercado</div>
-                </div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#1</span><img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">NVDA</span><span class="market-item-name">NVIDIA Corporation</span></div></div><span class="market-item-value">US$ 4,98 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#2</span><img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">AAPL</span><span class="market-item-name">Apple Inc</span></div></div><span class="market-item-value">US$ 4,95 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#3</span><img src="https://img.icons8.com/color/48/microsoft.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">MSFT</span><span class="market-item-name">Microsoft Corp</span></div></div><span class="market-item-value">US$ 3,87 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#4</span><img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">GOOGL</span><span class="market-item-name">Alphabet Inc</span></div></div><span class="market-item-value">US$ 3,48 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#5</span><img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">GOOG</span><span class="market-item-name">Alphabet Inc</span></div></div><span class="market-item-value">US$ 3,46 T</span></div>
-            </div>
-            <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # CARD 2: CRIPTOMOEDAS
-    with col_card2:
-        st.markdown("""
-        <div class="market-card">
-            <div>
-                <div class="market-card-header">
-                    <div class="market-card-category"><span>🪙</span> Criptomoedas</div>
-                    <div class="market-card-title">Maior Capitalização</div>
-                </div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#1</span><img src="https://img.icons8.com/color/48/bitcoin.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">BTC</span><span class="market-item-name">Bitcoin</span></div></div><span class="market-item-value">US$ 1,56 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#2</span><img src="https://img.icons8.com/color/48/ethereum.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">ETH</span><span class="market-item-name">Ethereum</span></div></div><span class="market-item-value">US$ 279,49 B</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#3</span><img src="https://img.icons8.com/color/48/tether.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">USDT</span><span class="market-item-name">Tether</span></div></div><span class="market-item-value">US$ 178,91 B</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#4</span><img src="https://img.icons8.com/color/48/binance-coin.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">BNB</span><span class="market-item-name">Binance Coin</span></div></div><span class="market-item-value">US$ 91,95 B</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#5</span><img src="https://img.icons8.com/color/48/ripple.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">XRP</span><span class="market-item-name">XRP</span></div></div><span class="market-item-value">US$ 80,96 B</span></div>
-            </div>
-            <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
-        </div>
-        """, unsafe_allow_html=True)
-
-    # CARD 3: BDRS
-    with col_card3:
-        st.markdown("""
-        <div class="market-card">
-            <div>
-                <div class="market-card-header">
-                    <div class="market-card-category"><span>📊</span> BDRs</div>
-                    <div class="market-card-title">Os Mais Buscados</div>
-                </div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#1</span><img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">AAPL34</span><span class="market-item-name">Apple Inc</span></div></div><span class="market-item-value">US$ 4,95 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#2</span><img src="https://img.icons8.com/color/48/amazon.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">AMZO34</span><span class="market-item-name">Amazon.com Inc</span></div></div><span class="market-item-value">US$ 2,59 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#3</span><img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">NVDC34</span><span class="market-item-name">NVIDIA Corporation</span></div></div><span class="market-item-value">US$ 4,98 T</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#4</span><img src="https://img.icons8.com/color/48/nubank.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">ROXO34</span><span class="market-item-name">Nu Holdings</span></div></div><span class="market-item-value">US$ 57,04 B</span></div>
-                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#5</span><img src="https://img.icons8.com/color/48/tesla-logo.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">TSLA34</span><span class="market-item-name">Tesla Inc</span></div></div><span class="market-item-value">US$ 1,58 T</span></div>
-            </div>
-            <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
-        </div>
-        """, unsafe_allow_html=True)
-
-# --- ABA 1: ANÁLISE DE ATIVO ---
-elif aba_ativa == 1:
-    st.info("Módulo de Análise de Ativo selecionado.")
-
-# --- ABA 2: MINHA CARTEIRA ---
-elif aba_ativa == 2:
-    st.info("Módulo de Minha Carteira selecionado.")
-
-# --- ABA 3: IA CONSULTORA ---
-elif aba_ativa == 3:
-    st.info("Módulo da IA Consultora selecionado.")
-
-# --- ABA 4: ADMINISTRAÇÃO ---
-elif aba_ativa == 4:
-    if perfil_usuario == "admin":
-        st.success("Acesso administrativo liberado.")
-    else:
-        st.warning("Esta aba é restrita a administradores.")
+    components.html(full_component, height=45)

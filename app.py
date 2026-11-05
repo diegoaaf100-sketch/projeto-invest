@@ -53,27 +53,9 @@ st.markdown("""
     .dion-mark { width:44px; height:44px; border-radius:13px; display:flex; align-items:center; justify-content:center; background:linear-gradient(145deg,#00D68A,#087849); color:#03130B; font-size:25px; font-weight:900; box-shadow:0 8px 26px rgba(0,199,129,.20); }
     .dion-name { color:#F5FFF8; font-size:27px; line-height:1.05; font-weight:850; letter-spacing:2.3px; }
     .dion-tagline { color:#00C781; font-size:9px; letter-spacing:2px; margin-top:5px; font-weight:700; }
-    .hero-header { position:relative; width:100%; min-height:178px; border-radius:18px; background-size:cover; background-position:center 48%; margin:10px 0 24px; overflow:hidden; border:1px solid var(--dion-border); box-shadow:0 18px 48px rgba(0,0,0,.30); }
-    .hero-overlay { position:absolute; inset:0; background:linear-gradient(90deg,rgba(4,12,8,.96) 0%,rgba(5,18,12,.82) 48%,rgba(5,18,12,.18) 100%); padding:30px 34px; display:flex; flex-direction:column; justify-content:center; }
-    .hero-title { font-size:clamp(1.55rem,2.4vw,2.1rem); font-weight:800; color:#fff; letter-spacing:-.7px; margin:0; }
-    .hero-subtitle { font-size:.9rem; color:#65E6AD; margin-top:8px; font-weight:500; max-width:680px; }
-    .section-kicker { color:#00C781; font-size:.72rem; text-transform:uppercase; letter-spacing:1.8px; font-weight:800; margin:4px 0 6px; }
-    div[data-testid="stMetric"] { background:linear-gradient(145deg,rgba(19,32,25,.96),rgba(12,21,16,.96)) !important; border:1px solid var(--dion-border) !important; border-radius:15px !important; padding:17px 19px !important; min-height:105px; box-shadow:0 10px 28px rgba(0,0,0,.18); transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
-    div[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(0,199,129,.48) !important; box-shadow:0 14px 30px rgba(0,199,129,.08); }
-    div[data-testid="stMetricValue"] { color:#F4FBF6 !important; font-size:1.45rem !important; font-weight:750 !important; }
-    div[data-testid="stMetricLabel"] { color:#91A198 !important; font-size:.72rem !important; font-weight:700 !important; text-transform:uppercase; letter-spacing:.7px; }
-    [data-testid="stMetricDelta"] { font-size:.82rem !important; font-weight:650 !important; }
-    .news-card { display:flex; align-items:stretch; background:linear-gradient(110deg,rgba(10,22,17,.96),rgba(5,13,10,.96)); border-radius:14px; border:1px solid rgba(0,199,129,.25); overflow:hidden; margin-bottom:12px; transition:transform .22s ease,border-color .22s ease; min-height:148px; height:148px; }
-    .news-card:hover { transform:translateY(-2px); border-color:rgba(0,220,135,.65); }
-    .news-img { width:38%; height:148px; object-fit:cover; display:block; flex:0 0 38%; }
-    .news-content { padding:12px 13px; display:flex; flex:1; flex-direction:column; justify-content:space-between; min-width:0; overflow:hidden; }
-    .news-title { font-weight:700; color:#F1F7F3; font-size:.82rem; line-height:1.35; min-height:0; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
-    .news-date { flex:0 0 auto; margin-top:8px; padding-top:7px; border-top:1px solid rgba(174,205,187,.12); font-size:.67rem; line-height:1.25; color:#00C781; font-weight:600; white-space:normal; }
-
-    /* Estilos dos Painéis Inferiores de Mercado */
-    .market-panel-container { display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-top:24px; margin-bottom:24px; }
-    @media (max-width: 1024px) { .market-panel-container { grid-template-columns:1fr; } }
-    .market-card { background:linear-gradient(145deg, rgba(16, 25, 21, 0.95), rgba(10, 18, 14, 0.98)); border:1px solid rgba(174, 205, 187, 0.13); border-radius:18px; padding:22px 20px; box-shadow:0 10px 30px rgba(0, 0, 0, 0.25); display:flex; flex-direction:column; justify-content:space-between; }
+    
+    /* Estilos dos Cartões de Ranking */
+    .market-card { background:linear-gradient(145deg, rgba(16, 25, 21, 0.95), rgba(10, 18, 14, 0.98)); border:1px solid rgba(174, 205, 187, 0.13); border-radius:18px; padding:22px 20px; box-shadow:0 10px 30px rgba(0, 0, 0, 0.25); display:flex; flex-direction:column; justify-content:space-between; min-height: 420px; }
     .market-card-header { text-align:center; margin-bottom:18px; border-bottom:1px solid rgba(174, 205, 187, 0.1); padding-bottom:14px; }
     .market-card-category { display:flex; align-items:center; justify-content:center; gap:8px; color:#91A198; font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; margin-bottom:6px; }
     .market-card-title { color:#F3FAF5; font-size:1.15rem; font-weight:800; letter-spacing:-0.3px; margin:0; }
@@ -127,7 +109,6 @@ except Exception as erro:
     st.error(f"Não foi possível conectar ao Supabase: {erro}")
     st.stop()
 
-# Restaura sessão autenticada
 if st.session_state.get("zion_access_token") and st.session_state.get("zion_refresh_token"):
     try:
         supabase.auth.set_session(
@@ -142,7 +123,6 @@ if st.session_state.get("zion_access_token") and st.session_state.get("zion_refr
         st.session_state.pop("zion_user_id", None)
         st.session_state.pop("zion_email", None)
 
-# Tela de Entrada
 if auth_user is None:
     st.markdown("<div style='max-width:560px;margin:5vh auto 0;text-align:center'><div style='font-size:42px;font-weight:900;letter-spacing:5px;color:#00C781'>ZION</div><div style='color:#91A198;letter-spacing:2px'>INTELIGÊNCIA FINANCEIRA</div></div>", unsafe_allow_html=True)
     tab_login, tab_cadastro = st.tabs(["Entrar", "Criar conta"])
@@ -164,9 +144,8 @@ if auth_user is None:
                     st.session_state["zion_email"] = resultado.user.email
                     st.rerun()
             except Exception as erro:
-                st.error(f"Falha no login. Confira suas credenciais. Detalhe: {erro}")
+                st.error(f"Falha no login. Detalhe: {erro}")
     with tab_cadastro:
-        st.caption("Crie sua conta para ter uma carteira privada.")
         with st.form("zion_signup_form"):
             nome_cadastro = st.text_input("Nome")
             email_cadastro = st.text_input("E-mail", key="zion_signup_email")
@@ -175,7 +154,7 @@ if auth_user is None:
             enviar_cadastro = st.form_submit_button("Criar minha conta", type="primary", use_container_width=True)
         if enviar_cadastro:
             if not nome_cadastro.strip() or not email_cadastro.strip() or len(senha_cadastro) < 8:
-                st.warning("Informe seu nome, e-mail e uma senha com pelo menos 8 caracteres.")
+                st.warning("Preencha todos os campos corretamente.")
             elif senha_cadastro != senha_confirma:
                 st.warning("As senhas não coincidem.")
             else:
@@ -184,25 +163,20 @@ if auth_user is None:
                     if resultado.session:
                         st.session_state["zion_access_token"] = resultado.session.access_token
                         st.session_state["zion_refresh_token"] = resultado.session.refresh_token
-                        st.session_state["zion_user_id"] = resultado.user.id
-                        st.session_state["zion_email"] = resultado.user.email
                         st.success("Conta criada!")
                         st.rerun()
                     else:
-                        st.success("Cadastro recebido. Confirme seu e-mail e depois entre no ZION.")
+                        st.success("Confirme seu e-mail antes de entrar.")
                 except Exception as erro:
-                    st.error(f"Não foi possível criar a conta: {erro}")
+                    st.error(f"Erro: {erro}")
     st.stop()
 
-# Confirma perfil
 try:
     perfil_resp = supabase.table("perfis_usuarios").select("role").eq("id", auth_user.id).single().execute()
     perfil_usuario = (perfil_resp.data or {}).get("role", "user")
 except Exception:
-    st.error("Seu perfil ainda não foi criado no banco.")
-    st.stop()
+    perfil_usuario = "user"
 
-# --- CLIENTE CLAUDE ---
 @st.cache_resource
 def init_claude():
     api_key = st.secrets.get("ANTHROPIC_API_KEY", os.getenv("ANTHROPIC_API_KEY", ""))
@@ -212,72 +186,16 @@ def init_claude():
 
 client_claude = init_claude()
 
-# --- TRADUÇÕES E MÉTODOS AUXILIARES ---
-TRADUCOES_SETOR = {
-    "technology": "Tecnologia", "financial services": "Serviços financeiros",
-    "financial": "Financeiro", "energy": "Energia", "healthcare": "Saúde",
-    "health care": "Saúde", "consumer defensive": "Consumo não cíclico",
-    "consumer cyclical": "Consumo cíclico", "industrials": "Bens industriais",
-    "basic materials": "Materiais básicos", "real estate": "Imobiliário",
-    "utilities": "Serviços públicos", "communication services": "Serviços de comunicação"
-}
-TRADUCOES_TIPO = {"EQUITY":"Ação", "ETF":"Fundo de índice (ETF)", "MUTUALFUND":"Fundo de investimento",
-                  "CRYPTOCURRENCY":"Criptomoeda", "INDEX":"Índice de mercado", "CURRENCY":"Moeda", "FUTURE":"Contrato futuro"}
-
-def traduzir_texto_pt(texto):
-    texto = str(texto or "").strip()
-    if not texto:
-        return ""
-    if client_claude:
-        try:
-            msg = client_claude.messages.create(
-                model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-latest"), max_tokens=900,
-                messages=[{"role":"user", "content":"Traduza integralmente para português do Brasil. Preserve nomes, datas e fatos; não acrescente informações. Retorne apenas a tradução:\n\n" + texto[:9000]}]
-            )
-            return msg.content[0].text.strip()
-        except Exception:
-            pass
-    try:
-        r = requests.get("https://translate.googleapis.com/translate_a/single",
-            params={"client":"gtx", "sl":"auto", "tl":"pt", "dt":"t", "q":texto[:4500]}, timeout=12,
-            headers={"User-Agent":"Mozilla/5.0"})
-        r.raise_for_status()
-        return "".join(x[0] for x in r.json()[0] if x and x[0])
-    except Exception:
-        return ""
-
-def normalizar_ticker_universal(ticker_raw):
-    t_clean = ticker_raw.strip().upper()
-    if "=" in t_clean or "^" in t_clean or "-" in t_clean or t_clean.endswith(".SA"):
-        return t_clean
-    if any(t_clean.endswith(str(i)) for i in range(10)):
-        return f"{t_clean}.SA"
-    return t_clean
-
-@st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
-    t_symbol = normalizar_ticker_universal(ticker_raw)
+    t_symbol = ticker_raw.strip().upper()
     try:
         t_obj = yf.Ticker(t_symbol)
         hist = t_obj.history(period="5d")
-        preco_atual = 0.0
-        var_pct = 0.0
-        if not hist.empty and len(hist) >= 2:
-            preco_atual = float(hist['Close'].iloc[-1])
-            preco_ant = float(hist['Close'].iloc[-2])
-            var_pct = ((preco_atual - preco_ant) / preco_ant) * 100
-        elif not hist.empty:
-            preco_atual = float(hist['Close'].iloc[-1])
-
-        info = t_obj.info or {}
-        return {
-            "symbol": t_symbol,
-            "nome": info.get('longName', info.get('shortName', t_symbol)),
-            "preco": preco_atual,
-            "variacao": var_pct
-        }
+        preco_atual = float(hist['Close'].iloc[-1]) if not hist.empty else 0.0
+        var_pct = ((float(hist['Close'].iloc[-1]) - float(hist['Close'].iloc[-2])) / float(hist['Close'].iloc[-2])) * 100 if not hist.empty and len(hist) >= 2 else 0.0
+        return {"symbol": t_symbol, "preco": preco_atual, "variacao": var_pct}
     except Exception:
-        return {"symbol": t_symbol, "nome": ticker_raw, "preco": 0.0, "variacao": 0.0}
+        return {"symbol": t_symbol, "preco": 0.0, "variacao": 0.0}
 
 def obter_icone_ativo(simbolo):
     icones = {
@@ -340,14 +258,11 @@ def renderizar_ticker_tape(lista_tickers):
     """
     components.html(full_component, height=52)
 
-
-# --- INTERFACE PRINCIPAL E NAVEGAÇÃO DA APLICAÇÃO ---
-
 # Cabeçalho da aplicação
 st.markdown("""
-<div class="zion-header-row">
-    <div class="zion-brand-left">
-        <div class="dion-brand">
+<div class="zion-header-row" style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:0 0 8px;">
+    <div class="zion-brand-left" style="display:flex; justify-content:flex-start; align-items:center; width:100%; min-height:58px;">
+        <div class="dion-brand" style="display:flex; align-items:center; gap:13px; margin:2px 0 15px;">
             <div class="dion-mark">Z</div>
             <div>
                 <div class="dion-name">ZION</div>
@@ -361,10 +276,8 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Ticker Tape Superior
 renderizar_ticker_tape(["NVDA", "AAPL", "MSFT", "GOOGL", "BTC-USD", "ETH-USD", "PETR4.SA", "VALE3.SA"])
 
-# Definição das Abas da Aplicação
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Visão Global", 
     "Análise de Ativo", 
@@ -376,17 +289,13 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # --- ABA 1: VISÃO GLOBAL ---
 with tab1:
     st.markdown("""
-    <div class="global-heading">
-        <div>
-            <div class="global-eyebrow">MERCADO GLOBAL & PANORAMA INSTITUCIONAL</div>
-            <div class="global-title">Painel de Mercado</div>
-            <div class="global-description">Acompanhe os principais indicadores, tendências e cotações em tempo real.</div>
-        </div>
-        <div class="global-status"><span></span>CONEXÃO EM TEMPO REAL</div>
+    <div class="global-heading" style="padding:15px 24px; margin:8px 0 16px; border-radius:12px; background:linear-gradient(90deg,rgba(2,10,7,.96) 0%,rgba(2,12,8,.78) 40%,rgba(2,12,8,.12) 100%); border:1px solid rgba(0,210,130,.22);">
+        <div style="color:#00D98B; font-size:.68rem; font-weight:800; letter-spacing:2px; margin-bottom:7px;">MERCADO GLOBAL & PANORAMA INSTITUCIONAL</div>
+        <div style="color:#F4FBF6; font-size:1.55rem; font-weight:850; letter-spacing:-.5px;">Painel de Mercado</div>
+        <div style="color:#D0DBE6; font-size:.76rem; margin-top:4px;">Acompanhe os principais indicadores, tendências e cotações em tempo real.</div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Métricas Principais Lado a Lado
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1:
         st.metric("IBOVESPA", "128.450 pts", "+0.45%")
@@ -399,227 +308,66 @@ with tab1:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- PAINÉIS INFERIORES: RANKINGS DE MERCADO (STOCKS, CRIPTOMOEDAS, BDRs) ---
-    st.markdown("""
-    <div class="market-panel-container">
+    # --- PAINÉIS INFERIORES: USANDO COLUNAS NATIVAS DO STREAMLIT PARA GARANTIR RENDERIZAÇÃO ---
+    col_card1, col_card2, col_card3 = st.columns(3)
 
-        <!-- PAINEL 1: STOCKS (MAIORES VALOR DE MERCADO) -->
+    # CARD 1: STOCKS
+    with col_card1:
+        st.markdown("""
         <div class="market-card">
             <div>
                 <div class="market-card-header">
                     <div class="market-card-category"><span>🌐</span> Stocks</div>
                     <div class="market-card-title">Maiores Valor de Mercado</div>
                 </div>
-                
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#1</span>
-                        <img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">NVDA</span>
-                            <span class="market-item-name">NVIDIA Corporation</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 4,98 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#2</span>
-                        <img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">AAPL</span>
-                            <span class="market-item-name">Apple Inc</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 4,95 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#3</span>
-                        <img src="https://img.icons8.com/color/48/microsoft.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">MSFT</span>
-                            <span class="market-item-name">Microsoft Corp</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 3,87 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#4</span>
-                        <img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">GOOGL</span>
-                            <span class="market-item-name">Alphabet Inc</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 3,48 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#5</span>
-                        <img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">GOOG</span>
-                            <span class="market-item-name">Alphabet Inc</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 3,46 T</span>
-                </div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#1</span><img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">NVDA</span><span class="market-item-name">NVIDIA Corporation</span></div></div><span class="market-item-value">US$ 4,98 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#2</span><img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">AAPL</span><span class="market-item-name">Apple Inc</span></div></div><span class="market-item-value">US$ 4,95 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#3</span><img src="https://img.icons8.com/color/48/microsoft.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">MSFT</span><span class="market-item-name">Microsoft Corp</span></div></div><span class="market-item-value">US$ 3,87 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#4</span><img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">GOOGL</span><span class="market-item-name">Alphabet Inc</span></div></div><span class="market-item-value">US$ 3,48 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#5</span><img src="https://img.icons8.com/color/48/google-logo.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">GOOG</span><span class="market-item-name">Alphabet Inc</span></div></div><span class="market-item-value">US$ 3,46 T</span></div>
             </div>
             <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
         </div>
+        """, unsafe_allow_html=True)
 
-        <!-- PAINEL 2: CRIPTOMOEDAS (MAIOR CAPITALIZAÇÃO) -->
+    # CARD 2: CRIPTOMOEDAS
+    with col_card2:
+        st.markdown("""
         <div class="market-card">
             <div>
                 <div class="market-card-header">
                     <div class="market-card-category"><span>🪙</span> Criptomoedas</div>
                     <div class="market-card-title">Maior Capitalização</div>
                 </div>
-                
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#1</span>
-                        <img src="https://img.icons8.com/color/48/bitcoin.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">BTC</span>
-                            <span class="market-item-name">Bitcoin</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 1,56 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#2</span>
-                        <img src="https://img.icons8.com/color/48/ethereum.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">ETH</span>
-                            <span class="market-item-name">Ethereum</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 279,49 B</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#3</span>
-                        <img src="https://img.icons8.com/color/48/tether.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">USDT</span>
-                            <span class="market-item-name">Tether</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 178,91 B</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#4</span>
-                        <img src="https://img.icons8.com/color/48/binance-coin.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">BNB</span>
-                            <span class="market-item-name">Binance Coin</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 91,95 B</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#5</span>
-                        <img src="https://img.icons8.com/color/48/ripple.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">XRP</span>
-                            <span class="market-item-name">XRP</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 80,96 B</span>
-                </div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#1</span><img src="https://img.icons8.com/color/48/bitcoin.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">BTC</span><span class="market-item-name">Bitcoin</span></div></div><span class="market-item-value">US$ 1,56 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#2</span><img src="https://img.icons8.com/color/48/ethereum.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">ETH</span><span class="market-item-name">Ethereum</span></div></div><span class="market-item-value">US$ 279,49 B</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#3</span><img src="https://img.icons8.com/color/48/tether.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">USDT</span><span class="market-item-name">Tether</span></div></div><span class="market-item-value">US$ 178,91 B</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#4</span><img src="https://img.icons8.com/color/48/binance-coin.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">BNB</span><span class="market-item-name">Binance Coin</span></div></div><span class="market-item-value">US$ 91,95 B</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#5</span><img src="https://img.icons8.com/color/48/ripple.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">XRP</span><span class="market-item-name">XRP</span></div></div><span class="market-item-value">US$ 80,96 B</span></div>
             </div>
             <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
         </div>
+        """, unsafe_allow_html=True)
 
-        <!-- PAINEL 3: BDRS (OS MAIS BUSCADOS) -->
+    # CARD 3: BDRS
+    with col_card3:
+        st.markdown("""
         <div class="market-card">
             <div>
                 <div class="market-card-header">
                     <div class="market-card-category"><span>📊</span> BDRs</div>
                     <div class="market-card-title">Os Mais Buscados</div>
                 </div>
-                
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#1</span>
-                        <img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">AAPL34</span>
-                            <span class="market-item-name">Apple Inc</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 4,95 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#2</span>
-                        <img src="https://img.icons8.com/color/48/amazon.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">AMZO34</span>
-                            <span class="market-item-name">Amazon.com Inc</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 2,59 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#3</span>
-                        <img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">NVDC34</span>
-                            <span class="market-item-name">NVIDIA Corporation</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 4,98 T</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#4</span>
-                        <img src="https://img.icons8.com/color/48/nubank.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">ROXO34</span>
-                            <span class="market-item-name">Nu Holdings</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 57,04 B</span>
-                </div>
-
-                <div class="market-item-row">
-                    <div class="market-item-left">
-                        <span class="market-item-rank">#5</span>
-                        <img src="https://img.icons8.com/color/48/tesla-logo.png" class="market-item-logo">
-                        <div class="market-item-info">
-                            <span class="market-item-ticker">TSLA34</span>
-                            <span class="market-item-name">Tesla Inc</span>
-                        </div>
-                    </div>
-                    <span class="market-item-value">US$ 1,58 T</span>
-                </div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#1</span><img src="https://img.icons8.com/color/48/mac-os.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">AAPL34</span><span class="market-item-name">Apple Inc</span></div></div><span class="market-item-value">US$ 4,95 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#2</span><img src="https://img.icons8.com/color/48/amazon.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">AMZO34</span><span class="market-item-name">Amazon.com Inc</span></div></div><span class="market-item-value">US$ 2,59 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#3</span><img src="https://img.icons8.com/color/48/nvidia.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">NVDC34</span><span class="market-item-name">NVIDIA Corporation</span></div></div><span class="market-item-value">US$ 4,98 T</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#4</span><img src="https://img.icons8.com/color/48/nubank.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">ROXO34</span><span class="market-item-name">Nu Holdings</span></div></div><span class="market-item-value">US$ 57,04 B</span></div>
+                <div class="market-item-row"><div class="market-item-left"><span class="market-item-rank">#5</span><img src="https://img.icons8.com/color/48/tesla-logo.png" class="market-item-logo"><div class="market-item-info"><span class="market-item-ticker">TSLA34</span><span class="market-item-name">Tesla Inc</span></div></div><span class="market-item-value">US$ 1,58 T</span></div>
             </div>
             <a href="#" target="_self" class="market-card-btn">Ver Ranking</a>
         </div>
+        """, unsafe_allow_html=True)
 
-    </div>
-    """, unsafe_allow_html=True)
-
-# Outras abas (placeholders para manter a estrutura funcional)
 with tab2:
     st.info("Módulo de Análise de Ativo selecionado.")
 with tab3:

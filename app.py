@@ -17,6 +17,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import yfinance as yf
 from supabase import create_client
 from anthropic import Anthropic
 import feedparser
@@ -176,25 +177,6 @@ def secret_value(nome, padrao=""):
     except Exception:
         return os.getenv(nome, padrao)
 
-# --- POLÍTICA DE PUBLICAÇÃO E CAMADA DE PROVEDORES ---
-# O ZION foi configurado para audiência pública. APIs gratuitas nem sempre
-# autorizam redistribuição/publicação de cotações. Por segurança, provedores
-# com licença pública ainda não confirmada ficam bloqueados por padrão.
-def secret_bool(nome, padrao=False):
-    valor = str(secret_value(nome, str(padrao))).strip().lower()
-    return valor in ("1", "true", "sim", "yes", "on")
-
-ZION_PUBLIC_MODE = secret_bool("ZION_PUBLIC_MODE", True)
-
-# Não confundir chave/API gratuita com direito de exibição pública.
-def provedor_autorizado_publicamente(provedor):
-    if not ZION_PUBLIC_MODE:
-        return True
-    # Apenas bases públicas governamentais com reutilização aberta são
-    # consultadas diretamente. Gráficos TradingView são somente display.
-    autorizacoes = {"bcb": True, "cvm": True, "sec": True}
-    return bool(autorizacoes.get(provedor, False))
-
 SUPABASE_URL = secret_value("SUPABASE_URL")
 SUPABASE_ANON_KEY = secret_value("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = secret_value("SUPABASE_SERVICE_ROLE_KEY")
@@ -224,9 +206,6 @@ try:
 except Exception as erro:
     st.error(f"Não foi possível conectar ao Supabase: {erro}")
     st.stop()
-
-# A chave SERVICE_ROLE permanece exclusivamente no servidor/Secrets.
-# Nunca a envie ao navegador, ao HTML, a logs ou a componentes client-side.
 
 # Restaura a sessão autenticada desta pessoa.
 if st.session_state.get("zion_access_token") and st.session_state.get("zion_refresh_token"):
@@ -399,90 +378,181 @@ def normalizar_ticker_universal(ticker_raw):
         return f"{t_clean}.SA"
     return t_clean
 
-def simbolo_tradingview(ticker_raw):
-    """Converte tickers comuns para símbolos de exibição do widget TradingView."""
-    t = normalizar_ticker_universal(str(ticker_raw or "").strip())
-    if t.endswith(".SA"):
-        return "BMFBOVESPA:" + t[:-3]
-    if t in {"^BVSP", "BVSP", "IBOV"}:
-        return "BMFBOVESPA:IBOV"
-    if t.startswith("^"):
-        return "INDEX:" + t[1:]
-    if t.endswith("=X"):
-        return "FX:" + t.replace("=X", "")
-    if t.endswith("-USD"):
-        return "BINANCE:" + t.replace("-USD", "USDT")
-    if t in {"AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "GOOG", "META", "TSLA", "NFLX"}:
-        return "NASDAQ:" + t
-    return "NYSE:" + t
-
-
-def renderizar_grafico_tradingview(ticker_raw, altura=520):
-    """Exibe o gráfico incorporado; não extrai preços nem os usa em cálculos."""
-    from urllib.parse import urlencode
-
-    simbolo = simbolo_tradingview(ticker_raw)
-    parametros = {
-        "symbol": simbolo,
-        "interval": "D",
-        "timezone": "America/Sao_Paulo",
-        "theme": "dark",
-        "style": "1",
-        "locale": "br",
-        "hide_top_toolbar": "false",
-        "hide_legend": "false",
-        "save_image": "false",
-        "calendar": "false",
-        "hide_volume": "false",
-        "allow_symbol_change": "true",
-        "details": "false",
-        "hotlist": "false",
-        "withdateranges": "true"
-    }
-    url_widget = "https://www.tradingview.com/widgetembed/?" + urlencode(parametros)
-    try:
-        components.iframe(url_widget, height=altura, scrolling=False)
-        st.caption("Gráfico fornecido pelo TradingView. Dados da B3 podem ter atraso de aproximadamente 15 minutos.")
-        st.markdown("[Abrir o gráfico do Ibovespa diretamente no TradingView](https://br.tradingview.com/chart/?symbol=BMFBOVESPA%3AIBOV)")
-    except Exception as erro:
-        st.warning(f"Não foi possível carregar o gráfico incorporado: {erro}")
-        st.markdown("[Abrir o gráfico do Ibovespa no TradingView](https://br.tradingview.com/chart/?symbol=BMFBOVESPA%3AIBOV)")
-
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
-    """Não consulta APIs sem licença pública confirmada para cotação.
+    t_symbol = normalizar_ticker_universal(ticker_raw)
+    try:
+        t_obj = yf.Ticker(t_symbol)
+        hist = t_obj.history(period="5d")
+        preco_atual = 0.0
+        var_pct = 0.0
+        if not hist.empty and len(hist) >= 2:
+            preco_atual = float(hist['Close'].iloc[-1])
+            preco_ant = float(hist['Close'].iloc[-2])
+            var_pct = ((preco_atual - preco_ant) / preco_ant) * 100
+        elif not hist.empty:
+            preco_atual = float(hist['Close'].iloc[-1])
+        else:
+            info = t_obj.info or {}
+            preco_atual = info.get('currentPrice', info.get('regularMarketPrice', info.get('navPrice', 0.0)))
 
-    O preço zero sinaliza indisponibilidade; não deve ser interpretado como preço real.
-    A carteira utiliza seu último preço válido em cache de sessão ou o custo médio.
-    """
-    t_symbol = normalizar_ticker_universal(str(ticker_raw or ""))
-    return {
-        "symbol": t_symbol, "nome": str(ticker_raw), "categoria": "VISUALIZAÇÃO VIA TRADINGVIEW",
-        "preco": 0.0, "variacao": None, "dy_str": "N/D", "pe": "N/D", "pb": "N/D",
-        "min52": "N/D", "max52": "N/D",
-        "descricao": "Cotações não são extraídas de widgets. Consulte o gráfico incorporado do TradingView; dados numéricos serão habilitados somente com licença pública compatível.",
-        "setor": "N/D", "industria": "N/D", "website": ""
-    }
+        info = {}
+        try:
+            info = t_obj.info or {}
+        except Exception:
+            pass
+
+        dy = info.get('dividendYield', info.get('yield', 0.0))
+        dy_str = f"{dy * 100:.2f}%" if dy else "N/D"
+        pe = info.get('trailingPE', info.get('forwardPE', 'N/D'))
+        pb = info.get('priceToBook', 'N/D')
+        min52 = info.get('fiftyTwoWeekLow', 'N/D')
+        max52 = info.get('fiftyTwoWeekHigh', 'N/D')
+        nome_longo = info.get('longName', info.get('shortName', t_symbol))
+        categoria_raw = info.get('quoteType', 'AÇÕES / B3')
+        categoria = TRADUCOES_TIPO.get(str(categoria_raw).upper(), categoria_raw)
+        
+        descricao_original = info.get('longBusinessSummary', '')
+        setor_raw = info.get('sector', 'Não informado')
+        setor = TRADUCOES_SETOR.get(str(setor_raw).lower(), setor_raw)
+        industria_raw = info.get('industry', 'Não informada')
+        industria = TRADUCOES_SETOR.get(str(industria_raw).lower(), traduzir_texto_pt(industria_raw) or industria_raw)
+
+        # Tradução para português: Claude quando configurado e serviço alternativo como fallback.
+        descricao_final = traduzir_texto_pt(descricao_original) if descricao_original and len(descricao_original) > 20 else ""
+        if not descricao_final:
+            descricao_final = "A fonte consultada não disponibilizou uma descrição institucional em português para este ativo. Não foram criadas informações substitutas."
+
+        return {
+            "symbol": t_symbol,
+            "nome": nome_longo,
+            "categoria": categoria,
+            "preco": preco_atual,
+            "variacao": var_pct,
+            "dy_str": dy_str,
+            "pe": pe,
+            "pb": pb,
+            "min52": min52,
+            "max52": max52,
+            "descricao": descricao_final,
+            "setor": setor,
+            "industria": industria,
+            "website": info.get("website", ""),
+            "pais": traduzir_texto_pt(info.get("country", "Não informado")) or info.get("country", "Não informado"),
+            "funcionarios": info.get("fullTimeEmployees")
+        }
+    except Exception:
+        return {
+            "symbol": t_symbol, "nome": ticker_raw, "categoria": "OUTROS", 
+            "preco": 0.0, "variacao": 0.0, "dy_str": "N/D", 
+            "pe": "N/D", "pb": "N/D", "min52": 0.0, "max52": 0.0,
+            "descricao": f"Não foi possível recuperar o histórico detalhado para o ativo {ticker_raw}.", 
+            "setor": "N/D", "industria": "N/D"
+        }
 
 # --- RANKINGS DE MERCADO PARA A VISÃO GLOBAL ---
-# Os painéis são mantidos visualmente, mas os rankings numéricos são suspensos
-# até existir fornecedor com direito explícito de redistribuição pública.
+# Os rankings consultam uma lista ampla de ativos acompanhados. A classificação
+# de ações usa valor de mercado; cripto usa capitalização da CoinGecko; BDR usa
+# volume negociado mais recente disponível no Yahoo Finance.
 
 @st.cache_data(ttl=300, show_spinner=False)
 def buscar_ranking_acoes():
-    # Sem fornecedor de cotações com licença de redistribuição pública confirmada.
-    return []
+    universo = ["NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "TSLA", "BRK-B", "TSM", "WMT"]
+    resultados = []
+    for ticker in universo:
+        try:
+            obj = yf.Ticker(ticker)
+            info = obj.info or {}
+            hist = obj.history(period="5d")
+            preco = info.get("currentPrice") or info.get("regularMarketPrice")
+            if (preco is None or float(preco or 0) <= 0) and not hist.empty:
+                preco = float(hist["Close"].iloc[-1])
+            if not preco or float(preco) <= 0:
+                continue
+            variacao = None
+            if len(hist) >= 2:
+                anterior = float(hist["Close"].iloc[-2])
+                atual = float(hist["Close"].iloc[-1])
+                if anterior:
+                    variacao = (atual / anterior - 1) * 100
+            cap = info.get("marketCap") or 0
+            if not cap:
+                continue
+            resultados.append({
+                "ticker": ticker,
+                "nome": info.get("shortName") or info.get("longName") or ticker,
+                "preco": float(preco),
+                "variacao": variacao,
+                "capitalizacao": float(cap),
+                "moeda": info.get("currency", "USD"),
+                "logo": info.get("logo_url")
+            })
+        except Exception:
+            continue
+    return sorted(resultados, key=lambda x: x["capitalizacao"], reverse=True)[:5]
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def buscar_ranking_cripto():
-    # Não utilizar APIs gratuitas de cripto como se fossem licenciadas para redistribuição.
-    return []
+    url = "https://api.coingecko.com/api/v3/coins/markets"
+    params = {
+        "vs_currency": "usd", "order": "market_cap_desc", "per_page": 5,
+        "page": 1, "sparkline": "false", "price_change_percentage": "24h"
+    }
+    try:
+        resposta = requests.get(url, params=params, timeout=12, headers={"accept": "application/json"})
+        resposta.raise_for_status()
+        dados = resposta.json()
+        mapa_yahoo = {"bitcoin": "BTC-USD", "ethereum": "ETH-USD", "tether": "USDT-USD",
+                      "binancecoin": "BNB-USD", "ripple": "XRP-USD", "solana": "SOL-USD",
+                      "usd-coin": "USDC-USD", "tron": "TRX-USD", "dogecoin": "DOGE-USD"}
+        saida = []
+        for item in dados:
+            coin_id = item.get("id", "")
+            saida.append({
+                "ticker": mapa_yahoo.get(coin_id, f"{str(item.get('symbol','')).upper()}-USD"),
+                "simbolo": str(item.get("symbol", "")).upper(),
+                "nome": item.get("name", "Criptoativo"),
+                "preco": float(item.get("current_price") or 0),
+                "variacao": item.get("price_change_percentage_24h"),
+                "capitalizacao": float(item.get("market_cap") or 0),
+                "logo": item.get("image")
+            })
+        return saida
+    except Exception:
+        return []
 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def buscar_ranking_bdrs():
-    return []
+    universo = ["AAPL34.SA", "MSFT34.SA", "NVDC34.SA", "AMZO34.SA", "GOGL34.SA",
+                "META34.SA", "TSLA34.SA", "NFLX34.SA", "ORCL34.SA", "AVGO34.SA"]
+    resultados = []
+    for ticker in universo:
+        try:
+            obj = yf.Ticker(ticker)
+            hist = obj.history(period="5d")
+            if hist.empty:
+                continue
+            preco = float(hist["Close"].iloc[-1])
+            volume = float(hist["Volume"].iloc[-1]) if "Volume" in hist else 0.0
+            anterior = float(hist["Close"].iloc[-2]) if len(hist) >= 2 else 0.0
+            variacao = ((preco / anterior) - 1) * 100 if anterior else None
+            try:
+                info = obj.info or {}
+            except Exception:
+                info = {}
+            resultados.append({
+                "ticker": ticker,
+                "nome": info.get("shortName") or info.get("longName") or ticker.replace(".SA", ""),
+                "preco": preco,
+                "variacao": variacao,
+                "volume": volume,
+                "logo": info.get("logo_url")
+            })
+        except Exception:
+            continue
+    return sorted(resultados, key=lambda x: x["volume"], reverse=True)[:5]
 
 
 def formatar_preco_ranking(valor, moeda="USD"):
@@ -618,16 +688,8 @@ def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
         st.markdown(painel, unsafe_allow_html=True)
 
 
-def renderizar_rankings_mercado(contexto="global"):
-    titulo_secao = "Rankings de Ativos" if contexto == "global" else "Rankings do Mercado — B3 e Ativos Globais"
-    subtitulo_secao = "Stocks, criptomoedas e BDRs" if contexto == "global" else "Resumo visual de ativos para consulta"
-    st.markdown(
-        f"<div class='ranking-intro'><div><div class='ranking-title'>{html.escape(titulo_secao)}</div>"
-        f"<div class='ranking-subtitle'>{html.escape(subtitulo_secao)}</div></div></div>",
-        unsafe_allow_html=True
-    )
-    if ZION_PUBLIC_MODE:
-        st.caption("Os cartões e categorias permanecem disponíveis. As posições só serão preenchidas quando houver dados cuja licença autorize expressamente a exibição pública e comercial.")
+def renderizar_rankings_mercado():
+    st.markdown("<div class='ranking-intro'><div><div class='ranking-title'>Rankings do mercado</div><div class='ranking-subtitle'>Ativos em destaque · atualização automática a cada 5 minutos</div></div></div>", unsafe_allow_html=True)
     c_atualizar, c_horario = st.columns([1, 4], vertical_alignment="center")
     with c_atualizar:
         if st.button("↻ Atualizar rankings", key="zion_atualizar_rankings", use_container_width=True):
@@ -644,9 +706,9 @@ def renderizar_rankings_mercado(contexto="global"):
         bdrs = buscar_ranking_bdrs()
 
     col_acoes, col_cripto, col_bdrs = st.columns(3, gap="medium")
-    renderizar_painel_ranking(col_acoes, "Stocks", "Maiores Valor de Mercado", acoes, "acao")
-    renderizar_painel_ranking(col_cripto, "Criptomoedas", "Maior Capitalização", criptos, "crypto")
-    renderizar_painel_ranking(col_bdrs, "BDRs", "Os Mais Buscados", bdrs, "bdr")
+    renderizar_painel_ranking(col_acoes, "Ações", "Maior valor de mercado · universo acompanhado", acoes, "acao")
+    renderizar_painel_ranking(col_cripto, "Criptomoedas", "Maior capitalização · mercado global", criptos, "crypto")
+    renderizar_painel_ranking(col_bdrs, "BDRs", "Mais negociados · volume recente na B3", bdrs, "bdr")
 
 
 def obter_icone_ativo(simbolo):
@@ -723,7 +785,8 @@ def carregar_carteira_supabase():
 @st.cache_data(ttl=300)
 def buscar_cotacoes_atuais():
     dolar_data = obter_dados_ticker_seguro("USDBRL=X")
-    # Não calcula preços por meio de APIs sem licença de exibição pública confirmada.
+    # O Yahoo Finance nem sempre disponibiliza BTC-BRL. A conversão abaixo usa
+    # BTC-USD x USD/BRL, mantendo a variação diária do próprio Bitcoin.
     btc_usd_data = obter_dados_ticker_seguro("BTC-USD")
 
     preco_dolar = dolar_data.get("preco", 0) if isinstance(dolar_data, dict) else 0
@@ -996,7 +1059,11 @@ if st.session_state["aba_ativa"] == "🌐 Visão Global":
 
     # Rankings ficam no rodapé da Página 01 (Visão Global), depois das notícias.
     st.divider()
-    renderizar_rankings_mercado(contexto="global")
+    if hasattr(st, "fragment"):
+        renderizar_rankings_auto = st.fragment(run_every=timedelta(minutes=5))(renderizar_rankings_mercado)
+        renderizar_rankings_auto()
+    else:
+        renderizar_rankings_mercado()
 
 # ==========================================
 # SEÇÃO 2: MERCADO BRASILEIRO
@@ -1015,10 +1082,10 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     """, unsafe_allow_html=True)
     
     st.subheader("📊 Macroeconomia Nacional")
-    st.markdown("#### Ibovespa — gráfico de referência")
-    renderizar_grafico_tradingview("^BVSP", altura=390)
-    ib1, ib2, ib3 = st.columns(3)
-    @st.cache_data(ttl=3600, show_spinner=False)
+    ibov = obter_dados_ticker_seguro("^BVSP")
+    ib1, ib2, ib3, ib4 = st.columns(4)
+    with ib1:
+        st.metric("Ibovespa (IBOV)", f"{ibov['preco']:,.0f} pts".replace(",", ".") if ibov["preco"] else "Indisponível", delta=f"{ibov['variacao']:+.2f}%" if ibov["variacao"] is not None else None)
     def bcb_ultimo(codigo, dias=60):
         try:
             fim = datetime.now().strftime("%d/%m/%Y")
@@ -1032,9 +1099,9 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     selic_atual = bcb_ultimo(432, 90)
     ipca_atual = bcb_ultimo(433, 90)
     cdi_atual = bcb_ultimo(12, 30)
-    with ib1: st.metric("Selic (último registro)", f"{selic_atual:.2f}%" if selic_atual is not None else "Indisponível")
-    with ib2: st.metric("IPCA (último registro)", f"{ipca_atual:.2f}%" if ipca_atual is not None else "Indisponível")
-    with ib3: st.metric("CDI (último registro)", f"{cdi_atual:.2f}%" if cdi_atual is not None else "Indisponível")
+    with ib2: st.metric("Selic (último registro)", f"{selic_atual:.2f}%" if selic_atual is not None else "Indisponível")
+    with ib3: st.metric("IPCA (último registro)", f"{ipca_atual:.2f}%" if ipca_atual is not None else "Indisponível")
+    with ib4: st.metric("CDI (último registro)", f"{cdi_atual:.2f}%" if cdi_atual is not None else "Indisponível")
     st.caption("Indicadores consultados em fontes externas; a série exibida corresponde ao último registro retornado e pode não ser uma taxa anualizada.")
 
     st.divider()
@@ -1064,10 +1131,6 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     else:
         st.caption("Notícias nacionais indisponíveis no momento.")
 
-    # Painéis de ranking no rodapé da aba 2, seguindo a referência visual enviada.
-    st.divider()
-    renderizar_rankings_mercado(contexto="mercado_brasileiro")
-
 # ==========================================
 # SEÇÃO 3: ANÁLISE PROFISSIONAL MULTI-ATIVOS
 # ==========================================
@@ -1095,12 +1158,12 @@ elif st.session_state["aba_ativa"] == "📈 Análise Profissional & IA":
         ).strip().upper()
         if ticker_input:
             dados_ativo = obter_dados_ticker_seguro(ticker_input)
-            if dados_ativo:
+            if dados_ativo and dados_ativo["preco"] > 0:
                 st.subheader(f"🔍 {dados_ativo['nome']} ({dados_ativo['symbol']})")
                 
                 m1, m2, m3, m4, m5, m6 = st.columns(6)
                 moeda_prefix = "R$" if ".SA" in dados_ativo['symbol'] or "BRL" in dados_ativo['symbol'] else "$"
-                with m1: st.metric("Cotação numérica", "Não licenciada")
+                with m1: st.metric("Cotação", f"{moeda_prefix} {dados_ativo['preco']:.2f}")
                 with m2: st.metric("Dividend Yield", dados_ativo['dy_str'])
                 with m3: st.metric("P/L", f"{dados_ativo['pe']:.2f}" if isinstance(dados_ativo['pe'], (int, float)) else dados_ativo['pe'])
                 with m4: st.metric("P/VP", f"{dados_ativo['pb']:.2f}" if isinstance(dados_ativo['pb'], (int, float)) else dados_ativo['pb'])
@@ -1113,10 +1176,39 @@ elif st.session_state["aba_ativa"] == "📈 Análise Profissional & IA":
                     "Período do gráfico:", ["1D", "1S", "1M", "6M", "1A", "2A"],
                     index=5, key="zion_periodo_grafico"
                 )
-                # O gráfico é fornecido pelo TradingView para visualização humana.
-                # Seus dados não são extraídos nem reutilizados nos cálculos do ZION.
-                renderizar_grafico_tradingview(ticker_input, altura=520)
-                st.caption("Gráfico incorporado do TradingView. A cotação pode ter atraso conforme o mercado e o plano de dados do fornecedor. O widget é exclusivamente visual; os indicadores fundamentalistas que dependiam da API anterior aparecem como N/D até existir uma fonte licenciada.")
+                configuracao_periodo = {
+                    "1D": ("1d", "5m"), "1S": ("5d", "30m"),
+                    "1M": ("1mo", "1d"), "6M": ("6mo", "1d"),
+                    "1A": ("1y", "1d"), "2A": ("2y", "1d")
+                }
+                periodo_yf, intervalo_yf = configuracao_periodo[periodo_escolhido]
+                try:
+                    df_hist = yf.Ticker(dados_ativo['symbol']).history(period=periodo_yf, interval=intervalo_yf)
+                except Exception:
+                    df_hist = pd.DataFrame()
+
+                if not df_hist.empty and "Close" in df_hist:
+                    df_hist = df_hist.dropna(subset=["Close"])
+                    fig = go.Figure()
+                    fig.add_trace(go.Scatter(
+                        x=df_hist.index, y=df_hist["Close"], mode="lines", name="Cotação",
+                        line=dict(color="#00C781", width=2.2),
+                        fill="tozeroy", fillcolor="rgba(0,199,129,0.10)",
+                        hovertemplate="%{x|%d/%m/%Y %H:%M}<br>Preço: %{y:,.2f}<extra></extra>"
+                    ))
+                    fig.update_layout(
+                        template="plotly_dark", height=420,
+                        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                        margin=dict(l=10, r=18, t=18, b=10),
+                        showlegend=False, hovermode="x unified",
+                        font=dict(family="Inter", color="#DCE8E0"),
+                        xaxis=dict(title="", gridcolor="rgba(180,210,190,.08)", showline=False),
+                        yaxis=dict(title="Preço", gridcolor="rgba(180,210,190,.08)", side="right"),
+                    )
+                    st.plotly_chart(fig, width="stretch", config={"displayModeBar": True, "displaylogo": False})
+                    st.caption("Gráfico de linha com preços históricos. A disponibilidade e o atraso das cotações dependem da fonte consultada.")
+                else:
+                    st.info("Não foi possível carregar o histórico deste ativo para o período selecionado.")
 
                 st.divider()
                 # O perfil e o histórico ficam abaixo das cotações e do gráfico.
@@ -1221,14 +1313,7 @@ elif st.session_state["aba_ativa"] == "💼 Gestão de Carteira":
                 cotacoes_atuais.append(row['preco_medio'])
             else:
                 cot = obter_dados_ticker_seguro(row['ticker'])['preco']
-                cache_precos = st.session_state.setdefault("zion_ultimas_cotacoes_validas", {})
-                chave_ticker = str(row.get('ticker', '')).upper()
-                if cot and cot > 0:
-                    cache_precos[chave_ticker] = {"preco": float(cot), "obtido_em": datetime.now().isoformat()}
-                ultimo = cache_precos.get(chave_ticker, {})
-                # Como não há feed numérico licenciado, usa-se o último valor válido
-                # conhecido nesta sessão; sem histórico, usa o custo médio cadastrado.
-                cotacoes_atuais.append(float(ultimo.get("preco") or row['preco_medio']))
+                cotacoes_atuais.append(cot if cot > 0 else row['preco_medio'])
 
         df_cart['Cotacao_Atual'] = cotacoes_atuais
         df_cart['Total_Investido'] = df_cart['quantidade'] * df_cart['preco_medio']
@@ -1242,7 +1327,6 @@ elif st.session_state["aba_ativa"] == "💼 Gestão de Carteira":
     else:
         tot_inv, tot_val, tot_pnl, tot_pnl_pct = 0.0, 0.0, 0.0, 0.0
 
-    st.caption("Valoração protegida: se houver último preço válido previamente armazenado nesta sessão, ele será reutilizado; sem esse registro, o sistema usa o custo médio cadastrado. Como as fontes numéricas anteriores foram retiradas, novas cotações não são atualizadas automaticamente. Os gráficos TradingView não alimentam o PnL.")
     st.subheader("📊 Resumo Consolidado do Patrimônio")
     k1, k2, k3, k4 = st.columns(4)
     with k1: st.metric("Total Investido", f"R$ {tot_inv:,.2f}")

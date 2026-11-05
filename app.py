@@ -177,6 +177,28 @@ def secret_value(nome, padrao=""):
     except Exception:
         return os.getenv(nome, padrao)
 
+# --- POLÍTICA DE PUBLICAÇÃO E CAMADA DE PROVEDORES ---
+# O ZION foi configurado para audiência pública. APIs gratuitas nem sempre
+# autorizam redistribuição/publicação de cotações. Por segurança, provedores
+# com licença pública ainda não confirmada ficam bloqueados por padrão.
+def secret_bool(nome, padrao=False):
+    valor = str(secret_value(nome, str(padrao))).strip().lower()
+    return valor in ("1", "true", "sim", "yes", "on")
+
+ZION_PUBLIC_MODE = secret_bool("ZION_PUBLIC_MODE", True)
+ZION_YAHOO_PUBLIC_LICENSED = secret_bool("ZION_YAHOO_PUBLIC_LICENSED", False)
+ZION_COINGECKO_PUBLIC_LICENSED = secret_bool("ZION_COINGECKO_PUBLIC_LICENSED", False)
+
+# Não confundir chave/API gratuita com direito de exibição pública.
+def provedor_autorizado_publicamente(provedor):
+    if not ZION_PUBLIC_MODE:
+        return True
+    autorizacoes = {
+        "yahoo": ZION_YAHOO_PUBLIC_LICENSED,
+        "coingecko": ZION_COINGECKO_PUBLIC_LICENSED,
+    }
+    return bool(autorizacoes.get(provedor, False))
+
 SUPABASE_URL = secret_value("SUPABASE_URL")
 SUPABASE_ANON_KEY = secret_value("SUPABASE_ANON_KEY")
 SUPABASE_SERVICE_ROLE_KEY = secret_value("SUPABASE_SERVICE_ROLE_KEY")
@@ -206,6 +228,9 @@ try:
 except Exception as erro:
     st.error(f"Não foi possível conectar ao Supabase: {erro}")
     st.stop()
+
+# A chave SERVICE_ROLE permanece exclusivamente no servidor/Secrets.
+# Nunca a envie ao navegador, ao HTML, a logs ou a componentes client-side.
 
 # Restaura a sessão autenticada desta pessoa.
 if st.session_state.get("zion_access_token") and st.session_state.get("zion_refresh_token"):
@@ -381,6 +406,14 @@ def normalizar_ticker_universal(ticker_raw):
 @st.cache_data(ttl=300)
 def obter_dados_ticker_seguro(ticker_raw):
     t_symbol = normalizar_ticker_universal(ticker_raw)
+    if not provedor_autorizado_publicamente("yahoo"):
+        return {
+            "symbol": t_symbol, "nome": ticker_raw, "categoria": "COTAÇÃO NÃO PUBLICADA",
+            "preco": 0.0, "variacao": None, "dy_str": "N/D",
+            "pe": "N/D", "pb": "N/D", "min52": "N/D", "max52": "N/D",
+            "descricao": "A cotação foi temporariamente ocultada na versão pública do ZION. A fonte atual não possui autorização de exibição pública confirmada.",
+            "setor": "N/D", "industria": "N/D", "website": ""
+        }
     try:
         t_obj = yf.Ticker(t_symbol)
         hist = t_obj.history(period="5d")
@@ -457,6 +490,8 @@ def obter_dados_ticker_seguro(ticker_raw):
 
 @st.cache_data(ttl=300, show_spinner=False)
 def buscar_ranking_acoes():
+    if not provedor_autorizado_publicamente("yahoo"):
+        return []
     universo = ["NVDA", "MSFT", "AAPL", "AMZN", "GOOGL", "GOOG", "META", "AVGO", "TSLA", "BRK-B", "TSM", "WMT"]
     resultados = []
     for ticker in universo:
@@ -494,6 +529,9 @@ def buscar_ranking_acoes():
 
 @st.cache_data(ttl=300, show_spinner=False)
 def buscar_ranking_cripto():
+    # A API Demo gratuita não concede, por si só, licença para exibição pública.
+    if not provedor_autorizado_publicamente("coingecko"):
+        return []
     url = "https://api.coingecko.com/api/v3/coins/markets"
     params = {
         "vs_currency": "usd", "order": "market_cap_desc", "per_page": 5,
@@ -525,6 +563,8 @@ def buscar_ranking_cripto():
 
 @st.cache_data(ttl=300, show_spinner=False)
 def buscar_ranking_bdrs():
+    if not provedor_autorizado_publicamente("yahoo"):
+        return []
     universo = ["AAPL34.SA", "MSFT34.SA", "NVDC34.SA", "AMZO34.SA", "GOGL34.SA",
                 "META34.SA", "TSLA34.SA", "NFLX34.SA", "ORCL34.SA", "AVGO34.SA"]
     resultados = []
@@ -690,6 +730,8 @@ def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
 
 def renderizar_rankings_mercado():
     st.markdown("<div class='ranking-intro'><div><div class='ranking-title'>Rankings do mercado</div><div class='ranking-subtitle'>Ativos em destaque · atualização automática a cada 5 minutos</div></div></div>", unsafe_allow_html=True)
+    if ZION_PUBLIC_MODE and not (ZION_YAHOO_PUBLIC_LICENSED and ZION_COINGECKO_PUBLIC_LICENSED):
+        st.info("Modo público protegido: algumas cotações/rankings ficam ocultos até a confirmação dos direitos de exibição pública das respectivas fontes. Os demais módulos do ZION continuam disponíveis.")
     c_atualizar, c_horario = st.columns([1, 4], vertical_alignment="center")
     with c_atualizar:
         if st.button("↻ Atualizar rankings", key="zion_atualizar_rankings", use_container_width=True):
@@ -1086,6 +1128,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     ib1, ib2, ib3, ib4 = st.columns(4)
     with ib1:
         st.metric("Ibovespa (IBOV)", f"{ibov['preco']:,.0f} pts".replace(",", ".") if ibov["preco"] else "Indisponível", delta=f"{ibov['variacao']:+.2f}%" if ibov["variacao"] is not None else None)
+    @st.cache_data(ttl=3600, show_spinner=False)
     def bcb_ultimo(codigo, dias=60):
         try:
             fim = datetime.now().strftime("%d/%m/%Y")

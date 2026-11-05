@@ -404,6 +404,8 @@ def simbolo_tradingview(ticker_raw):
     t = normalizar_ticker_universal(str(ticker_raw or "").strip())
     if t.endswith(".SA"):
         return "BMFBOVESPA:" + t[:-3]
+    if t in {"^BVSP", "BVSP", "IBOV"}:
+        return "BMFBOVESPA:IBOV"
     if t.startswith("^"):
         return "INDEX:" + t[1:]
     if t.endswith("=X"):
@@ -416,21 +418,35 @@ def simbolo_tradingview(ticker_raw):
 
 
 def renderizar_grafico_tradingview(ticker_raw, altura=520):
-    """Widget de visualização. Não extrai preços nem os usa em cálculos."""
-    simbolo = simbolo_tradingview(ticker_raw)
-    html_widget = f"""<!doctype html><html><head><meta charset="utf-8"></head>
-    <body style="margin:0;background:#080D0B">
-    <div class="tradingview-widget-container" style="height:{altura}px;width:100%">
-      <div class="tradingview-widget-container__widget" style="height:calc(100% - 32px);width:100%"></div>
-      <div class="tradingview-widget-copyright" style="font:12px Arial;color:#91A198;padding:5px 8px">
-        <a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank" style="color:#91A198">Gráficos pelo TradingView</a>
-      </div>
-    </div>
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js" async>
-    {{"autosize":true,"symbol":"{html.escape(simbolo, quote=True)}","interval":"D","timezone":"America/Sao_Paulo","theme":"dark","style":"1","locale":"br","allow_symbol_change":true,"calendar":false,"support_host":"https://www.tradingview.com"}}
-    </script></body></html>"""
-    components.html(html_widget, height=altura, scrolling=False)
+    """Exibe o gráfico incorporado; não extrai preços nem os usa em cálculos."""
+    from urllib.parse import urlencode
 
+    simbolo = simbolo_tradingview(ticker_raw)
+    parametros = {
+        "symbol": simbolo,
+        "interval": "D",
+        "timezone": "America/Sao_Paulo",
+        "theme": "dark",
+        "style": "1",
+        "locale": "br",
+        "hide_top_toolbar": "false",
+        "hide_legend": "false",
+        "save_image": "false",
+        "calendar": "false",
+        "hide_volume": "false",
+        "allow_symbol_change": "true",
+        "details": "false",
+        "hotlist": "false",
+        "withdateranges": "true"
+    }
+    url_widget = "https://www.tradingview.com/widgetembed/?" + urlencode(parametros)
+    try:
+        components.iframe(url_widget, height=altura, scrolling=False)
+        st.caption("Gráfico fornecido pelo TradingView. Dados da B3 podem ter atraso de aproximadamente 15 minutos.")
+        st.markdown("[Abrir o gráfico do Ibovespa diretamente no TradingView](https://br.tradingview.com/chart/?symbol=BMFBOVESPA%3AIBOV)")
+    except Exception as erro:
+        st.warning(f"Não foi possível carregar o gráfico incorporado: {erro}")
+        st.markdown("[Abrir o gráfico do Ibovespa no TradingView](https://br.tradingview.com/chart/?symbol=BMFBOVESPA%3AIBOV)")
 
 @st.cache_data(ttl=300, show_spinner=False)
 def obter_dados_ticker_seguro(ticker_raw):

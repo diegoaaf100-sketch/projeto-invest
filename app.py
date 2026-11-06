@@ -184,6 +184,27 @@ st.markdown("""
     @media(max-width:1050px) { .ranking-panel { padding:15px 12px 10px; } .ranking-row { grid-template-columns:24px 38px minmax(0,1fr) minmax(70px,auto); gap:7px; } .ranking-logo-wrap { width:34px; height:34px; } .ranking-logo-wrap img { width:27px; height:27px; } .ranking-price { font-size:.70rem; } }
     @media (max-width: 900px) { .ranking-intro { align-items:flex-start; flex-direction:column; } }
 
+
+    /* TERMINAL FINANCEIRO — Página 2 */
+    .terminal-heading{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 22px;margin:10px 0 16px;border:1px solid rgba(111,151,190,.22);border-radius:13px;background:linear-gradient(110deg,#111d2a 0%,#101923 58%,#0b131d 100%);box-shadow:0 14px 36px rgba(0,0,0,.24)}
+    .terminal-kicker{font-size:.65rem;letter-spacing:2px;text-transform:uppercase;color:#62b5ff;font-weight:800;margin-bottom:5px}
+    .terminal-title{font-size:1.45rem;line-height:1.15;font-weight:850;letter-spacing:-.7px;color:#f2f6fb}
+    .terminal-subtitle{font-size:.75rem;color:#8fa1b5;margin-top:6px}
+    .terminal-status{font-size:.68rem;color:#9fb0c2;text-align:right;white-space:nowrap}
+    .terminal-status b{color:#45d6a0}
+    .terminal-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:0 0 18px}
+    .terminal-strip-item{padding:11px 14px;border:1px solid rgba(130,159,190,.16);border-radius:10px;background:linear-gradient(145deg,#121e2a,#0e1721)}
+    .terminal-strip-label{font-size:.62rem;color:#8094aa;text-transform:uppercase;letter-spacing:1px;font-weight:750}
+    .terminal-strip-value{font-size:.88rem;color:#e9f0f7;font-weight:800;margin-top:4px}
+    .terminal-section{font-size:.68rem;color:#62b5ff;text-transform:uppercase;letter-spacing:1.7px;font-weight:850;margin:18px 0 8px}
+    .terminal-divider{height:1px;background:linear-gradient(90deg,rgba(88,160,226,.38),rgba(88,160,226,.04));margin:18px 0}
+    .ibov-card{background:linear-gradient(150deg,#121e29,#0c141d)!important;border-color:rgba(111,151,190,.25)!important;border-radius:13px!important;box-shadow:0 16px 40px rgba(0,0,0,.26)!important}
+    .ibov-stat{background:rgba(125,160,195,.045)!important;border-color:rgba(125,160,195,.13)!important}
+    .ibov-eyebrow{color:#65b7ff!important}.ibov-live{color:#9be8c9!important;background:rgba(0,190,130,.08)!important;border-color:rgba(0,190,130,.2)!important}
+    .ranking-panel{background:linear-gradient(155deg,#14212d,#0c151e)!important;border-color:rgba(111,151,190,.20)!important;border-radius:12px!important}
+    .news-card{background:linear-gradient(110deg,#121e29,#0c151e)!important;border-color:rgba(111,151,190,.20)!important}
+    @media(max-width:760px){.terminal-heading{align-items:flex-start;flex-direction:column}.terminal-status{text-align:left}.terminal-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.ibov-stats{grid-template-columns:1fr}}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1436,17 +1457,24 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     tickers_br = ["PETR4", "VALE3", "ITUB4", "BBDC4", "ABEV3", "WEGE3", "RENT3", "BBAS3", "HGLG11", "MXRF11"]
     renderizar_ticker_tape(tickers_br)
 
-    st.markdown("""
-        <div class="hero-header" style="background-image: url('https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?auto=format&fit=crop&w=1200&q=80');">
-            <div class="hero-overlay">
-                <div class="hero-title">🇧🇷 Mercado Brasileiro & B3</div>
-                <div class="hero-subtitle">Taxas de juros, inflação e notícias atualizadas diariamente em tempo real</div>
-            </div>
+    agora_terminal = datetime.now().strftime("%d/%m/%Y · %H:%M:%S")
+    st.markdown(f"""
+        <div class="terminal-heading">
+            <div><div class="terminal-kicker">ZION MARKETS · BRASIL</div>
+            <div class="terminal-title">Mercado Brasileiro <span style="color:#62b5ff">/</span> B3</div>
+            <div class="terminal-subtitle">Painel de acompanhamento de índices, macroeconomia, empresas e notícias</div></div>
+            <div class="terminal-status"><b>● TERMINAL ONLINE</b><br>Consulta iniciada em {agora_terminal}<br><span style="color:#71869b">Dados sujeitos à disponibilidade das fontes</span></div>
+        </div>
+        <div class="terminal-strip">
+            <div class="terminal-strip-item"><div class="terminal-strip-label">Mercado</div><div class="terminal-strip-value">Brasil · B3</div></div>
+            <div class="terminal-strip-item"><div class="terminal-strip-label">Índice de referência</div><div class="terminal-strip-value">Ibovespa · IBOV</div></div>
+            <div class="terminal-strip-item"><div class="terminal-strip-label">Indicadores</div><div class="terminal-strip-value">Selic · IPCA · CDI</div></div>
+            <div class="terminal-strip-item"><div class="terminal-strip-label">Ambiente</div><div class="terminal-strip-value">Ações · FIIs · Macro</div></div>
         </div>
     """, unsafe_allow_html=True)
-    
+
     # Gráfico de referência do Ibovespa no início da página.
-    st.markdown("<div class='global-section-label'>IBOVESPA · DESEMPENHO HISTÓRICO</div>", unsafe_allow_html=True)
+    st.markdown("<div class='terminal-section'>01 / Ibovespa · desempenho histórico</div>", unsafe_allow_html=True)
     col_periodo_ibov, col_atualizar_ibov = st.columns([3, 1], vertical_alignment="bottom")
     with col_periodo_ibov:
         periodo_ibov = st.selectbox(
@@ -1644,7 +1672,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
             "Confira os Logs do aplicativo para identificar a falha da conexão e tente atualizar novamente."
         )
 
-    st.subheader("📊 Macroeconomia Nacional")
+    st.markdown("<div class='terminal-divider'></div><div class='terminal-section'>02 / Painel macroeconômico</div>", unsafe_allow_html=True)
     ibov = obter_dados_ticker_seguro("^BVSP")
     ib1, ib2, ib3, ib4 = st.columns(4)
     with ib1:
@@ -1668,7 +1696,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     st.caption("Indicadores consultados em fontes externas; a série exibida corresponde ao último registro retornado e pode não ser uma taxa anualizada.")
 
     st.divider()
-    st.subheader("📰 Notícias do Mercado Nacional")
+    st.markdown("<div class='terminal-divider'></div><div class='terminal-section'>03 / Notícias do mercado nacional</div>", unsafe_allow_html=True)
     urls_nacionais = ["https://exame.com/invest/feed/", "https://www.infomoney.com.br/feed/"]
     noticias_nacionais = buscar_noticias_rss_com_imagens(
         urls_nacionais,
@@ -1696,6 +1724,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
 
     # Rankings fundamentalistas ao final da Página 2.
     st.divider()
+    st.markdown("<div class='terminal-divider'></div><div class='terminal-section'>04 / Radar fundamentalista · empresas B3</div>", unsafe_allow_html=True)
     st.markdown(
         "<div class='ranking-intro'><div>"
         "<div class='ranking-title'>Rankings da Bolsa Brasileira</div>"

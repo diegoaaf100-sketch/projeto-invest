@@ -247,7 +247,7 @@ if auth_user is None:
         with st.form("zion_login_form"):
             email_login = st.text_input("E-mail", key="zion_login_email")
             senha_login = st.text_input("Senha", type="password", key="zion_login_senha")
-            enviar_login = st.form_submit_button("Entrar no ZION", type="primary", use_container_width=True)
+            enviar_login = st.form_submit_button("Entrar no ZION", type="primary", width='stretch')
         if enviar_login:
             try:
                 resultado = supabase.auth.sign_in_with_password({"email": email_login.strip(), "password": senha_login})
@@ -269,7 +269,7 @@ if auth_user is None:
             email_cadastro = st.text_input("E-mail", key="zion_signup_email")
             senha_cadastro = st.text_input("Crie uma senha (mínimo 8 caracteres)", type="password", key="zion_signup_senha")
             senha_confirma = st.text_input("Confirme a senha", type="password")
-            enviar_cadastro = st.form_submit_button("Criar minha conta", type="primary", use_container_width=True)
+            enviar_cadastro = st.form_submit_button("Criar minha conta", type="primary", width='stretch')
         if enviar_cadastro:
             if not nome_cadastro.strip() or not email_cadastro.strip() or len(senha_cadastro) < 8:
                 st.warning("Informe seu nome, e-mail e uma senha com pelo menos 8 caracteres.")
@@ -767,7 +767,7 @@ def renderizar_rankings_mercado():
     st.markdown("<div class='ranking-intro'><div><div class='ranking-title'>Rankings do mercado</div><div class='ranking-subtitle'>Ativos em destaque · atualização automática a cada 5 minutos</div></div></div>", unsafe_allow_html=True)
     c_atualizar, c_horario = st.columns([1, 4], vertical_alignment="center")
     with c_atualizar:
-        if st.button("↻ Atualizar rankings", key="zion_atualizar_rankings", use_container_width=True):
+        if st.button("↻ Atualizar rankings", key="zion_atualizar_rankings", width='stretch'):
             buscar_ranking_acoes.clear()
             buscar_ranking_cripto.clear()
             buscar_ranking_bdrs.clear()
@@ -788,9 +788,16 @@ def renderizar_rankings_mercado():
 
 
 # --- GRÁFICO DO IBOVESPA E RANKINGS FUNDAMENTALISTAS DA B3 ---
-@st.cache_data(ttl=900, show_spinner=False)
+@st.cache_data(ttl=300, show_spinner=False)
 def buscar_historico_ibovespa(periodo="1y"):
-    """Obtém o histórico diário do Ibovespa; retorna DataFrame vazio em falhas."""
+    """
+    Obtém o histórico diário do Ibovespa.
+    Tenta primeiro yfinance e, se falhar, consulta diretamente o endpoint
+    público de gráficos do Yahoo Finance. Registra erros para diagnóstico.
+    """
+    import logging
+
+    # 1) Primeira tentativa: yfinance.
     try:
         historico = yf.Ticker("^BVSP").history(
             period=periodo, interval="1d", auto_adjust=False
@@ -800,20 +807,70 @@ def buscar_historico_ibovespa(periodo="1y"):
                 "^BVSP", period=periodo, interval="1d",
                 auto_adjust=False, progress=False, threads=False
             )
-        if historico is None or historico.empty:
-            return pd.DataFrame()
-        # Compatibilidade com versões do yfinance que retornam colunas MultiIndex.
-        if isinstance(historico.columns, pd.MultiIndex):
-            if ("Close", "^BVSP") in historico.columns:
-                fechamento = historico[("Close", "^BVSP")]
+
+        if historico is not None and not historico.empty:
+            if isinstance(historico.columns, pd.MultiIndex):
+                if ("Close", "^BVSP") in historico.columns:
+                    fechamento = historico[("Close", "^BVSP")]
+                else:
+                    fechamento = historico.xs("Close", axis=1, level=0).iloc[:, 0]
             else:
-                fechamento = historico.xs("Close", axis=1, level=0).iloc[:, 0]
-        else:
-            fechamento = historico["Close"]
-        resultado = pd.DataFrame({"Fechamento": pd.to_numeric(fechamento, errors="coerce")})
-        resultado = resultado.dropna()
-        return resultado
+                fechamento = historico["Close"]
+
+            resultado = pd.DataFrame({
+                "Fechamento": pd.to_numeric(fechamento, errors="coerce")
+            }).dropna()
+
+            if not resultado.empty:
+                resultado.index = pd.to_datetime(resultado.index)
+                return resultado.sort_index()
     except Exception:
+        logging.exception("Falha ao consultar o Ibovespa via yfinance.")
+
+    # 2) Segunda tentativa: endpoint de histórico do Yahoo Finance.
+    try:
+        periodos_validos = {"1mo", "6mo", "1y", "5y"}
+        periodo_api = periodo if periodo in periodos_validos else "1y"
+        url = "https://query1.finance.yahoo.com/v8/finance/chart/%5EBVSP"
+        resposta = requests.get(
+            url,
+            params={
+                "range": periodo_api,
+                "interval": "1d",
+                "events": "history",
+                "includePrePost": "false"
+            },
+            headers={"User-Agent": "Mozilla/5.0 (compatible; ZIONDashboard/1.0)"},
+            timeout=20
+        )
+        resposta.raise_for_status()
+        dados = resposta.json()
+        resultado_api = dados.get("chart", {}).get("result") or []
+        if not resultado_api:
+            erro_api = dados.get("chart", {}).get("error")
+            raise ValueError(f"Yahoo Finance não retornou histórico: {erro_api}")
+
+        item = resultado_api[0]
+        timestamps = item.get("timestamp") or []
+        cotacoes = (
+            item.get("indicators", {})
+                .get("quote", [{}])[0]
+                .get("close") or []
+        )
+        if not timestamps or not cotacoes:
+            raise ValueError("A resposta do Yahoo Finance veio sem datas ou fechamentos.")
+
+        datas = pd.to_datetime(timestamps, unit="s", utc=True).tz_convert("America/Sao_Paulo")
+        resultado = pd.DataFrame({
+            "Fechamento": pd.to_numeric(cotacoes, errors="coerce")
+        }, index=datas)
+        resultado = resultado.dropna().sort_index()
+        if resultado.empty:
+            raise ValueError("O histórico do Ibovespa não contém fechamentos válidos.")
+        return resultado
+
+    except Exception as erro:
+        logging.exception("Falha também na consulta direta ao Yahoo Finance: %s", erro)
         return pd.DataFrame()
 
 
@@ -1149,7 +1206,7 @@ with st.sidebar:
     st.caption("INTELIGÊNCIA FINANCEIRA · B3 & GLOBAL")
     st.markdown(f"**Conta:** {auth_user.email}")
     st.caption("Perfil: Administrador" if perfil_usuario == "admin" else "Perfil: Usuário")
-    if st.button("Sair da conta", use_container_width=True):
+    if st.button("Sair da conta", width='stretch'):
         try:
             supabase.auth.sign_out()
         except Exception:
@@ -1165,7 +1222,7 @@ with st.sidebar:
                 novo_nome = st.text_input("Nome do usuário")
                 novo_email = st.text_input("E-mail do usuário")
                 nova_senha = st.text_input("Senha inicial (mínimo 8 caracteres)", type="password")
-                criar_usuario_admin = st.form_submit_button("Criar usuário", type="primary", use_container_width=True)
+                criar_usuario_admin = st.form_submit_button("Criar usuário", type="primary", width='stretch')
             if criar_usuario_admin:
                 if not supabase_admin:
                     st.error("Configure SUPABASE_SERVICE_ROLE_KEY nos Secrets do Streamlit.")
@@ -1182,7 +1239,7 @@ with st.sidebar:
                     lista_perfis = supabase_admin.table("perfis_usuarios").select("email,role,id").order("email").execute().data or []
                     st.markdown("**Contas cadastradas**")
                     if lista_perfis:
-                        st.dataframe(pd.DataFrame(lista_perfis)[["email", "role"]], hide_index=True, use_container_width=True)
+                        st.dataframe(pd.DataFrame(lista_perfis)[["email", "role"]], hide_index=True, width='stretch')
                 except Exception as erro:
                     st.caption(f"Lista de usuários indisponível: {erro}")
 
@@ -1251,7 +1308,7 @@ with st.container():
                         opcao,
                         key=f"zion_nav_button_{indice}",
                         type="primary" if st.session_state["aba_ativa"] == opcao else "secondary",
-                        use_container_width=True,
+                        width='stretch',
                         on_click=selecionar_aba_zion,
                         args=(opcao,)
                     )
@@ -1405,7 +1462,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
         "5 anos": "5y"
     }
     with col_atualizar_ibov:
-        if st.button("↻ Atualizar gráfico", key="zion_atualizar_ibovespa", use_container_width=True):
+        if st.button("↻ Atualizar gráfico", key="zion_atualizar_ibovespa", width='stretch'):
             buscar_historico_ibovespa.clear()
             obter_dados_ticker_seguro.clear()
             st.rerun()
@@ -1583,8 +1640,8 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
         )
     else:
         st.warning(
-            "O histórico do Ibovespa não foi retornado pela fonte neste momento. "
-            "O restante da página continua disponível; tente atualizar o gráfico mais tarde."
+            "Não foi possível carregar o histórico do Ibovespa pelas fontes disponíveis. "
+            "Confira os Logs do aplicativo para identificar a falha da conexão e tente atualizar novamente."
         )
 
     st.subheader("📊 Macroeconomia Nacional")
@@ -1648,7 +1705,7 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
     )
     col_refresh_b3, col_info_b3 = st.columns([1, 4], vertical_alignment="center")
     with col_refresh_b3:
-        if st.button("↻ Atualizar rankings B3", key="zion_atualizar_rankings_b3", use_container_width=True):
+        if st.button("↻ Atualizar rankings B3", key="zion_atualizar_rankings_b3", width='stretch'):
             buscar_rankings_fundamentalistas_b3.clear()
             st.rerun()
     with col_info_b3:

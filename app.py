@@ -6,6 +6,7 @@ import html
 import requests
 from datetime import datetime, timedelta
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Silencia avisos de depreciação de bibliotecas externas
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -520,7 +521,30 @@ def buscar_ranking_cripto():
             })
         return saida
     except Exception:
-        return []
+        # Alternativa pública para reduzir a dependência exclusiva da CoinGecko.
+        try:
+            resposta_alt = requests.get(
+                "https://api.coincap.io/v2/assets",
+                params={"limit": 5},
+                timeout=12,
+                headers={"User-Agent": "ZIONFinancialTerminal/1.0"}
+            )
+            resposta_alt.raise_for_status()
+            dados_alt = resposta_alt.json().get("data", [])
+            return [
+                {
+                    "ticker": f"{str(item.get('symbol', '')).upper()}-USD",
+                    "simbolo": str(item.get("symbol", "")).upper(),
+                    "nome": item.get("name", "Criptoativo"),
+                    "preco": float(item.get("priceUsd") or 0),
+                    "variacao": float(item.get("changePercent24Hr") or 0),
+                    "capitalizacao": float(item.get("marketCapUsd") or 0),
+                    "logo": None
+                }
+                for item in dados_alt
+            ]
+        except Exception:
+            return []
 
 
 @st.cache_data(ttl=300, show_spinner=False)
@@ -706,9 +730,214 @@ def renderizar_rankings_mercado():
         bdrs = buscar_ranking_bdrs()
 
     col_acoes, col_cripto, col_bdrs = st.columns(3, gap="medium")
-    renderizar_painel_ranking(col_acoes, "Ações", "Maior valor de mercado · universo acompanhado", acoes, "acao")
+    renderizar_painel_ranking(col_acoes, "Stocks", "Maiores valores de mercado · empresas globais acompanhadas", acoes, "acao")
     renderizar_painel_ranking(col_cripto, "Criptomoedas", "Maior capitalização · mercado global", criptos, "crypto")
-    renderizar_painel_ranking(col_bdrs, "BDRs", "Mais negociados · volume recente na B3", bdrs, "bdr")
+    renderizar_painel_ranking(col_bdrs, "BDRs", "Mais buscados · interesse aproximado pelo volume negociado na B3", bdrs, "bdr")
+
+
+
+# --- GRÁFICO DO IBOVESPA E RANKINGS FUNDAMENTALISTAS DA B3 ---
+@st.cache_data(ttl=900, show_spinner=False)
+def buscar_historico_ibovespa(periodo="1y"):
+    """Obtém o histórico diário do Ibovespa; retorna DataFrame vazio em falhas."""
+    try:
+        historico = yf.Ticker("^BVSP").history(
+            period=periodo, interval="1d", auto_adjust=False
+        )
+        if historico is None or historico.empty or "Close" not in historico.columns:
+            historico = yf.download(
+                "^BVSP", period=periodo, interval="1d",
+                auto_adjust=False, progress=False, threads=False
+            )
+        if historico is None or historico.empty:
+            return pd.DataFrame()
+        # Compatibilidade com versões do yfinance que retornam colunas MultiIndex.
+        if isinstance(historico.columns, pd.MultiIndex):
+            if ("Close", "^BVSP") in historico.columns:
+                fechamento = historico[("Close", "^BVSP")]
+            else:
+                fechamento = historico.xs("Close", axis=1, level=0).iloc[:, 0]
+        else:
+            fechamento = historico["Close"]
+        resultado = pd.DataFrame({"Fechamento": pd.to_numeric(fechamento, errors="coerce")})
+        resultado = resultado.dropna()
+        return resultado
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def buscar_rankings_fundamentalistas_b3():
+    """
+    Consulta indicadores públicos do Yahoo Finance para um universo acompanhado
+    de ações brasileiras. Cada ranking é calculado apenas com dados disponíveis.
+    """
+    universo = [
+        "PETR4.SA", "VALE3.SA", "ITUB4.SA", "BBDC4.SA", "BBAS3.SA",
+        "B3SA3.SA", "WEGE3.SA", "ABEV3.SA", "RENT3.SA", "SUZB3.SA",
+        "ELET3.SA", "EQTL3.SA", "PRIO3.SA", "VIVT3.SA", "ITSA4.SA",
+        "BPAC11.SA", "RADL3.SA", "GGBR4.SA", "CMIG4.SA", "TAEE11.SA"
+    ]
+
+    def consultar_ativo(ticker):
+        try:
+            ativo = yf.Ticker(ticker)
+            try:
+                info = ativo.get_info() or {}
+            except Exception:
+                info = ativo.info or {}
+
+            preco = (
+                info.get("currentPrice")
+                or info.get("regularMarketPrice")
+                or info.get("navPrice")
+                or 0
+            )
+            variacao = info.get("regularMarketChangePercent")
+            if variacao is None:
+                try:
+                    hist = ativo.history(period="5d", interval="1d")
+                    if hist is not None and not hist.empty and len(hist) >= 2:
+                        anterior = float(hist["Close"].iloc[-2])
+                        atual = float(hist["Close"].iloc[-1])
+                        variacao = ((atual / anterior) - 1) * 100 if anterior else None
+                    if not preco and hist is not None and not hist.empty:
+                        preco = float(hist["Close"].iloc[-1])
+                except Exception:
+                    pass
+
+            dy = info.get("dividendYield")
+            if dy is None:
+                dy = info.get("trailingAnnualDividendYield")
+            if dy is None:
+                dividendo = info.get("dividendRate")
+                if dividendo and preco:
+                    dy = float(dividendo) / float(preco)
+            dy_percent = float(dy) * 100 if dy is not None else 0.0
+
+            cap = info.get("marketCap") or 0
+            receita = info.get("totalRevenue") or 0
+
+            return {
+                "ticker": ticker,
+                "nome": info.get("shortName") or info.get("longName") or ticker.replace(".SA", ""),
+                "preco": float(preco or 0),
+                "variacao": float(variacao) if variacao is not None else None,
+                "dy_percent": dy_percent,
+                "market_cap": float(cap or 0),
+                "receita": float(receita or 0),
+                "logo": info.get("logo_url")
+            }
+        except Exception:
+            return None
+
+    resultados = []
+    # Concorrência moderada para reduzir o tempo de carregamento sem disparar
+    # um volume excessivo de consultas simultâneas à fonte.
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        tarefas = [executor.submit(consultar_ativo, ticker) for ticker in universo]
+        for tarefa in as_completed(tarefas):
+            item = tarefa.result()
+            if item:
+                resultados.append(item)
+
+    ranking_dy = sorted(
+        [x for x in resultados if x["dy_percent"] > 0],
+        key=lambda x: x["dy_percent"], reverse=True
+    )[:5]
+    ranking_cap = sorted(
+        [x for x in resultados if x["market_cap"] > 0],
+        key=lambda x: x["market_cap"], reverse=True
+    )[:5]
+    ranking_receita = sorted(
+        [x for x in resultados if x["receita"] > 0],
+        key=lambda x: x["receita"], reverse=True
+    )[:5]
+
+    return {
+        "dividend_yield": ranking_dy,
+        "valor_mercado": ranking_cap,
+        "receitas": ranking_receita
+    }
+
+
+def formatar_valor_abreviado(valor, formato="moeda"):
+    try:
+        numero = float(valor)
+        if formato == "percentual":
+            return f"{numero:.2f}%"
+        if numero >= 1_000_000_000_000:
+            return f"R$ {numero / 1_000_000_000_000:.2f} tri"
+        if numero >= 1_000_000_000:
+            return f"R$ {numero / 1_000_000_000:.1f} bi"
+        if numero >= 1_000_000:
+            return f"R$ {numero / 1_000_000:.1f} mi"
+        return f"R$ {numero:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (TypeError, ValueError):
+        return "N/D"
+
+
+def renderizar_painel_ranking_b3(coluna, titulo, subtitulo, itens, campo_valor, formato):
+    """Renderiza ranking B3 mostrando o indicador que determina a classificação."""
+    with coluna:
+        linhas = []
+        for posicao, item in enumerate(itens or [], start=1):
+            ticker = str(item.get("ticker", "")).replace(".SA", "")
+            nome = str(item.get("nome", ticker))
+            logo_url = obter_logo_ranking(item, "acao")
+            destino = obter_destino_institucional_ranking(item, "acao")
+            valor_txt = formatar_valor_abreviado(item.get(campo_valor), formato)
+            preco_txt = formatar_preco_ranking(item.get("preco", 0), "BRL")
+            variacao = item.get("variacao")
+            if variacao is None:
+                variacao_html = ""
+            else:
+                try:
+                    var = float(variacao)
+                    cor = "#00D98B" if var >= 0 else "#F07878"
+                    variacao_html = f"<div class='ranking-change' style='color:{cor}'>{var:+.2f}%</div>"
+                except (TypeError, ValueError):
+                    variacao_html = ""
+
+            iniciais = html.escape(ticker[:2])
+            if logo_url:
+                logo_html = (
+                    f"<img src='{html.escape(logo_url, quote=True)}' alt='' "
+                    f"referrerpolicy='no-referrer' "
+                    f"onerror=\"this.style.display='none';this.nextElementSibling.style.display='flex';\">"
+                    f"<span class='ranking-logo-fallback'>{iniciais}</span>"
+                )
+            else:
+                logo_html = f"<span class='ranking-logo-fallback' style='display:flex'>{iniciais}</span>"
+
+            nome_curto = nome if len(nome) <= 28 else nome[:26] + "…"
+            linhas.append(
+                f"<a class='ranking-row' href='{html.escape(destino, quote=True)}' "
+                f"target='_blank' rel='noopener noreferrer'>"
+                f"<span class='ranking-position'>#{posicao}</span>"
+                f"<span class='ranking-logo-wrap'>{logo_html}</span>"
+                f"<span><span class='ranking-symbol'>{html.escape(ticker)}</span>"
+                f"<span class='ranking-company'>{html.escape(nome_curto)}</span></span>"
+                f"<span class='ranking-values'><span class='ranking-price'>{html.escape(valor_txt)}</span>"
+                f"<div class='ranking-company' style='text-align:right'>{html.escape(preco_txt)}</div>{variacao_html}</span>"
+                f"</a>"
+            )
+
+        if not linhas:
+            linhas.append(
+                "<div class='ranking-footer'>Dados fundamentalistas indisponíveis nesta consulta. "
+                "Tente atualizar em instantes.</div>"
+            )
+
+        painel = (
+            "<div class='ranking-panel'>"
+            f"<div class='ranking-panel-title'>{html.escape(titulo)}</div>"
+            f"<div class='ranking-panel-note'>{html.escape(subtitulo)}</div>"
+            + "".join(linhas)
+            + "<div class='ranking-footer'>Fonte: Yahoo Finance · universo acompanhado de ações da B3</div>"
+            + "</div>"
+        )
+        st.markdown(painel, unsafe_allow_html=True)
 
 
 def obter_icone_ativo(simbolo):
@@ -1081,6 +1310,82 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
         </div>
     """, unsafe_allow_html=True)
     
+    # Gráfico de referência do Ibovespa no início da página.
+    st.markdown("<div class='global-section-label'>IBOVESPA · DESEMPENHO HISTÓRICO</div>", unsafe_allow_html=True)
+    col_periodo_ibov, col_atualizar_ibov = st.columns([3, 1], vertical_alignment="bottom")
+    with col_periodo_ibov:
+        periodo_ibov = st.selectbox(
+            "Período do gráfico",
+            ["1 mês", "6 meses", "1 ano", "5 anos"],
+            index=2,
+            key="zion_periodo_ibovespa"
+        )
+    mapa_periodos_ibov = {
+        "1 mês": "1mo",
+        "6 meses": "6mo",
+        "1 ano": "1y",
+        "5 anos": "5y"
+    }
+    with col_atualizar_ibov:
+        if st.button("↻ Atualizar gráfico", key="zion_atualizar_ibovespa", use_container_width=True):
+            buscar_historico_ibovespa.clear()
+            obter_dados_ticker_seguro.clear()
+            st.rerun()
+
+    with st.spinner("Carregando histórico do Ibovespa..."):
+        historico_ibov = buscar_historico_ibovespa(mapa_periodos_ibov[periodo_ibov])
+
+    if historico_ibov is not None and not historico_ibov.empty:
+        ultimo_fechamento = float(historico_ibov["Fechamento"].iloc[-1])
+        primeiro_fechamento = float(historico_ibov["Fechamento"].iloc[0])
+        variacao_periodo = (
+            (ultimo_fechamento / primeiro_fechamento - 1) * 100
+            if primeiro_fechamento else 0
+        )
+        fig_ibov = go.Figure()
+        fig_ibov.add_trace(go.Scatter(
+            x=historico_ibov.index,
+            y=historico_ibov["Fechamento"],
+            mode="lines",
+            name="Ibovespa",
+            line=dict(color="#00C781", width=2.5),
+            fill="tozeroy",
+            fillcolor="rgba(0,199,129,0.10)",
+            hovertemplate="%{x|%d/%m/%Y}<br>Ibovespa: %{y:,.0f} pontos<extra></extra>"
+        ))
+        fig_ibov.update_layout(
+            template="plotly_dark",
+            height=350,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=10, r=18, t=15, b=10),
+            showlegend=False,
+            hovermode="x unified",
+            font=dict(family="Inter", color="#DCE8E0"),
+            xaxis=dict(title="", gridcolor="rgba(180,210,190,.08)", showline=False),
+            yaxis=dict(
+                title="Pontos",
+                side="right",
+                gridcolor="rgba(180,210,190,.08)",
+                tickformat=",.0f"
+            )
+        )
+        st.plotly_chart(
+            fig_ibov,
+            width="stretch",
+            config={"displayModeBar": False, "displaylogo": False}
+        )
+        st.caption(
+            f"Último fechamento disponível: {ultimo_fechamento:,.0f} pontos · "
+            f"variação no período selecionado: {variacao_periodo:+.2f}% · "
+            "Fonte: Yahoo Finance (^BVSP)."
+        )
+    else:
+        st.warning(
+            "O histórico do Ibovespa não foi retornado pela fonte neste momento. "
+            "O restante da página continua disponível; tente atualizar o gráfico mais tarde."
+        )
+
     st.subheader("📊 Macroeconomia Nacional")
     ibov = obter_dados_ticker_seguro("^BVSP")
     ib1, ib2, ib3, ib4 = st.columns(4)
@@ -1130,6 +1435,52 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
                     """, unsafe_allow_html=True)
     else:
         st.caption("Notícias nacionais indisponíveis no momento.")
+
+    # Rankings fundamentalistas ao final da Página 2.
+    st.divider()
+    st.markdown(
+        "<div class='ranking-intro'><div>"
+        "<div class='ranking-title'>Rankings da Bolsa Brasileira</div>"
+        "<div class='ranking-subtitle'>Empresas da B3 classificadas por indicadores fundamentalistas · atualização em cache de 15 minutos</div>"
+        "</div></div>",
+        unsafe_allow_html=True
+    )
+    col_refresh_b3, col_info_b3 = st.columns([1, 4], vertical_alignment="center")
+    with col_refresh_b3:
+        if st.button("↻ Atualizar rankings B3", key="zion_atualizar_rankings_b3", use_container_width=True):
+            buscar_rankings_fundamentalistas_b3.clear()
+            st.rerun()
+    with col_info_b3:
+        st.caption(
+            f"Consulta: {datetime.now().strftime('%d/%m/%Y às %H:%M:%S')} · "
+            "os rankings consideram apenas ativos com indicador disponível na fonte."
+        )
+
+    with st.spinner("Consultando indicadores das empresas brasileiras..."):
+        rankings_b3 = buscar_rankings_fundamentalistas_b3()
+
+    rb1, rb2, rb3 = st.columns(3, gap="medium")
+    renderizar_painel_ranking_b3(
+        rb1, "Maiores Dividend Yield",
+        "Maior rendimento de dividendos informado pela fonte",
+        rankings_b3.get("dividend_yield", []), "dy_percent", "percentual"
+    )
+    renderizar_painel_ranking_b3(
+        rb2, "Maiores Valores de Mercado",
+        "Empresas com maior capitalização de mercado",
+        rankings_b3.get("valor_mercado", []), "market_cap", "moeda"
+    )
+    renderizar_painel_ranking_b3(
+        rb3, "Maiores Receitas",
+        "Maior receita total reportada nos dados fundamentalistas",
+        rankings_b3.get("receitas", []), "receita", "moeda"
+    )
+
+    st.caption(
+        "Atenção: estes rankings são calculados sobre uma lista acompanhada de ações brasileiras, "
+        "não representam necessariamente todas as empresas listadas na B3. Dividend Yield, "
+        "capitalização e receita dependem da atualização e da cobertura dos dados do Yahoo Finance."
+    )
 
 # ==========================================
 # SEÇÃO 3: ANÁLISE PROFISSIONAL MULTI-ATIVOS

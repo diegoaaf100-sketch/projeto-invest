@@ -165,6 +165,22 @@ st.markdown("""
     .ranking-price { color:#F0F7F2; font-size:.75rem; font-weight:750; white-space:nowrap; }
     .ranking-change { font-size:.66rem; font-weight:700; text-align:right; white-space:nowrap; margin-top:4px; }
     .ranking-footer { color:#83948A; font-size:.68rem; padding-top:12px; }
+
+    .ibov-card { background:linear-gradient(145deg,rgba(15,29,23,.98),rgba(7,14,11,.98)); border:1px solid rgba(0,199,129,.23); border-radius:18px; padding:20px 22px 12px; margin:10px 0 22px; box-shadow:0 16px 42px rgba(0,0,0,.24),inset 0 1px 0 rgba(255,255,255,.025); overflow:hidden; }
+    .ibov-card-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:15px; }
+    .ibov-eyebrow { color:#00D98B; font-size:.67rem; font-weight:800; letter-spacing:1.8px; text-transform:uppercase; margin-bottom:6px; }
+    .ibov-heading { color:#F3FAF5; font-size:1.28rem; font-weight:800; letter-spacing:-.45px; line-height:1.2; }
+    .ibov-description { color:#91A198; font-size:.76rem; margin-top:5px; }
+    .ibov-live { color:#7DE8B5; background:rgba(0,199,129,.09); border:1px solid rgba(0,199,129,.22); border-radius:30px; padding:6px 10px; font-size:.66rem; font-weight:750; white-space:nowrap; }
+    .ibov-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:14px 0 5px; }
+    .ibov-stat { background:rgba(255,255,255,.025); border:1px solid rgba(174,205,187,.10); border-radius:12px; padding:11px 13px; min-width:0; }
+    .ibov-stat-label { color:#91A198; font-size:.64rem; text-transform:uppercase; letter-spacing:.7px; font-weight:700; }
+    .ibov-stat-value { color:#F3FAF5; font-size:1.02rem; font-weight:800; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .ibov-stat-value.positive { color:#00D98B; }
+    .ibov-stat-value.negative { color:#FF8585; }
+    .ibov-source { color:#75877C; font-size:.65rem; padding:2px 3px 5px; }
+    @media(max-width:700px) { .ibov-card { padding:15px 12px 9px; } .ibov-card-head { flex-direction:column; } .ibov-stats { gap:6px; } .ibov-stat { padding:9px 8px; } .ibov-stat-value { font-size:.82rem; } }
+
     @media(max-width:1050px) { .ranking-panel { padding:15px 12px 10px; } .ranking-row { grid-template-columns:24px 38px minmax(0,1fr) minmax(70px,auto); gap:7px; } .ranking-logo-wrap { width:34px; height:34px; } .ranking-logo-wrap img { width:27px; height:27px; } .ranking-price { font-size:.70rem; } }
     @media (max-width: 900px) { .ranking-intro { align-items:flex-start; flex-direction:column; } }
 
@@ -628,7 +644,7 @@ def obter_destino_institucional_ranking(item, tipo):
 
 
 def obter_logo_ranking(item, tipo):
-    """Usa logos da API de cripto ou favicons oficiais de domínios conhecidos."""
+    """Retorna uma URL de logo por ticker; cripto usa a imagem fornecida pela API."""
     logo = item.get("logo")
     if tipo == "crypto" and logo:
         return str(logo)
@@ -643,11 +659,19 @@ def obter_logo_ranking(item, tipo):
         "AMZO34": "amazon.com", "GOGL34": "google.com", "META34": "meta.com",
         "TSLA34": "tesla.com", "NFLX34": "netflix.com", "ORCL34": "oracle.com",
         "AVGO34": "broadcom.com",
+        "PETR4": "petrobras.com.br", "VALE3": "vale.com", "ITUB4": "itau.com.br",
+        "BBDC4": "bradesco.com.br", "BBAS3": "bb.com.br", "B3SA3": "b3.com.br",
+        "WEGE3": "weg.net", "ABEV3": "ambev.com.br", "RENT3": "localiza.com",
+        "SUZB3": "suzano.com.br", "ELET3": "eletrobras.com", "EQTL3": "equatorialenergia.com.br",
+        "PRIO3": "prio3.com.br", "VIVT3": "vivo.com.br", "ITSA4": "itausa.com.br",
+        "BPAC11": "btgpactual.com", "RADL3": "rd.com.br", "GGBR4": "gerdau.com",
+        "CMIG4": "cemig.com.br", "TAEE11": "taesa.com.br"
     }
     dominio = dominios.get(ticker)
     if not dominio:
         return None
-    return "https://www.google.com/s2/favicons?domain=" + dominio + "&sz=128"
+    # O CDN de logos é a primeira opção; o favicon oficial é a segunda tentativa.
+    return f"https://assets.parqet.com/logos/symbol/{ticker}"
 
 
 def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
@@ -677,10 +701,37 @@ def renderizar_painel_ranking(coluna, titulo, subtitulo, itens, tipo):
 
             iniciais = html.escape(ticker_visivel[:2])
             if logo_url:
+                dominio_logo = {
+                    "AAPL": "apple.com", "MSFT": "microsoft.com", "NVDA": "nvidia.com",
+                    "AMZN": "amazon.com", "GOOGL": "google.com", "GOOG": "google.com",
+                    "META": "meta.com", "AVGO": "broadcom.com", "TSLA": "tesla.com",
+                    "BRK-B": "berkshirehathaway.com", "TSM": "tsmc.com", "WMT": "walmart.com",
+                    "AAPL34": "apple.com", "MSFT34": "microsoft.com", "NVDC34": "nvidia.com",
+                    "AMZO34": "amazon.com", "GOGL34": "google.com", "META34": "meta.com",
+                    "TSLA34": "tesla.com", "NFLX34": "netflix.com", "ORCL34": "oracle.com",
+                    "AVGO34": "broadcom.com", "PETR4": "petrobras.com.br", "VALE3": "vale.com",
+                    "ITUB4": "itau.com.br", "BBDC4": "bradesco.com.br", "BBAS3": "bb.com.br",
+                    "B3SA3": "b3.com.br", "WEGE3": "weg.net", "ABEV3": "ambev.com.br",
+                    "RENT3": "localiza.com", "SUZB3": "suzano.com.br", "ELET3": "eletrobras.com",
+                    "EQTL3": "equatorialenergia.com.br", "PRIO3": "prio3.com.br",
+                    "VIVT3": "vivo.com.br", "ITSA4": "itausa.com.br", "BPAC11": "btgpactual.com",
+                    "RADL3": "rd.com.br", "GGBR4": "gerdau.com", "CMIG4": "cemig.com.br",
+                    "TAEE11": "taesa.com.br"
+                }.get(ticker_visivel, "")
+                fallback_logo = (
+                    "https://www.google.com/s2/favicons?domain=" + dominio_logo + "&sz=128"
+                    if dominio_logo else ""
+                )
+                fallback_js = (
+                    "if(this.dataset.fallback==='1'){this.style.display='none';"
+                    "this.nextElementSibling.style.display='flex';}else{"
+                    "this.dataset.fallback='1';this.src=this.dataset.fallbackSrc;}"
+                )
                 logo_html = (
-                    f"<img src='{html.escape(logo_url, quote=True)}' alt='' "
-                    f"referrerpolicy='no-referrer' "
-                    f"onerror=\"this.style.display='none';this.nextElementSibling.style.display='flex';\">"
+                    f"<img src='{html.escape(logo_url, quote=True)}' "
+                    f"data-fallback-src='{html.escape(fallback_logo, quote=True)}' "
+                    f"alt='{html.escape(ticker_visivel, quote=True)}' "
+                    f"referrerpolicy='no-referrer' onerror=\"{fallback_js}\">"
                     f"<span class='ranking-logo-fallback'>{iniciais}</span>"
                 )
             else:
@@ -901,10 +952,37 @@ def renderizar_painel_ranking_b3(coluna, titulo, subtitulo, itens, campo_valor, 
 
             iniciais = html.escape(ticker[:2])
             if logo_url:
+                dominio_logo = {
+                    "AAPL": "apple.com", "MSFT": "microsoft.com", "NVDA": "nvidia.com",
+                    "AMZN": "amazon.com", "GOOGL": "google.com", "GOOG": "google.com",
+                    "META": "meta.com", "AVGO": "broadcom.com", "TSLA": "tesla.com",
+                    "BRK-B": "berkshirehathaway.com", "TSM": "tsmc.com", "WMT": "walmart.com",
+                    "AAPL34": "apple.com", "MSFT34": "microsoft.com", "NVDC34": "nvidia.com",
+                    "AMZO34": "amazon.com", "GOGL34": "google.com", "META34": "meta.com",
+                    "TSLA34": "tesla.com", "NFLX34": "netflix.com", "ORCL34": "oracle.com",
+                    "AVGO34": "broadcom.com", "PETR4": "petrobras.com.br", "VALE3": "vale.com",
+                    "ITUB4": "itau.com.br", "BBDC4": "bradesco.com.br", "BBAS3": "bb.com.br",
+                    "B3SA3": "b3.com.br", "WEGE3": "weg.net", "ABEV3": "ambev.com.br",
+                    "RENT3": "localiza.com", "SUZB3": "suzano.com.br", "ELET3": "eletrobras.com",
+                    "EQTL3": "equatorialenergia.com.br", "PRIO3": "prio3.com.br",
+                    "VIVT3": "vivo.com.br", "ITSA4": "itausa.com.br", "BPAC11": "btgpactual.com",
+                    "RADL3": "rd.com.br", "GGBR4": "gerdau.com", "CMIG4": "cemig.com.br",
+                    "TAEE11": "taesa.com.br"
+                }.get(ticker, "")
+                fallback_logo = (
+                    "https://www.google.com/s2/favicons?domain=" + dominio_logo + "&sz=128"
+                    if dominio_logo else ""
+                )
+                fallback_js = (
+                    "if(this.dataset.fallback==='1'){this.style.display='none';"
+                    "this.nextElementSibling.style.display='flex';}else{"
+                    "this.dataset.fallback='1';this.src=this.dataset.fallbackSrc;}"
+                )
                 logo_html = (
-                    f"<img src='{html.escape(logo_url, quote=True)}' alt='' "
-                    f"referrerpolicy='no-referrer' "
-                    f"onerror=\"this.style.display='none';this.nextElementSibling.style.display='flex';\">"
+                    f"<img src='{html.escape(logo_url, quote=True)}' "
+                    f"data-fallback-src='{html.escape(fallback_logo, quote=True)}' "
+                    f"alt='{html.escape(ticker, quote=True)}' "
+                    f"referrerpolicy='no-referrer' onerror=\"{fallback_js}\">"
                     f"<span class='ranking-logo-fallback'>{iniciais}</span>"
                 )
             else:
@@ -1336,49 +1414,99 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
         historico_ibov = buscar_historico_ibovespa(mapa_periodos_ibov[periodo_ibov])
 
     if historico_ibov is not None and not historico_ibov.empty:
-        ultimo_fechamento = float(historico_ibov["Fechamento"].iloc[-1])
-        primeiro_fechamento = float(historico_ibov["Fechamento"].iloc[0])
+        serie = historico_ibov["Fechamento"].dropna()
+        ultimo_fechamento = float(serie.iloc[-1])
+        primeiro_fechamento = float(serie.iloc[0])
         variacao_periodo = (
             (ultimo_fechamento / primeiro_fechamento - 1) * 100
             if primeiro_fechamento else 0
         )
+        maximo_periodo = float(serie.max())
+        minimo_periodo = float(serie.min())
+        direcao_cor = "#00D98B" if variacao_periodo >= 0 else "#FF8585"
+        classe_variacao = "positive" if variacao_periodo >= 0 else "negative"
+        simbolo_variacao = "▲" if variacao_periodo >= 0 else "▼"
+
+        st.markdown(
+            "<div class='ibov-card'>"
+            "<div class='ibov-card-head'>"
+            "<div><div class='ibov-eyebrow'>B3 · Índice de referência</div>"
+            "<div class='ibov-heading'>Ibovespa</div>"
+            "<div class='ibov-description'>Evolução histórica do principal índice da bolsa brasileira</div></div>"
+            "<div class='ibov-live'>● DADOS DE FECHAMENTO</div>"
+            "</div>"
+            f"<div class='ibov-stats'>"
+            f"<div class='ibov-stat'><div class='ibov-stat-label'>Último fechamento</div>"
+            f"<div class='ibov-stat-value'>{ultimo_fechamento:,.0f} pts</div></div>"
+            f"<div class='ibov-stat'><div class='ibov-stat-label'>Variação no período</div>"
+            f"<div class='ibov-stat-value {classe_variacao}'>{simbolo_variacao} {variacao_periodo:+.2f}%</div></div>"
+            f"<div class='ibov-stat'><div class='ibov-stat-label'>Máxima / mínima</div>"
+            f"<div class='ibov-stat-value'>{maximo_periodo:,.0f} / {minimo_periodo:,.0f}</div></div>"
+            "</div></div>",
+            unsafe_allow_html=True
+        )
+
         fig_ibov = go.Figure()
+        # Camada de área discreta e linha principal com destaque.
         fig_ibov.add_trace(go.Scatter(
-            x=historico_ibov.index,
-            y=historico_ibov["Fechamento"],
-            mode="lines",
-            name="Ibovespa",
-            line=dict(color="#00C781", width=2.5),
-            fill="tozeroy",
-            fillcolor="rgba(0,199,129,0.10)",
-            hovertemplate="%{x|%d/%m/%Y}<br>Ibovespa: %{y:,.0f} pontos<extra></extra>"
+            x=serie.index, y=serie.values, mode="lines",
+            name="Ibovespa", line=dict(color=direcao_cor, width=3),
+            fill="tozeroy", fillcolor="rgba(0,199,129,0.075)",
+            hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Fechamento: %{y:,.0f} pontos<extra></extra>"
         ))
+        fig_ibov.add_trace(go.Scatter(
+            x=[serie.index[-1]], y=[ultimo_fechamento], mode="markers",
+            name="Último fechamento",
+            marker=dict(size=9, color=direcao_cor, line=dict(width=2, color="#E9FFF4")),
+            hovertemplate="Último fechamento<br>%{y:,.0f} pontos<extra></extra>"
+        ))
+        margem = (maximo_periodo - minimo_periodo) * 0.12
+        if margem <= 0:
+            margem = ultimo_fechamento * 0.015
         fig_ibov.update_layout(
             template="plotly_dark",
-            height=350,
+            height=410,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=10, r=18, t=15, b=10),
+            margin=dict(l=12, r=18, t=18, b=12),
             showlegend=False,
-            hovermode="x unified",
-            font=dict(family="Inter", color="#DCE8E0"),
-            xaxis=dict(title="", gridcolor="rgba(180,210,190,.08)", showline=False),
+            hovermode="x",
+            font=dict(family="Inter", color="#DCE8E0", size=11),
+            xaxis=dict(
+                title="", gridcolor="rgba(180,210,190,.055)",
+                showline=True, linecolor="rgba(174,205,187,.15)",
+                tickfont=dict(color="#91A198", size=10),
+                showspikes=True, spikemode="across", spikesnap="cursor",
+                spikethickness=1, spikecolor="rgba(0,217,139,.35)"
+            ),
             yaxis=dict(
-                title="Pontos",
-                side="right",
-                gridcolor="rgba(180,210,190,.08)",
-                tickformat=",.0f"
+                title="", side="right",
+                range=[minimo_periodo - margem, maximo_periodo + margem],
+                gridcolor="rgba(180,210,190,.075)", tickformat=",.0f",
+                tickfont=dict(color="#91A198", size=10),
+                zeroline=False
+            ),
+            hoverlabel=dict(
+                bgcolor="#10231A", bordercolor="rgba(0,217,139,.5)",
+                font=dict(color="#F3FAF5", family="Inter", size=12)
             )
         )
+        fig_ibov.update_traces(connectgaps=True)
         st.plotly_chart(
-            fig_ibov,
-            width="stretch",
-            config={"displayModeBar": False, "displaylogo": False}
+            fig_ibov, width="stretch",
+            config={
+                "displayModeBar": True, "displaylogo": False,
+                "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d"],
+                "toImageButtonOptions": {
+                    "format": "png", "filename": "ZION_Ibovespa",
+                    "height": 700, "width": 1400, "scale": 2
+                }
+            }
         )
-        st.caption(
-            f"Último fechamento disponível: {ultimo_fechamento:,.0f} pontos · "
-            f"variação no período selecionado: {variacao_periodo:+.2f}% · "
-            "Fonte: Yahoo Finance (^BVSP)."
+        st.markdown(
+            "<div class='ibov-source'>Fonte: Yahoo Finance (^BVSP) · "
+            "Cotações históricas de fechamento · O último ponto pode não representar cotação em tempo real.</div>",
+            unsafe_allow_html=True
         )
     else:
         st.warning(

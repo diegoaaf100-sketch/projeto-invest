@@ -1446,66 +1446,139 @@ elif st.session_state["aba_ativa"] == "🇧🇷 Mercado Brasileiro":
             unsafe_allow_html=True
         )
 
+        # Médias móveis e variação diária: calculadas apenas com os fechamentos disponíveis.
+        media_movel_20 = serie.rolling(window=20, min_periods=1).mean()
+        variacao_diaria = (
+            (ultimo_fechamento / float(serie.iloc[-2]) - 1) * 100
+            if len(serie) > 1 and float(serie.iloc[-2]) != 0 else 0
+        )
+        indice_base = (serie / primeiro_fechamento) * 100
+        max_data = serie.idxmax()
+        min_data = serie.idxmin()
+
         fig_ibov = go.Figure()
-        # Camada de área discreta e linha principal com destaque.
+        # Área de desempenho acumulado do índice.
         fig_ibov.add_trace(go.Scatter(
             x=serie.index, y=serie.values, mode="lines",
-            name="Ibovespa", line=dict(color=direcao_cor, width=3),
-            fill="tozeroy", fillcolor="rgba(0,199,129,0.075)",
-            hovertemplate="<b>%{x|%d/%m/%Y}</b><br>Fechamento: %{y:,.0f} pontos<extra></extra>"
+            name="Ibovespa",
+            line=dict(color=direcao_cor, width=3.1, shape="spline", smoothing=0.45),
+            fill="tozeroy",
+            fillcolor="rgba(0,217,139,0.085)" if variacao_periodo >= 0 else "rgba(255,133,133,0.075)",
+            hovertemplate=(
+                "<span style='color:#9BAFA3'>%{x|%d %b %Y}</span><br>"
+                "<b>Ibovespa: %{y:,.0f} pts</b><extra></extra>"
+            )
         ))
+        # Média móvel para dar contexto à tendência, sem substituir a cotação.
+        fig_ibov.add_trace(go.Scatter(
+            x=media_movel_20.index, y=media_movel_20.values,
+            mode="lines", name="Média móvel (20 pregões)",
+            line=dict(color="#F2C879", width=1.5, dash="dot"),
+            hovertemplate="Média móvel 20 pregões: %{y:,.0f} pts<extra></extra>"
+        ))
+        # Destaques da máxima e da mínima do intervalo selecionado.
+        fig_ibov.add_trace(go.Scatter(
+            x=[max_data, min_data],
+            y=[maximo_periodo, minimo_periodo],
+            mode="markers+text",
+            name="Máxima e mínima",
+            text=["MÁXIMA", "MÍNIMA"],
+            textposition=["top center", "bottom center"],
+            textfont=dict(size=9, color="#C7D7CD"),
+            marker=dict(
+                size=8, color=["#00D98B", "#FF8585"],
+                line=dict(width=1.5, color="#07110C")
+            ),
+            hovertemplate="%{text}<br>%{y:,.0f} pontos<br>%{x|%d/%m/%Y}<extra></extra>"
+        ))
+        # Marcador final e linha-guia do último fechamento.
         fig_ibov.add_trace(go.Scatter(
             x=[serie.index[-1]], y=[ultimo_fechamento], mode="markers",
             name="Último fechamento",
-            marker=dict(size=9, color=direcao_cor, line=dict(width=2, color="#E9FFF4")),
-            hovertemplate="Último fechamento<br>%{y:,.0f} pontos<extra></extra>"
+            marker=dict(size=11, color=direcao_cor, line=dict(width=2.5, color="#F3FFF8")),
+            hovertemplate="<b>Último fechamento</b><br>%{y:,.0f} pontos<extra></extra>"
         ))
-        margem = (maximo_periodo - minimo_periodo) * 0.12
-        if margem <= 0:
-            margem = ultimo_fechamento * 0.015
+
+        margem = max((maximo_periodo - minimo_periodo) * 0.16, ultimo_fechamento * 0.012)
         fig_ibov.update_layout(
             template="plotly_dark",
-            height=410,
+            height=485,
+            autosize=True,
             paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)",
-            margin=dict(l=12, r=18, t=18, b=12),
-            showlegend=False,
-            hovermode="x",
-            font=dict(family="Inter", color="#DCE8E0", size=11),
+            margin=dict(l=12, r=22, t=28, b=18),
+            hovermode="x unified",
+            font=dict(family="Inter, Arial, sans-serif", color="#DCE8E0", size=11),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=1.02,
+                xanchor="left", x=0,
+                font=dict(size=10, color="#B7C8BD"),
+                bgcolor="rgba(0,0,0,0)"
+            ),
             xaxis=dict(
-                title="", gridcolor="rgba(180,210,190,.055)",
-                showline=True, linecolor="rgba(174,205,187,.15)",
+                title="", gridcolor="rgba(180,210,190,.045)",
+                showline=True, linecolor="rgba(174,205,187,.13)",
                 tickfont=dict(color="#91A198", size=10),
                 showspikes=True, spikemode="across", spikesnap="cursor",
-                spikethickness=1, spikecolor="rgba(0,217,139,.35)"
+                spikethickness=1, spikecolor="rgba(0,217,139,.4)",
+                rangeslider=dict(
+                    visible=True, thickness=0.075,
+                    bgcolor="rgba(255,255,255,.025)",
+                    bordercolor="rgba(174,205,187,.12)", borderwidth=1
+                ),
+                rangeselector=dict(
+                    buttons=[
+                        dict(count=1, label="1M", step="month", stepmode="backward"),
+                        dict(count=6, label="6M", step="month", stepmode="backward"),
+                        dict(count=1, label="1A", step="year", stepmode="backward"),
+                        dict(step="all", label="TUDO")
+                    ],
+                    x=1, xanchor="right", y=1.13,
+                    bgcolor="rgba(14,31,22,.9)",
+                    activecolor="rgba(0,217,139,.22)",
+                    font=dict(color="#C7D7CD", size=9)
+                )
             ),
             yaxis=dict(
-                title="", side="right",
+                title="PONTOS", side="right",
                 range=[minimo_periodo - margem, maximo_periodo + margem],
                 gridcolor="rgba(180,210,190,.075)", tickformat=",.0f",
                 tickfont=dict(color="#91A198", size=10),
-                zeroline=False
+                zeroline=False, fixedrange=False
             ),
             hoverlabel=dict(
                 bgcolor="#10231A", bordercolor="rgba(0,217,139,.5)",
                 font=dict(color="#F3FAF5", family="Inter", size=12)
-            )
+            ),
+            dragmode="pan"
         )
-        fig_ibov.update_traces(connectgaps=True)
         st.plotly_chart(
             fig_ibov, width="stretch",
             config={
                 "displayModeBar": True, "displaylogo": False,
+                "scrollZoom": True,
                 "modeBarButtonsToRemove": ["lasso2d", "select2d", "autoScale2d"],
                 "toImageButtonOptions": {
                     "format": "png", "filename": "ZION_Ibovespa",
-                    "height": 700, "width": 1400, "scale": 2
+                    "height": 850, "width": 1600, "scale": 2
                 }
-            }
+            },
+            key="zion_grafico_ibovespa_interativo"
+        )
+        st.markdown(
+            f"<div class='ibov-stats' style='margin-top:0'>"
+            f"<div class='ibov-stat'><div class='ibov-stat-label'>Variação do último pregão</div>"
+            f"<div class='ibov-stat-value {'positive' if variacao_diaria >= 0 else 'negative'}'>{variacao_diaria:+.2f}%</div></div>"
+            f"<div class='ibov-stat'><div class='ibov-stat-label'>Média móvel · 20 pregões</div>"
+            f"<div class='ibov-stat-value'>{float(media_movel_20.iloc[-1]):,.0f} pts</div></div>"
+            f"<div class='ibov-stat'><div class='ibov-stat-label'>Desempenho relativo</div>"
+            f"<div class='ibov-stat-value'>{float(indice_base.iloc[-1] - 100):+.2f}%</div></div>"
+            "</div>",
+            unsafe_allow_html=True
         )
         st.markdown(
             "<div class='ibov-source'>Fonte: Yahoo Finance (^BVSP) · "
-            "Cotações históricas de fechamento · O último ponto pode não representar cotação em tempo real.</div>",
+            "Fechamentos históricos · Média móvel de 20 pregões · O último ponto pode não representar cotação em tempo real.</div>",
             unsafe_allow_html=True
         )
     else:
